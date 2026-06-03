@@ -1,6 +1,7 @@
 import { getUserSession, getUserData } from '../auth/sessionController'
 import { cmsRoles } from '../data/roleConfig'
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import ProfileDropdown from './ProfileDropdown'
 
 export default function TopBar({ 
@@ -12,6 +13,7 @@ export default function TopBar({
 }) {
   const [globalSearch, setGlobalSearch] = useState('')
   const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const navigate = useNavigate()
   const session = getUserSession()
   const dynamicUser = getUserData()
   const role = session?.role || 'student'
@@ -56,7 +58,12 @@ export default function TopBar({
             <span className="material-symbols-outlined text-[24px]">notifications</span>
             <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
           </button>
-          <button className="p-2.5 text-slate-400 hover:bg-slate-50 rounded-xl transition-all">
+          <button
+            className="p-2.5 text-slate-400 hover:bg-slate-50 rounded-xl transition-all"
+            onClick={() => navigate('/settings')}
+            aria-label="Open settings"
+            title="Settings"
+          >
             <span className="material-symbols-outlined text-[24px]">settings</span>
           </button>
         </div>
