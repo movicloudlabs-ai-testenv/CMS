@@ -33,11 +33,14 @@ export default function SettingsPage() {
 
   if (role === 'student' || role === 'faculty') {
     return (
-      <Layout title="User Settings">
-        <RoleGuard roles={['student', 'faculty']}>
-          <UserSettingsPage role={role} userId={session.userId} />
-        </RoleGuard>
-      </Layout>
+      <div className="flex min-h-screen bg-[#f8fafc] text-[#1e293b]">
+        {/* We skip Layout here because UserSettingsPage implements its own full-page layout & padding */}
+        <div className="flex-1">
+          <RoleGuard roles={['student', 'faculty']}>
+            <UserSettingsPage role={role} userId={session.userId} />
+          </RoleGuard>
+        </div>
+      </div>
     );
   }
 

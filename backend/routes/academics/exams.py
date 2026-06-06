@@ -197,7 +197,7 @@ async def create_registration(payload: dict):
         raise HTTPException(status_code=400, detail="Already registered for this exam")
 
     await db["exam_registrations"].insert_one(data)
-    return {"success": True, "data": data}
+    return {"success": True, "data": serialize_doc(data)}
 
 
 @router.get("/marks")
@@ -444,7 +444,7 @@ async def assign_invigilator(payload: dict):
         raise HTTPException(status_code=400, detail="Faculty already assigned to this exam")
 
     await db["exam_invigilators"].insert_one(data)
-    return {"success": True, "data": data}
+    return {"success": True, "data": serialize_doc(data)}
 
 
 @router.delete("/invigilators/{assignment_id}")
@@ -526,7 +526,7 @@ async def create_revaluation(payload: dict):
         raise HTTPException(status_code=400, detail="Already applied for revaluation")
 
     await db["exam_revaluations"].insert_one(data)
-    return {"success": True, "data": data}
+    return {"success": True, "data": serialize_doc(data)}
 
 
 @router.get("/halls")
@@ -705,7 +705,7 @@ async def create_exam_session(payload: dict):
         raise
 
     await db["exam_sessions"].insert_one(data)
-    return {"success": True, "data": data}
+    return {"success": True, "data": serialize_doc(data)}
 
 
 @router.put("/sessions/{session_id}")
@@ -768,7 +768,7 @@ async def create_timetable_draft(payload: dict):
         raise
 
     await db["exam_timetable_drafts"].insert_one(data)
-    return {"success": True, "data": data}
+    return {"success": True, "data": serialize_doc(data)}
 
 
 @router.patch("/timetable-drafts/{draft_id}/status")
@@ -842,7 +842,7 @@ async def create_exam_notification(payload: dict):
         raise
 
     await db["exam_notifications"].insert_one(data)
-    return {"success": True, "data": data}
+    return {"success": True, "data": serialize_doc(data)}
 
 
 @router.patch("/notifications/{notification_id}/read")

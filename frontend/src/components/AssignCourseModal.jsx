@@ -19,7 +19,7 @@ export default function AssignCourseModal({ isOpen, onClose, onSuccess, facultyI
     const { name, value } = e.target;
     setFormData(prev => ({ 
       ...prev, 
-      [name]: name === 'credits' ? parseInt(value) || 0 : value 
+      [name]: name === 'credits' ? (value === '' ? '' : parseInt(value, 10) || 0) : value 
     }));
   };
 

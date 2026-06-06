@@ -354,7 +354,14 @@ def list_weekly_attendance():
     return deepcopy(DEV_STORE["attendance_weekly"])
 
 
-def list_notifications(role: str, limit: Optional[int] = None, search: Optional[str] = None):
+def list_notifications(
+    role: str,
+    limit: Optional[int] = None,
+    search: Optional[str] = None,
+    category: Optional[str] = None,
+    priority: Optional[str] = None,
+    status: Optional[str] = None,
+):
     items = [
         item for item in DEV_STORE["notifications"]
         if item.get("receiverRole") in {role, "ALL"} or item.get("senderRole") == role
@@ -362,10 +369,21 @@ def list_notifications(role: str, limit: Optional[int] = None, search: Optional[
     if search:
         needle = search.lower()
         items = [item for item in items if needle in item.get("title", "").lower() or needle in item.get("message", "").lower()]
+        
+    if category:
+        items = [item for item in items if item.get("module") == category]
+    if priority:
+        items = [item for item in items if item.get("priority") == priority]
+        
+    unread = sum(1 for item in items if item.get("status") == "unread")
+    
+    if status:
+        items = [item for item in items if item.get("status") == status]
+        
     items = sorted(items, key=lambda item: item.get("createdAt", ""), reverse=True)
     if limit and limit > 0:
         items = items[:limit]
-    unread = sum(1 for item in items if item.get("status") == "unread")
+    
     return deepcopy(items), unread
 
 

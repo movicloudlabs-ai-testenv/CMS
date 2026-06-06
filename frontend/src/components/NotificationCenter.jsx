@@ -147,7 +147,24 @@ export default function NotificationCenter({ role = 'student' }) {
     }
   ];
 
-  const displayNotifications = notifications.length > 0 ? notifications : (role === 'finance' ? mockFinanceNotifications : []);
+  let displayNotifications = notifications.length > 0 ? notifications : (role === 'finance' ? mockFinanceNotifications : []);
+
+  if (selectedCategory) {
+    displayNotifications = displayNotifications.filter(n => n.module === selectedCategory);
+  }
+  if (selectedPriority) {
+    displayNotifications = displayNotifications.filter(n => n.priority === selectedPriority);
+  }
+  if (selectedStatus) {
+    displayNotifications = displayNotifications.filter(n => n.status === selectedStatus);
+  }
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    displayNotifications = displayNotifications.filter(n => 
+      n.title.toLowerCase().includes(q) || 
+      n.message.toLowerCase().includes(q)
+    );
+  }
 
   return (
     <div className="notification-center">

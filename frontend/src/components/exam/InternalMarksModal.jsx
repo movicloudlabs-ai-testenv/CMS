@@ -102,7 +102,7 @@ export default function InternalMarksModal({ exam, onClose, onSave }) {
             <input
               type="number"
               value={maxInternal}
-              onChange={(e) => setMaxInternal(parseInt(e.target.value) || 20)}
+              onChange={(e) => setMaxInternal(e.target.value === '' ? '' : parseInt(e.target.value, 10) || 0)}
               min="1"
               max="50"
               className="w-32 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"

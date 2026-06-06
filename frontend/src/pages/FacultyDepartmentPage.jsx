@@ -339,7 +339,7 @@ function AddDepartmentModal({ isOpen, onClose, onSave }) {
     const { name, value } = e.target;
     setFormData(prev => ({ 
       ...prev, 
-      [name]: name.includes('total') || name === 'courses' ? Number(value) : value 
+      [name]: name.includes('total') || name === 'courses' ? (value === '' ? '' : Number(value)) : value 
     }));
   };
 
@@ -351,7 +351,10 @@ function AddDepartmentModal({ isOpen, onClose, onSave }) {
     
     const newDept = {
       id: Date.now(),
-      ...formData
+      ...formData,
+      totalFaculty: formData.totalFaculty === '' ? 0 : Number(formData.totalFaculty),
+      totalStudents: formData.totalStudents === '' ? 0 : Number(formData.totalStudents),
+      courses: formData.courses === '' ? 0 : Number(formData.courses)
     };
     
     onSave(newDept);

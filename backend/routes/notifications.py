@@ -17,14 +17,22 @@ router = APIRouter(prefix="/api/notifications", tags=["notifications"])
 
 
 @router.get("/{role}")
-async def list_notifications(role: str, limit: Optional[int] = None, search: Optional[str] = None):
+async def list_notifications(
+    role: str,
+    limit: Optional[int] = None,
+    search: Optional[str] = None,
+    category: Optional[str] = None,
+    priority: Optional[str] = None,
+    status: Optional[str] = None,
+):
     try:
         db = get_db()
     except HTTPException as error:
         if error.status_code == 503:
-            data, unread_count = list_dev_notifications(role, limit, search)
+            data, unread_count = list_dev_notifications(role, limit, search, category, priority, status)
             return {"success": True, "role": role, "data": data, "count": len(data), "unreadCount": unread_count}
         raise
+    
     query = {
         "$or": [
             {"receiverRole": role},
@@ -43,6 +51,15 @@ async def list_notifications(role: str, limit: Optional[int] = None, search: Opt
             }
         ]
 
+    if category:
+        query["module"] = category
+        
+    if priority:
+        query["priority"] = priority
+        
+    if status:
+        query["status"] = status
+
     cursor = db["notifications"].find(query).sort("createdAt", -1)
     if limit and limit > 0:
         cursor = cursor.limit(limit)
@@ -51,16 +68,23 @@ async def list_notifications(role: str, limit: Optional[int] = None, search: Opt
     async for row in cursor:
         data.append(serialize_doc(row))
 
-    unread_count = await db["notifications"].count_documents(
-        {
-            "$or": [
-                {"receiverRole": role},
-                {"receiverRole": "ALL"},
-                {"senderRole": role},
-            ],
-            "status": "unread",
-        }
-    )
+    unread_query = {
+        "$or": [
+            {"receiverRole": role},
+            {"receiverRole": "ALL"},
+            {"senderRole": role},
+        ],
+        "status": "unread",
+    }
+    
+    # We still apply category and priority filters to the unread count, 
+    # but obviously not status if they are looking for "unread" anyway.
+    if category:
+        unread_query["module"] = category
+    if priority:
+        unread_query["priority"] = priority
+
+    unread_count = await db["notifications"].count_documents(unread_query)
 
     return {
         "success": True,

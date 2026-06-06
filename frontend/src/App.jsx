@@ -13,7 +13,7 @@ import FacilityPage from './pages/FacilityPage';
 import SettingsPage from './pages/SettingsPage';
 import StudentPageWrapper from './pages/StudentPageWrapper';
 import StudentProfilePage from './pages/StudentProfilePage';
-import NotificationsPage from './pages/NotificationsPage';
+import NotificationsPage from './pages/NotificationPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import PayrollPage from './pages/PayrollPage';
 import AdmissionPage from './pages/AdmissionPage';
