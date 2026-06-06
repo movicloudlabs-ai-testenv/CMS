@@ -23,10 +23,11 @@ export default function TopBar({
   
   // Use dynamic data if available, otherwise fall back to role config
   const user = dynamicUser ? {
-    name: dynamicUser.name || dynamicUser.fullName || dynamicUser.staffName || 'User',
-    label: dynamicUser.designation || dynamicUser.role || role.toUpperCase(),
-    team: dynamicUser.department || dynamicUser.departmentId || 'Department',
-    ...dynamicUser
+    ...(cmsRoles[role] || cmsRoles.student),
+    ...dynamicUser,
+    name: dynamicUser.name || dynamicUser.fullName || dynamicUser.staffName || cmsRoles[role]?.name || 'User',
+    label: dynamicUser.designation || dynamicUser.role || cmsRoles[role]?.label || role.toUpperCase(),
+    team: dynamicUser.department || dynamicUser.departmentId || cmsRoles[role]?.team || 'Department',
   } : (cmsRoles[role] || cmsRoles.student)
 
   return (
