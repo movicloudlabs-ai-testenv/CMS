@@ -3,6 +3,8 @@ import { cmsRoles } from '../data/roleConfig'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ProfileDropdown from './ProfileDropdown'
+import NotificationBell from './NotificationBell'
+import NotificationDropdown from './NotificationDropdown'
 
 export default function TopBar({ 
   title, 
@@ -13,6 +15,7 @@ export default function TopBar({
 }) {
   const [globalSearch, setGlobalSearch] = useState('')
   const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false)
   const navigate = useNavigate()
   const session = getUserSession()
   const dynamicUser = getUserData()
@@ -53,11 +56,18 @@ export default function TopBar({
         )}
       </div>
       <div className="flex items-center gap-6">
-        <div className="flex items-center gap-2">
-          <button className="p-2.5 text-slate-400 hover:bg-slate-50 rounded-xl transition-all relative">
-            <span className="material-symbols-outlined text-[24px]">notifications</span>
-            <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-          </button>
+        <div className="flex items-center gap-2 relative">
+          <NotificationBell 
+            role={role}
+            onBellClick={() => setIsNotificationOpen(!isNotificationOpen)}
+          />
+          {isNotificationOpen && (
+            <NotificationDropdown 
+              role={role}
+              isOpen={isNotificationOpen}
+              onClose={() => setIsNotificationOpen(false)}
+            />
+          )}
           <button
             className="p-2.5 text-slate-400 hover:bg-slate-50 rounded-xl transition-all"
             onClick={() => navigate('/settings')}
