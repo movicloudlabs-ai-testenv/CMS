@@ -4,8 +4,9 @@ import Layout from '../components/Layout';
 import KpiCard from '../components/KpiCard';
 import KpiGrid from '../components/KpiGrid';
 import { Users, Search, Filter, BookOpen, Mail, Phone, Plus, X } from 'lucide-react';
+import { API_BASE } from '../api/apiBase';
 
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = API_BASE;
 
 // Add Student Modal Component
 function AddStudentModal({ isOpen, onClose, onAdd }) {

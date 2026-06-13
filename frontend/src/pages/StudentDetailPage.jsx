@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import Layout from '../components/Layout'
+import { buildApiUrl } from '../api/apiBase'
 import KpiCard from '../components/KpiCard'
 import KpiGrid from '../components/KpiGrid'
 
@@ -313,7 +314,7 @@ function AddAcademicRecordModal({ isOpen, onClose, onSave, studentId }) {
              <button 
                onClick={async () => {
                  try {
-                   const res = await fetch(`http://localhost:5000/api/students/${studentId}/subjects`, {
+                   const res = await fetch(buildApiUrl(`/students/${studentId}/subjects`), {
                      method: 'POST',
                      headers: { 'Content-Type': 'application/json' },
                      body: JSON.stringify({
@@ -364,7 +365,7 @@ function AcademicsTab({ student, onRefresh }) {
       s.code === subjectCode ? { ...s, [field]: value } : s
     );
     try {
-      const res = await fetch(`http://localhost:5000/api/students/${student.id}`, {
+      const res = await fetch(buildApiUrl(`/students/${student.id}`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ subjects: updatedSubjects })
@@ -788,7 +789,7 @@ export default function StudentDetailPage() {
     const fetchStudent = async () => {
       try {
         setLoading(true)
-        const res = await fetch(`/api/students/${encodeURIComponent(id)}`)
+        const res = await fetch(buildApiUrl(`/students/${encodeURIComponent(id)}`))
         if (!res.ok) {
           if (res.status === 404) throw new Error('Student not found')
           throw new Error('Failed to fetch student details')

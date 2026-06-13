@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import ProfileDropdown from './ProfileDropdown'
 import NotificationBell from './NotificationBell'
 import NotificationDropdown from './NotificationDropdown'
+import { buildApiUrl } from '../api/apiBase'
 
 export default function TopBar({ 
   title, 
@@ -30,7 +31,7 @@ export default function TopBar({
       if (userData && userData.avatar) {
         setAvatarUrl(userData.avatar)
       } else if (session?.userId && role === 'student') {
-        fetch(`/api/students/${encodeURIComponent(session.userId)}`)
+        fetch(buildApiUrl(`/students/${encodeURIComponent(session.userId)}`))
           .then(res => res.json())
           .then(data => {
             if (data && data.avatar) {
@@ -61,7 +62,7 @@ export default function TopBar({
   } : (cmsRoles[role] || cmsRoles.student)
 
   return (
-    <header className={`h-16 md:h-20 bg-white border-b border-slate-100 flex items-center justify-between sticky top-0 z-10 backdrop-blur-md bg-white/80 transition-all duration-300 px-4 md:px-6`}>
+    <header className={`h-16 md:h-20 bg-white md:bg-white/80 border-b border-slate-100 flex items-center justify-between sticky top-0 z-10 md:backdrop-blur-md transition-all duration-300 px-4 md:px-6`}>
       <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
         <button
           onClick={onToggleSidebar}

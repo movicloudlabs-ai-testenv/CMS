@@ -242,7 +242,7 @@ async def create_admission(payload: dict[str, Any]):
         raise HTTPException(status_code=500, detail=f"Error creating admission: {str(e)}")
 
 
-@router.get("/")
+@router.get("")
 async def get_all_admissions():
     admissions_collection = _admissions_collection()
     data: list[dict[str, Any]] = []

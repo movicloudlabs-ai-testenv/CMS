@@ -4,6 +4,7 @@ import SearchFilter from '../components/SearchFilter'
 import StudentTable from '../components/StudentTable'
 import AddStudentModal from '../components/AddStudentModal'
 import { PageContainer, StatsSection } from '../components/common'
+import { buildApiUrl } from '../api/apiBase'
 
 export default function StudentsPage() {
   const [studentsList, setStudentsList] = useState([])
@@ -20,7 +21,7 @@ export default function StudentsPage() {
   const fetchStudents = async () =>{
     try {
       setLoading(true)
-      const res = await fetch('/api/students')
+      const res = await fetch(buildApiUrl('/students'))
       if (!res.ok) throw new Error('Failed to fetch students')
       const data = await res.json()
       setStudentsList(data)
@@ -55,7 +56,7 @@ export default function StudentsPage() {
   const handleDelete = async (student) =>{
     if (window.confirm(`Are you sure you want to delete ${student.name} (Roll: ${student.rollNumber})? This action cannot be undone.`)) {
       try {
-        const res = await fetch(`/api/students/${encodeURIComponent(student.rollNumber)}`, {
+        const res = await fetch(buildApiUrl(`/students/${encodeURIComponent(student.rollNumber)}`), {
           method: 'DELETE'
         })
         if (!res.ok) throw new Error('Failed to delete student')

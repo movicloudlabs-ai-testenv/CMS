@@ -82,7 +82,7 @@ async def get_student_fees(student_id: str):
     }
 
 
-@router.get("/")
+@router.get("")
 async def get_all_fees():
     """Get all fee assignments"""
     db = get_db()
