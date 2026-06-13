@@ -4,9 +4,10 @@ import FacultyTable from '../components/FacultyTable';
 import SearchFilter from '../components/SearchFilter';
 import AddEditFacultyModal from '../components/AddEditFacultyModal';
 import { PageContainer, StatsSection } from '../components/common';
+import { API_BASE } from '../api/apiBase';
 import '../styles.css';
 
-const API_BASE_URL = '/api';
+const API_BASE_URL = API_BASE;
 
 export default function FacultyPage() {
   const [facultyList, setFacultyList] = useState([]);

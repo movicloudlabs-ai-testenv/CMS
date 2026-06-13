@@ -10,9 +10,10 @@ import {
   ArrowLeft, User, BarChart2,
   Mail, Phone, MapPin, Briefcase, Calendar, Target, DollarSign
 } from 'lucide-react';
+import { API_BASE } from '../api/apiBase';
 import '../styles.css';
 
-const API_BASE_URL = '/api';
+const API_BASE_URL = API_BASE;
 const profileTabs = [
   { id: 'overview', label: 'Overview', icon: User },
   { id: 'performance', label: 'Performance', icon: BarChart2 },

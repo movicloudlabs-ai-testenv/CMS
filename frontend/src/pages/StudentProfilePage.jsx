@@ -7,9 +7,10 @@ import {
   ArrowLeft, User, BarChart2,
   Mail, Phone, MapPin, Calendar, Users
 } from 'lucide-react';
+import { API_BASE } from '../api/apiBase';
 import '../styles.css';
 
-const API_BASE_URL = '/api';
+const API_BASE_URL = API_BASE;
 const profileTabs = [
   { id: 'overview', label: 'Overview', icon: User },
   { id: 'academics', label: 'Academics', icon: BarChart2 },

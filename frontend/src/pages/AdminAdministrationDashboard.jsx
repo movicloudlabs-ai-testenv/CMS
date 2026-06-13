@@ -4,6 +4,7 @@ import KpiCard from '../components/KpiCard';
 import KpiGrid from '../components/KpiGrid';
 import { useAdmission } from '../context/AdmissionContext';
 import { getUserSession } from '../auth/sessionController';
+import { buildApiUrl } from '../api/apiBase';
 
 export default function AdminAdministrationDashboard() {
   const session = getUserSession();
@@ -31,7 +32,7 @@ export default function AdminAdministrationDashboard() {
   useEffect(() => {
     const fetchPayroll = async () => {
       try {
-        const res = await fetch('/api/payroll');
+        const res = await fetch(buildApiUrl('/payroll'));
         if (res.ok) {
           const data = await res.json();
           setPayrollData(data);
