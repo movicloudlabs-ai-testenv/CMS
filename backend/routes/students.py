@@ -416,61 +416,6 @@ async def get_student(student_id: str):
     
     return serialized
 
-
-@router.post("/login")
-async def login_student(credentials: dict):
-    """Simple login for students using Student ID as username and password"""
-    user_id = credentials.get("userId")
-    password = credentials.get("password")
-    
-    if not user_id or not password:
-        raise HTTPException(status_code=400, detail="Missing credentials")
-        
-    try:
-        db = get_db()
-    except HTTPException as error:
-        if error.status_code == 503:
-            _seed_dev_students()
-            user = next(
-                (item for item in DEV_STORE["students"] 
-                 if item.get("id") == user_id or item.get("rollNumber") == user_id or item.get("email") == user_id),
-                None
-            )
-            if not user:
-                raise HTTPException(status_code=401, detail="Invalid Student ID")
-            
-            stored_password = user.get("password") or user.get("rollNumber") or user.get("id")
-            if password != stored_password:
-                raise HTTPException(status_code=401, detail="Invalid password")
-                
-            return {"status": "success", "user": serialize_doc(user), "role": "student"}
-        raise
-
-    user = await db["students"].find_one({
-        "$or": [
-            {"id": user_id},
-            {"rollNumber": user_id},
-            {"email": user_id}
-        ]
-    })
-    
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid Student ID")
-        
-    stored_password = user.get("password") or user.get("rollNumber") or user.get("id")
-    
-    if password != stored_password:
-        raise HTTPException(status_code=401, detail="Invalid password")
-        
-    user_serialized = serialize_doc(user)
-    user_serialized["role"] = "student" # Force role for students
-    
-    return {
-        "status": "success",
-        "user": user_serialized
-    }
-
-
 @router.post("", status_code=201)
 async def create_student(payload: StudentRecord):
     data = payload.model_dump()

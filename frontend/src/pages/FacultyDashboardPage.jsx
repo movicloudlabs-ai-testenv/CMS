@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { getUserSession } from '../auth/sessionController';
+import { getUserSession, getUserData } from '../auth/sessionController';
 import { cmsRoles, roleMenuGroups } from '../data/roleConfig';
+import { API_BASE } from '../api/apiBase';
 import Layout from '../components/Layout';
 import { Bell, Settings, User } from 'lucide-react';
 import SectionAccess from '../components/SectionAccess';
@@ -295,12 +296,68 @@ export default function FacultyDashboardPage() {
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
   const [isMarksModalOpen, setIsMarksModalOpen] = useState(false);
+  const [freshUserData, setFreshUserData] = useState(null);
 
   const session = getUserSession();
+  const dynamicUser = getUserData();
   const sessionRole = session?.role || null;
   const sessionUserId = session?.userId || null;
   const role = sessionRole || 'faculty';
-  const data = cmsRoles[role];
+  
+  const userToUse = freshUserData || dynamicUser;
+  
+  const facultyData = userToUse ? {
+    name: userToUse.name || userToUse.fullName || userToUse.staffName || 'Faculty Member',
+    designation: userToUse.designation || 'Faculty',
+    department: userToUse.departmentId || userToUse.department || 'Engineering',
+    team: userToUse.departmentId || userToUse.department || 'School of Engineering',
+    focus: 'Teaching',
+    primaryAction: 'Mark Attendance',
+    secondaryAction: 'Publish Internal Marks',
+    ...userToUse
+  } : {
+    name: 'Faculty Member',
+    designation: 'Faculty',
+    team: 'School of Engineering',
+    focus: 'Teaching',
+    primaryAction: 'Mark Attendance',
+    secondaryAction: 'Publish Internal Marks',
+  };
+
+  const defaultStats = [
+    { value: '0', label: 'Assigned Courses', sub: 'Teaching load' },
+    { value: 'N/A', label: 'Attendance Rate', sub: 'Monthly average' },
+    { value: 'N/A', label: 'Pass Rate', sub: 'Student success average' },
+    { value: 'Active', label: 'Status', sub: 'Employment status' }
+  ];
+
+  const stats = userToUse ? [
+    { 
+      value: userToUse.teaching_load?.length?.toString() || '0', 
+      valueRaw: userToUse.teaching_load?.length || 0,
+      label: 'Assigned Courses', 
+      sub: userToUse.teaching_load?.map(c => c.courseCode || c.course_code).join(', ') || 'No courses assigned' 
+    },
+    { 
+      value: userToUse.attendance_rate ? `${userToUse.attendance_rate}%` : 'N/A', 
+      valueRaw: userToUse.attendance_rate || 0,
+      label: 'Attendance Rate', 
+      sub: 'Monthly average' 
+    },
+    { 
+      value: userToUse.pass_rate ? `${userToUse.pass_rate}%` : 'N/A', 
+      valueRaw: userToUse.pass_rate || 0,
+      label: 'Pass Rate', 
+      sub: 'Student success average' 
+    },
+    { 
+      value: userToUse.employment_status || userToUse.status || 'Active', 
+      valueRaw: 0,
+      label: 'Status', 
+      sub: 'Employment status' 
+    }
+  ] : defaultStats;
+
   const menuGroups = roleMenuGroups[role] || [];
 
   useEffect(() => {
@@ -322,9 +379,23 @@ export default function FacultyDashboardPage() {
       }
     }
 
+    async function fetchFacultyData() {
+      try {
+        const res = await fetch(`${API_BASE}/faculty/${encodeURIComponent(sessionUserId)}`);
+        if (res.ok) {
+          const facData = await res.json();
+          setFreshUserData(facData);
+        }
+      } catch (err) {
+        console.error('Failed to fetch fresh faculty data:', err);
+      }
+    }
+
+    fetchFacultyData();
+
     window.addEventListener('pageshow', enforceSessionOnPageRestore);
     return () => window.removeEventListener('pageshow', enforceSessionOnPageRestore);
-  }, [data.label, location.search, navigate, sessionRole, sessionUserId]);
+  }, [location.search, navigate, sessionRole, sessionUserId]);
 
   const statColors = [
     { bg: '#e8f1eb', border: '#9ccf89', text: '#276221', number: '#1e4618' },
@@ -362,17 +433,17 @@ export default function FacultyDashboardPage() {
               fontWeight: 'bold',
               flexShrink: 0
             }}>
-              {data.label.slice(0, 2).toUpperCase()}
+              {(facultyData.designation || 'FA').slice(0, 2).toUpperCase()}
             </div>
             
             {/* Profile Info */}
             <div>
               <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#1f2937', margin: '0 0 8px 0' }}>
-                {data.name}
+                {facultyData.name}
               </h2>
               <p style={{ fontSize: '14px', color: '#6b7280', margin: '4px 0' }}>ID: {sessionUserId}</p>
-              <p style={{ fontSize: '14px', color: '#6b7280', margin: '4px 0' }}>Team: {data.team}</p>
-              <p style={{ fontSize: '14px', color: '#6b7280', margin: '4px 0' }}>Focus: {data.focus}</p>
+              <p style={{ fontSize: '14px', color: '#6b7280', margin: '4px 0' }}>Team: {facultyData.team}</p>
+              <p style={{ fontSize: '14px', color: '#6b7280', margin: '4px 0' }}>Focus: {facultyData.focus}</p>
             </div>
           </div>
 
@@ -395,7 +466,7 @@ export default function FacultyDashboardPage() {
             onMouseEnter={(e) => e.target.style.background = '#1e4618'}
             onMouseLeave={(e) => e.target.style.background = '#276221'}
             >
-              {data.primaryAction}
+              {facultyData.primaryAction}
             </button>
             <button 
               onClick={() => setIsMarksModalOpen(true)}
@@ -413,7 +484,7 @@ export default function FacultyDashboardPage() {
             onMouseEnter={(e) => e.target.style.background = '#d1d5db'}
             onMouseLeave={(e) => e.target.style.background = '#e5e7eb'}
             >
-              {data.secondaryAction}
+              {facultyData.secondaryAction}
             </button>
           </div>
         </div>
@@ -428,7 +499,7 @@ export default function FacultyDashboardPage() {
             gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
             gap: '16px'
           }}>
-            {data.stats.map((stat, index) => {
+            {stats.map((stat, index) => {
               const color = statColors[index % 4];
               return (
                 <div

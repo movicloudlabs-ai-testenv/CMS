@@ -66,13 +66,13 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-        <Route path="/timetable" element={<ProtectedRoute><TimetablePage /></ProtectedRoute>} />
-        <Route path="/attendance" element={<ProtectedRoute><AttendancePage /></ProtectedRoute>} />
-        <Route path="/exams" element={<ProtectedRoute><ExamsPage /></ProtectedRoute>} />
+        <Route path="/timetable" element={<ProtectedRoute allowedRoles={['student', 'admin', 'faculty']}><TimetablePage /></ProtectedRoute>} />
+        <Route path="/attendance" element={<ProtectedRoute allowedRoles={['student', 'admin', 'faculty']}><AttendancePage /></ProtectedRoute>} />
+        <Route path="/exams" element={<ProtectedRoute allowedRoles={['student', 'admin', 'faculty']}><ExamsPage /></ProtectedRoute>} />
         <Route path="/placement" element={<ProtectedRoute allowedRoles={['admin', 'faculty', 'student']}><PlacementPage /></ProtectedRoute>} />
         <Route path="/facility" element={<ProtectedRoute allowedRoles={['admin', 'faculty']}><FacilityPage /></ProtectedRoute>} />
-        <Route path="/payroll" element={<ProtectedRoute><PayrollPage /></ProtectedRoute>} />
-        <Route path="/analytics" element={<ProtectedRoute><AnalyticsPage /></ProtectedRoute>} />
+        <Route path="/payroll" element={<ProtectedRoute allowedRoles={['admin', 'finance']}><PayrollPage /></ProtectedRoute>} />
+        <Route path="/analytics" element={<ProtectedRoute allowedRoles={['admin', 'finance', 'faculty']}><AnalyticsPage /></ProtectedRoute>} />
         <Route
           path="/settings"
           element={
@@ -89,20 +89,20 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-        <Route path="/students" element={<ProtectedRoute><StudentPageWrapper /></ProtectedRoute>} />
-        <Route path="/students/:id" element={<ProtectedRoute><StudentProfilePage /></ProtectedRoute>} />
-        <Route path="/faculty" element={<ProtectedRoute><FacultyPage /></ProtectedRoute>} />
-        <Route path="/faculty/:id" element={<ProtectedRoute><FacultyProfilePage /></ProtectedRoute>} />
-        <Route path="/department" element={<ProtectedRoute><FacultyDepartmentPage /></ProtectedRoute>} />
-        <Route path="/reports" element={<ProtectedRoute><ComingSoonPage /></ProtectedRoute>} />
-        <Route path="/admission" element={<ProtectedRoute><AdmissionPage /></ProtectedRoute>} />
-        <Route path="/add-member" element={<ProtectedRoute><AddMemberSelectionPage /></ProtectedRoute>} />
-        <Route path="/add-student" element={<ProtectedRoute><AddStudentPage /></ProtectedRoute>} />
-        <Route path="/add-faculty" element={<ProtectedRoute><AddFacultyPage /></ProtectedRoute>} />
-        <Route path="/fees" element={<ProtectedRoute><FeesPage /></ProtectedRoute>} />
-        <Route path="/admin-fees" element={<ProtectedRoute><AdminFeesPage /></ProtectedRoute>} />
-        <Route path="/invoices" element={<ProtectedRoute><InvoicePage /></ProtectedRoute>} />
-        <Route path="/admin-invoices" element={<ProtectedRoute><AdminInvoicePage /></ProtectedRoute>} />
+        <Route path="/students" element={<ProtectedRoute allowedRoles={['admin', 'faculty']}><StudentPageWrapper /></ProtectedRoute>} />
+        <Route path="/students/:id" element={<ProtectedRoute allowedRoles={['admin', 'faculty', 'student']}><StudentProfilePage /></ProtectedRoute>} />
+        <Route path="/faculty" element={<ProtectedRoute allowedRoles={['admin']}><FacultyPage /></ProtectedRoute>} />
+        <Route path="/faculty/:id" element={<ProtectedRoute allowedRoles={['admin', 'faculty']}><FacultyProfilePage /></ProtectedRoute>} />
+        <Route path="/department" element={<ProtectedRoute allowedRoles={['admin', 'faculty']}><FacultyDepartmentPage /></ProtectedRoute>} />
+        <Route path="/reports" element={<ProtectedRoute allowedRoles={['admin', 'faculty']}><ComingSoonPage /></ProtectedRoute>} />
+        <Route path="/admission" element={<ProtectedRoute allowedRoles={['admin']}><AdmissionPage /></ProtectedRoute>} />
+        <Route path="/add-member" element={<ProtectedRoute allowedRoles={['admin']}><AddMemberSelectionPage /></ProtectedRoute>} />
+        <Route path="/add-student" element={<ProtectedRoute allowedRoles={['admin']}><AddStudentPage /></ProtectedRoute>} />
+        <Route path="/add-faculty" element={<ProtectedRoute allowedRoles={['admin']}><AddFacultyPage /></ProtectedRoute>} />
+        <Route path="/fees" element={<ProtectedRoute allowedRoles={['student']}><FeesPage /></ProtectedRoute>} />
+        <Route path="/admin-fees" element={<ProtectedRoute allowedRoles={['admin']}><AdminFeesPage /></ProtectedRoute>} />
+        <Route path="/invoices" element={<ProtectedRoute allowedRoles={['student']}><InvoicePage /></ProtectedRoute>} />
+        <Route path="/admin-invoices" element={<ProtectedRoute allowedRoles={['admin']}><AdminInvoicePage /></ProtectedRoute>} />
         <Route path="/finance-invoices" element={<ProtectedRoute allowedRoles={['finance']}><FinanceInvoicePage /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

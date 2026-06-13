@@ -1,10 +1,10 @@
-﻿import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Layout from '../components/Layout'
 import KpiCard from '../components/KpiCard'
 import KpiGrid from '../components/KpiGrid'
 import Modal from '../components/Modal'
 import { getUserSession } from '../auth/sessionController'
-import { fetchPlacements, createPlacement } from '../api/placementApi'
+import { fetchPlacements, createPlacement, deletePlacement } from '../api/placementApi'
 import { fetchStudentById } from '../api/studentsApi'
 
 const emptyForm = { name: '', company: '', role: '', package: '', status: 'Selected', date: '' }
@@ -116,6 +116,18 @@ export default function PlacementPage({ noLayout = false }) {
     } catch (error) {
       console.error('Failed to create placement:', error)
       setApiNotice('Failed to save placement to backend API.')
+    }
+  }
+
+  async function handleDelete(placementId) {
+    if (!window.confirm('Delete this placement record?')) return
+    try {
+      await deletePlacement(placementId)
+      setEntries(prev => prev.filter(p => (p.id || p._id) !== placementId))
+      setApiNotice('Placement record deleted successfully.')
+    } catch (error) {
+      console.error('Failed to delete placement:', error)
+      setApiNotice('Failed to delete placement record.')
     }
   }
 
@@ -383,17 +395,18 @@ export default function PlacementPage({ noLayout = false }) {
               <th className="px-6 py-4">Package</th>
               <th className="px-6 py-4">Date</th>
               <th className="px-6 py-4">Status</th>
+              {isAdmin && <th className="px-6 py-4">Actions</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {loading && (
               <tr>
-                <td colSpan={showStudentColumn ? 6 : 5} className="px-6 py-10 text-center text-slate-400 text-sm">Loading...</td>
+                <td colSpan={showStudentColumn ? (isAdmin ? 7 : 6) : (isAdmin ? 6 : 5)} className="px-6 py-10 text-center text-slate-400 text-sm">Loading...</td>
               </tr>
             )}
             {!loading && filteredEntries.length === 0 && (
               <tr>
-                <td colSpan={showStudentColumn ? 6 : 5}>
+                <td colSpan={showStudentColumn ? (isAdmin ? 7 : 6) : (isAdmin ? 6 : 5)}>
                   <div className="px-6 py-10 flex flex-col items-center justify-center text-center">
                     {isStudent && (
                       <>
@@ -413,7 +426,7 @@ export default function PlacementPage({ noLayout = false }) {
               </tr>
             )}
             {!loading && filteredEntries.map((p, i) => (
-              <tr key={i} className="hover:bg-slate-50 transition-colors">
+              <tr key={p.id || p._id || i} className="hover:bg-slate-50 transition-colors">
                 {showStudentColumn && <td className="px-6 py-4 text-sm font-semibold text-slate-900">{p.name || p.ownerId || '-'}</td>}
                 <td className="px-6 py-4 text-sm text-slate-600 font-medium">{p.company}</td>
                 <td className="px-6 py-4 text-sm text-slate-600">{p.role}</td>
@@ -424,6 +437,17 @@ export default function PlacementPage({ noLayout = false }) {
                     p.status === 'Selected' ? 'bg-emerald-50 text-emerald-600' : 'bg-orange-50 text-orange-600'
                   }`}>{p.status}</span>
                 </td>
+                {isAdmin && (
+                  <td className="px-6 py-4">
+                    <button
+                      onClick={() => handleDelete(p.id || p._id)}
+                      title="Delete record"
+                      className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all"
+                    >
+                      <span className="material-symbols-outlined text-lg">delete</span>
+                    </button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

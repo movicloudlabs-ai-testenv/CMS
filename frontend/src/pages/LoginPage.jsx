@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createUserSession, getUserSession } from '../auth/sessionController';
 import { demoUsers } from '../data/roleConfig';
+import { API_BASE } from '../api/apiBase';
 
 function GraduationIcon() {
   return (
@@ -70,7 +71,14 @@ export default function LoginPage() {
     document.title = 'MIT Connect — Multi Role Login';
   }, [navigate]);
 
-  const hint = `Demo ${role.toUpperCase()}: ${demoUsers[role].userId} / ${demoUsers[role].password}`;
+  const roleIcons = { student: '🎓', admin: '🛡️', faculty: '📚', finance: '💰' };
+
+  function loadDemo(demoRole) {
+    setRole(demoRole);
+    setUserId(demoUsers[demoRole].userId);
+    setPassword(demoUsers[demoRole].password);
+    setError('');
+  }
 
   function handleSubmit(event) {
     event.preventDefault();
@@ -84,58 +92,29 @@ export default function LoginPage() {
     setError('');
 
     window.setTimeout(async () => {
-      // 1. Try Dynamic Backend Login for Students
-      if (role === 'student') {
-        try {
-          const response = await fetch('/api/students/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: userId.trim(), password }),
-          });
+      try {
+        const response = await fetch(`${API_BASE}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ role, userId: userId.trim(), password }),
+        });
 
-          if (response.ok) {
-            const data = await response.json();
-            const sid = data.user.rollNumber || data.user.id;
-            createUserSession('student', sid, data.user);
-            navigate(`/dashboard?role=student`, { replace: true });
-            return;
-          }
-        } catch (err) {
-          console.error('Student backend login error:', err);
+        if (response.ok) {
+          const data = await response.json();
+          const user = data.user;
+          createUserSession(role, user.userId, user);
+          navigate(`/dashboard?role=${encodeURIComponent(role)}`, { replace: true });
+          return;
+        } else {
+          const payload = await response.json().catch(() => null);
+          setError(payload?.detail || 'Invalid credentials. Check your User ID and password.');
         }
+      } catch (err) {
+        console.error('Login backend error:', err);
+        setError('Database or network connection failed. Ensure backend is running.');
+      } finally {
+        setLoading(false);
       }
-
-      // 2. Try Dynamic Backend Login for Faculty
-      if (role === 'faculty') {
-        try {
-          const response = await fetch('/api/faculty/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: userId.trim(), password }),
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            const userRole = data.user.role || 'faculty';
-            createUserSession(userRole, data.user.employeeId, data.user);
-            navigate(`/dashboard?role=${encodeURIComponent(userRole)}`, { replace: true });
-            return;
-          }
-        } catch (err) {
-          console.error('Backend login error:', err);
-        }
-      }
-
-      // 2. Fallback to Demo Login
-      const allowedUser = demoUsers[role];
-      if (allowedUser.userId === userId.trim() && allowedUser.password === password) {
-        createUserSession(role, userId.trim());
-        navigate(`/dashboard?role=${encodeURIComponent(role)}`, { replace: true });
-        return;
-      }
-
-      setError('Invalid credentials. Check your User ID and password.');
-      setLoading(false);
     }, 1000);
   }
 
@@ -265,18 +244,38 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className="form-row">
-              <label className="checkbox-label">
-                <input type="checkbox" id="remember" />
-                Remember me
-              </label>
-              <a href="#" className="forgot-link" onClick={(event) => event.preventDefault()}>
-                Forgot password?
-              </a>
-            </div>
-
             {error ? <div className="login-message login-error">{error}</div> : null}
-            <div className="login-message login-hint">{hint}</div>
+
+            <div style={{ marginBottom: '12px' }}>
+              <p style={{ fontSize: '11px', fontWeight: '600', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>Load Demo Credentials</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                {Object.keys(demoUsers).map((demoRole) => (
+                  <button
+                    key={demoRole}
+                    type="button"
+                    onClick={() => loadDemo(demoRole)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '8px 12px',
+                      background: role === demoRole ? '#276221' : '#f8fafc',
+                      color: role === demoRole ? '#ffffff' : '#475569',
+                      border: role === demoRole ? '1.5px solid #276221' : '1.5px solid #e2e8f0',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    <span style={{ fontSize: '14px' }}>{roleIcons[demoRole]}</span>
+                    {demoRole.charAt(0).toUpperCase() + demoRole.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
 
             <button type="submit" className="btn-login" id="loginBtn" disabled={loading}>
               <LoginArrowIcon />

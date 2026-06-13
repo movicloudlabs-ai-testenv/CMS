@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException
 from backend.db import get_db
 from backend.schemas.admission_schema import AdmissionCreate
 
-router = APIRouter(prefix="/admissions", tags=["Admissions"])
+router = APIRouter(prefix="/api/admissions", tags=["Admissions"])
 
 
 def _admissions_collection():

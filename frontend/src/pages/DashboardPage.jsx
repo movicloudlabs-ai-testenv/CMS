@@ -2,18 +2,20 @@ import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getUserSession, getUserData } from '../auth/sessionController';
 import { cmsRoles, roleMenuGroups } from '../data/roleConfig';
-import { getStudentById } from '../data/studentData';
 import { getDashboardSummary } from '../services/dashboardService';
+import { API_BASE } from '../api/apiBase';
 import Layout from '../components/Layout';
 import KpiCard from '../components/KpiCard';
 
 import KpiGrid from '../components/KpiGrid';
 import SectionAccess from '../components/SectionAccess';
+
 export default function DashboardPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [dashboardStats, setDashboardStats] = useState(null);
   const [loadingStats, setLoadingStats] = useState(true);
+  const [freshUserData, setFreshUserData] = useState(null);
 
   const session = getUserSession();
   const dynamicUser = getUserData();
@@ -21,24 +23,24 @@ export default function DashboardPage() {
   const sessionUserId = session?.userId || null;
   const role = sessionRole || 'student';
   
-  const data = dynamicUser ? {
-    name: dynamicUser.name || dynamicUser.fullName || dynamicUser.staffName || 'User',
-    label: dynamicUser.designation || dynamicUser.role?.toUpperCase() || role.toUpperCase(),
+  const userToUse = freshUserData || dynamicUser;
+  const data = userToUse ? {
+    name: userToUse.name || userToUse.fullName || userToUse.staffName || 'User',
+    label: userToUse.designation || userToUse.role?.toUpperCase() || role.toUpperCase(),
     ...cmsRoles[role], // Merge with default stats/tasks/alerts
-    ...dynamicUser,
+    ...userToUse,
     // Override stats for students with dynamic values
     stats: role === 'student' ? [
-      { value: dynamicUser.cgpa?.toString() || '0.0', label: 'Current GPA', sub: 'From academic record' },
-      { value: `${dynamicUser.attendancePct || 0}%`, label: 'Attendance', sub: dynamicUser.attendancePct >= 75 ? 'Good standing' : 'Low attendance' },
-      { value: dynamicUser.subjects?.length?.toString() || '0', label: 'Enrolled Courses', sub: 'Current semester' },
-      { value: dynamicUser.feeStatus || 'N/A', label: 'Fee Status', sub: 'Financial record' },
-    ] : (dynamicUser.stats || cmsRoles[role].stats)
+      { value: userToUse.cgpa?.toString() || '0.0', label: 'Current GPA', sub: 'From academic record' },
+      { value: `${userToUse.attendancePct || userToUse.attendancePct === 0 ? userToUse.attendancePct : 0}%`, label: 'Attendance', sub: (userToUse.attendancePct || 0) >= 75 ? 'Good standing' : 'Low attendance' },
+      { value: userToUse.subjects?.length?.toString() || '0', label: 'Enrolled Courses', sub: 'Current semester' },
+      { value: userToUse.feeStatus || 'N/A', label: 'Fee Status', sub: 'Financial record' },
+    ] : (userToUse.stats || cmsRoles[role].stats)
   } : (cmsRoles[role] || cmsRoles.student);
 
   const menuGroups = roleMenuGroups[role] || roleMenuGroups.student;
   const userId = sessionUserId || 'N/A';
   const roleQuery = `?role=${encodeURIComponent(role)}`;
-  const knownStudent = sessionUserId ? getStudentById(sessionUserId) : null;
   const fallbackStudentId = 'STU-2024-1547';
 
   function handlePrimaryAction() {
@@ -93,6 +95,26 @@ export default function DashboardPage() {
           setDashboardStats(summary);
         }
         setLoadingStats(false);
+      } else if (role === 'student' && sessionUserId) {
+        try {
+          const res = await fetch(`${API_BASE}/students/${encodeURIComponent(sessionUserId)}`);
+          if (res.ok) {
+            const stuData = await res.json();
+            setFreshUserData(stuData);
+          }
+        } catch (err) {
+          console.error('Failed to fetch fresh student data:', err);
+        }
+      } else if (role === 'faculty' && sessionUserId) {
+        try {
+          const res = await fetch(`${API_BASE}/faculty/${encodeURIComponent(sessionUserId)}`);
+          if (res.ok) {
+            const facData = await res.json();
+            setFreshUserData(facData);
+          }
+        } catch (err) {
+          console.error('Failed to fetch fresh faculty data:', err);
+        }
       }
     }
 
@@ -114,35 +136,21 @@ export default function DashboardPage() {
                 <h3 className="text-xl font-bold text-gray-900 mb-4">Quick Overview</h3>
                 <KpiGrid>
                   {(() => {
-                    // For admin/finance roles, use real data from API
-                    if ((role === 'admin' || role === 'finance') && dashboardStats) {
-                      const adminStats = [
-                        { 
-                          value: String(dashboardStats.total_students), 
-                          label: 'Total Students', 
-                          icon: 'group',
-                          sub: 'Approved & Active' 
-                        },
-                        { 
-                          value: String(dashboardStats.total_faculty), 
-                          label: 'Faculty Members', 
-                          icon: 'person',
-                          sub: 'Approved & Active' 
-                        },
-                        { 
-                          value: String(dashboardStats.active_events), 
-                          label: 'Active Events', 
-                          icon: 'event',
-                          sub: 'Current month' 
-                        },
-                        { 
-                          value: String(dashboardStats.dept_requests), 
-                          label: 'Dept Requests', 
-                          icon: 'assignment',
-                          sub: 'Pending action' 
-                        },
+                    // For admin/finance roles, if not loaded yet, show fallback stats (loading state)
+                    if (role === 'admin' || role === 'finance') {
+                      const statsToUse = dashboardStats ? [
+                        { value: String(dashboardStats.total_students), label: 'Total Students', icon: 'group', sub: 'Approved & Active' },
+                        { value: String(dashboardStats.total_faculty), label: 'Faculty Members', icon: 'person', sub: 'Approved & Active' },
+                        { value: String(dashboardStats.active_events), label: 'Active Events', icon: 'event', sub: 'Current month' },
+                        { value: String(dashboardStats.dept_requests), label: 'Dept Requests', icon: 'assignment', sub: 'Pending action' },
+                      ] : [
+                        { value: '...', label: 'Total Students', icon: 'group', sub: 'Loading...' },
+                        { value: '...', label: 'Faculty Members', icon: 'person', sub: 'Loading...' },
+                        { value: '...', label: 'Active Events', icon: 'event', sub: 'Loading...' },
+                        { value: '...', label: 'Dept Requests', icon: 'assignment', sub: 'Loading...' },
                       ];
-                      return adminStats.map((entry, index) => {
+
+                      return statsToUse.map((entry, index) => {
                         const colorSchemes = ['blue', 'green', 'emerald', 'cyan'];
                         return (
                           <KpiCard
@@ -156,8 +164,9 @@ export default function DashboardPage() {
                       });
                     }
                     
-                    // For other roles, use default stats from roleConfig
-                    return data.stats.map((entry, index) => {
+                    // For student and other roles
+                    const statsToUse = data.stats || [];
+                    return statsToUse.map((entry, index) => {
                       const colorSchemes = ['blue', 'green', 'emerald', 'cyan'];
                       return (
                         <KpiCard

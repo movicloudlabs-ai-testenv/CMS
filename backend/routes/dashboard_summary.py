@@ -23,16 +23,7 @@ async def get_dashboard_summary():
     try:
         db = get_db()
     except HTTPException:
-        # Return fallback data if DB is unavailable
-        return {
-            "success": True,
-            "data": {
-                "total_students": 1840,
-                "total_faculty": 128,
-                "active_events": 45,
-                "dept_requests": 12
-            }
-        }
+        raise HTTPException(status_code=503, detail="Database connection failed")
 
     try:
         # 1. Count APPROVED/ACTIVE Students
@@ -76,13 +67,4 @@ async def get_dashboard_summary():
 
     except Exception as e:
         print(f"Error fetching dashboard summary: {str(e)}")
-        # Return fallback data on error
-        return {
-            "success": True,
-            "data": {
-                "total_students": 1840,
-                "total_faculty": 128,
-                "active_events": 45,
-                "dept_requests": 12
-            }
-        }
+        raise HTTPException(status_code=500, detail=f"Failed to fetch dashboard summary: {str(e)}")

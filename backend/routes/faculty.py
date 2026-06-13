@@ -915,44 +915,6 @@ async def submit_faculty_admission(faculty_data: dict = Body(...)):
             status_code=500,
             detail=f"Failed to process faculty admission: {error_msg}"
         )
-
-
-@router.post("/login")
-async def login_faculty(credentials: dict = Body(...)):
-    """Simple login for faculty members using Employee ID as username and password"""
-    user_id = credentials.get("userId")
-    password = credentials.get("password")
-    
-    if not user_id or not password:
-        raise HTTPException(status_code=400, detail="Missing credentials")
-        
-    collection = await get_faculty_collection()
-    user = await collection.find_one({
-        "$or": [
-            {"employeeId": user_id},
-            {"email": user_id}
-        ]
-    })
-    
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid Employee ID")
-        
-    # Check password (in this simple implementation, it's stored in the doc)
-    stored_password = user.get("password") or user.get("employeeId")
-    
-    if password != stored_password:
-        raise HTTPException(status_code=401, detail="Invalid password")
-        
-    user_serialized = serialize_doc(user)
-    # Ensure role is correctly mapped if not present or incorrect
-    if not user_serialized.get("role") or user_serialized.get("role") == "faculty":
-        user_serialized["role"] = get_role_from_designation(user_serialized.get("designation"))
-        
-    return {
-        "status": "success",
-        "user": user_serialized
-    }
-
 @router.get("/{faculty_id}")
 async def get_faculty(faculty_id: str = Path(...)):
     collection = await get_faculty_collection()

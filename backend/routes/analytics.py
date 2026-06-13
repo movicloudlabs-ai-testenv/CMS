@@ -458,3 +458,40 @@ async def verify_collections():
         return {"success": True, "data": result}
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+
+@router.get("/{year}/{semester}")
+async def get_analytics_by_semester(year: int, semester: int):
+    """Get analytics data for a specific year and semester.
+    Migrated from frontend/src/api/analytics-api.js (Express server).
+    Tries MongoDB 'analytics' collection first, falls back to dashboard aggregation."""
+    try:
+        db = get_db()
+    except HTTPException as error:
+        if error.status_code == 503:
+            fallback = get_fallback_analytics()
+            return fallback.get("data", {})
+        raise
+
+    try:
+        # Try stored analytics data first
+        analytics = await db["analytics"].find_one({
+            "year": year,
+            "semester": semester
+        })
+
+        if analytics:
+            analytics.pop("_id", None)
+            return analytics.get("data", analytics)
+
+        # Fall back to live dashboard aggregation
+        result = await get_dashboard_analytics(year=year, semester=semester)
+        if result.get("success"):
+            return result["data"]
+
+        return get_fallback_analytics()["data"]
+
+    except Exception as e:
+        print(f"Error in semester analytics: {e}")
+        return get_fallback_analytics()["data"]
+

@@ -43,6 +43,8 @@ from backend.routes.students import router as students_router
 from backend.routes.administration.admissions import router as admissions_router
 from backend.routes.administration.fees import router as fees_router
 from backend.routes.administration.invoices import router as invoices_router
+from backend.routes.user_settings import router as user_settings_router
+from backend.routes.auth import router as auth_router
 PORT = int(os.getenv("PORT", 5000))
 
 app = FastAPI(title="CMS API", lifespan=lifespan)
@@ -236,9 +238,10 @@ app.include_router(notifications_router)
 app.include_router(settings_router)
 app.include_router(students_router)
 app.include_router(admissions_router)
-app.include_router(admissions_router, prefix="/api")
 app.include_router(fees_router)
 app.include_router(invoices_router)
+app.include_router(user_settings_router)
+app.include_router(auth_router)
 
 @app.get("/{full_path:path}")
 async def serve_react_app(full_path: str):
