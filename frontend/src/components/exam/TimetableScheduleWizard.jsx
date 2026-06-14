@@ -188,7 +188,7 @@ export default function TimetableScheduleWizard({ isOpen, onClose, onSave }) {
         </div>{/* Wizard Content */}
         <div style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>{/* STEP 1: Session Info */}
           {wizardStep === 1 && (
-            <div style={{ animation: 'fadeIn 0.2s ease-out' }}><h4 style={{ margin: '0 0 20px 0', fontSize: 16, color: '#374151' }}>Step 1 – Session & Academic Information</h4><div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}><div><label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: 6 }}>Session Name *</label><input
+            <div style={{ animation: 'fadeIn 0.2s ease-out' }}><h4 style={{ margin: '0 0 20px 0', fontSize: 16, color: '#374151' }}>Step 1 – Session & Academic Information</h4><div className="grid grid-cols-1 md:grid-cols-3 gap-4"><div><label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: 6 }}>Session Name *</label><input
                     type="text"
                     value={sessionName}
                     onChange={(e) =>setSessionName(e.target.value)}
@@ -218,7 +218,7 @@ export default function TimetableScheduleWizard({ isOpen, onClose, onSave }) {
                           style={{ background: '#fee2e2', color: '#991b1b', border: 'none', padding: '4px 8px', borderRadius: 4, fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
                         >Remove
                         </button>)}
-                    </div><div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}><div><label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#6b7280', marginBottom: 4 }}>Subject *</label><input
+                    </div><div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#6b7280', marginBottom: 4 }}>Subject *</label><input
                           type="text"
                           value={exam.subject}
                           onChange={(e) =>handleExamChange(idx, 'subject', e.target.value)}
@@ -267,31 +267,48 @@ export default function TimetableScheduleWizard({ isOpen, onClose, onSave }) {
                   </tbody></table></div><div style={{ padding: 16, background: '#fffbeb', borderRadius: 8, border: '1px solid #fde68a', marginBottom: 20 }}><p style={{ margin: 0, fontSize: 13, color: '#92400e' }}><strong>Ready to submit?</strong>You can save as draft or submit for admin approval.
                 </p></div></div>)}
         </div>{/* Footer */}
-        <div style={{ padding: '16px 24px', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f9fafb' }}><button
+        <div className="p-4 sm:px-6 sm:py-4 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-3 bg-slate-50 rounded-b-2xl">
+          <button
             type="button"
             onClick={handleBack}
             disabled={wizardStep === 1}
-            style={{ padding: '8px 16px', background: wizardStep === 1 ? '#f3f4f6' : '#fff', color: wizardStep === 1 ? '#d1d5db' : '#374151', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 14, fontWeight: 500, cursor: wizardStep === 1 ? 'not-allowed' : 'pointer' }}
-          >Back
-          </button><div style={{ display: 'flex', gap: 8 }}>{wizardStep === 3 && (
-              <><button
+            className={`w-full sm:w-auto px-4 py-2 border rounded-lg text-sm font-medium transition-all ${
+              wizardStep === 1
+                ? 'bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed'
+                : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50 active:scale-95 cursor-pointer'
+            }`}
+          >
+            Back
+          </button>
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            {wizardStep === 3 && (
+              <>
+                <button
                   type="button"
                   onClick={handleSaveAsDraft}
-                  style={{ padding: '8px 16px', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 14, fontWeight: 500, cursor: 'pointer' }}
-                >Save as Draft
-                </button><button
+                  className="w-full sm:w-auto px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded-lg text-sm font-medium transition-all active:scale-95 cursor-pointer"
+                >
+                  Save as Draft
+                </button>
+                <button
                   type="button"
                   onClick={handleSubmitForApproval}
-                  style={{ padding: '8px 16px', background: '#276221', color: '#fff', border: 'none', borderRadius: 6, fontSize: 14, fontWeight: 500, cursor: 'pointer' }}
-                >Submit for Approval
-                </button></>)}
+                  className="w-full sm:w-auto px-4 py-2 bg-[#276221] hover:bg-[#1e4618] text-white rounded-lg text-sm font-semibold transition-all active:scale-95 cursor-pointer shadow-sm"
+                >
+                  Submit for Approval
+                </button>
+              </>
+            )}
 
             {wizardStep < 3 && (
               <button
                 type="button"
                 onClick={handleNext}
-                style={{ padding: '8px 16px', background: '#276221', color: '#fff', border: 'none', borderRadius: 6, fontSize: 14, fontWeight: 500, cursor: 'pointer' }}
-              >Next
-              </button>)}
-          </div></div></div></div>);
+                className="w-full sm:w-auto px-4 py-2 bg-[#276221] hover:bg-[#1e4618] text-white rounded-lg text-sm font-semibold transition-all active:scale-95 cursor-pointer shadow-sm text-center"
+              >
+                Next
+              </button>
+            )}
+          </div>
+        </div></div></div>);
 }
