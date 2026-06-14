@@ -22,19 +22,20 @@ import NotificationSettings from '../components/user-settings/NotificationSettin
 import UserSecuritySettings from '../components/user-settings/SecuritySettings';
 import TeachingPreferences from '../components/user-settings/TeachingPreferences';
 
-/** Render admin/finance panel based on active section id */
-function AdminPanel({ sectionId }) {
+/** Render admin panel based on active section id */
+function AdminPanel({ sectionId, role, userId }) {
   switch (sectionId) {
     case 'general':  return <RoleGuard roles={['admin']}><GeneralSettings /></RoleGuard>;
     case 'users':    return <RoleGuard roles={['admin']}><UserManagement /></RoleGuard>;
     case 'academic': return <RoleGuard roles={['admin']}><AcademicSettings /></RoleGuard>;
     case 'finance':  return <RoleGuard roles={['admin', 'finance']}><FinanceSettings /></RoleGuard>;
     case 'security': return <RoleGuard roles={['admin']}><SecuritySettings /></RoleGuard>;
+    case 'notifications': return <NotificationSettings role={role} userId={userId} />;
     default:         return <GeneralSettings />;
   }
 }
 
-/** Render student/faculty panel based on active tab id */
+/** Render student/faculty/finance panel based on active tab id */
 function UserPanel({ tabId, role, userId }) {
   switch (tabId) {
     case 'profile':               return <ProfileSettings role={role} userId={userId} />;
@@ -46,7 +47,7 @@ function UserPanel({ tabId, role, userId }) {
 }
 
 /**
- * Admin/Finance Settings View
+ * Admin Settings View
  * Uses <Layout> + <SettingsShell> (two-column)
  */
 function AdminSettingsView({ role, userId }) {
@@ -60,11 +61,14 @@ function AdminSettingsView({ role, userId }) {
   }, [role]);
 
   return (
-    <Layout title="System Settings" noPadding>
-      <SettingsShell role={role} tabs={tabs} activeTab={activeTab} onSelect={setActiveTab}>
-        <AdminPanel sectionId={activeTab} />
-      </SettingsShell>
-    </Layout>
+    <SettingsProvider>
+      <Layout title="System Settings" noPadding>
+        <SettingsShell role={role} tabs={tabs} activeTab={activeTab} onSelect={setActiveTab}>
+          {/* Pass role/userId so notifications panel works */}
+          <AdminPanel sectionId={activeTab} role={role} userId={userId} />
+        </SettingsShell>
+      </Layout>
+    </SettingsProvider>
   );
 }
 
@@ -102,11 +106,13 @@ export default function SettingsPage() {
 
   const { role, userId } = session;
 
-  if (role === 'admin' || role === 'finance') {
+  // Admin uses admin settings view (system config + notifications)
+  if (role === 'admin') {
     return <AdminSettingsView role={role} userId={userId} />;
   }
 
-  if (role === 'student' || role === 'faculty') {
+  // Student, faculty, finance all use the user settings view (profile + notifications)
+  if (role === 'student' || role === 'faculty' || role === 'finance') {
     return <UserSettingsView role={role} userId={userId} />;
   }
 

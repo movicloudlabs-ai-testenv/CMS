@@ -24,6 +24,7 @@ async def list_notifications(
     category: Optional[str] = None,
     priority: Optional[str] = None,
     status: Optional[str] = None,
+    userId: Optional[str] = None,
 ):
     try:
         db = get_db()
@@ -33,13 +34,16 @@ async def list_notifications(
             return {"success": True, "role": role, "data": data, "count": len(data), "unreadCount": unread_count}
         raise
     
-    query = {
-        "$or": [
-            {"receiverRole": role},
-            {"receiverRole": "ALL"},
-            {"senderRole": role},
-        ]
-    }
+    # Build role-match clause: role-wide OR user-specific for this user
+    role_clause = [
+        {"receiverRole": role, "receiverUserId": {"$exists": False}},
+        {"receiverRole": "ALL"},
+        {"senderRole": role},
+    ]
+    if userId:
+        role_clause.append({"receiverRole": role, "receiverUserId": userId})
+
+    query = {"$or": role_clause}
 
     if search:
         query["$and"] = [
@@ -68,17 +72,8 @@ async def list_notifications(
     async for row in cursor:
         data.append(serialize_doc(row))
 
-    unread_query = {
-        "$or": [
-            {"receiverRole": role},
-            {"receiverRole": "ALL"},
-            {"senderRole": role},
-        ],
-        "status": "unread",
-    }
+    unread_query = {"$or": role_clause, "status": "unread"}
     
-    # We still apply category and priority filters to the unread count, 
-    # but obviously not status if they are looking for "unread" anyway.
     if category:
         unread_query["module"] = category
     if priority:
@@ -96,22 +91,24 @@ async def list_notifications(
 
 
 @router.get("/{role}/unread")
-async def unread_count(role: str):
+async def unread_count(role: str, userId: Optional[str] = None):
     try:
         db = get_db()
     except HTTPException as error:
         if error.status_code == 503:
             return {"success": True, "role": role, "unreadCount": unread_dev_notifications(role)}
         raise
+
+    role_clause = [
+        {"receiverRole": role, "receiverUserId": {"$exists": False}},
+        {"receiverRole": "ALL"},
+        {"senderRole": role},
+    ]
+    if userId:
+        role_clause.append({"receiverRole": role, "receiverUserId": userId})
+
     unread = await db["notifications"].count_documents(
-        {
-            "$or": [
-                {"receiverRole": role},
-                {"receiverRole": "ALL"},
-                {"senderRole": role},
-            ],
-            "status": "unread",
-        }
+        {"$or": role_clause, "status": "unread"}
     )
     return {"success": True, "role": role, "unreadCount": unread}
 

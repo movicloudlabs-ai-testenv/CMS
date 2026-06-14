@@ -856,23 +856,112 @@ async def create_user(body: dict):
     return new_user
 
 
+def _get_default_departments():
+    return [
+        {"id": 1, "name": "Computer Science & Engineering", "code": "CSE", "head": "Prof. Dr. Amjad Khan", "hod": "Prof. Dr. Amjad Khan", "totalFaculty": 24, "totalStudents": 312, "courses": 45, "email": "cse@mit.edu", "phone": "+91-9876543210", "location": "Building A, Floor 3", "description": "Excellence in computer science education and research", "mappedStaff": 24},
+        {"id": 2, "name": "Electrical Engineering", "code": "EEE", "head": "Prof. K.V. Rao", "hod": "Prof. K.V. Rao", "totalFaculty": 18, "totalStudents": 256, "courses": 38, "email": "eee@mit.edu", "phone": "+91-9876543211", "location": "Building B, Floor 2", "description": "Power systems, control systems, and renewable energy focus", "mappedStaff": 18},
+        {"id": 3, "name": "Mechanical Engineering", "code": "ME", "head": "Prof. S. Natarajan", "hod": "Prof. S. Natarajan", "totalFaculty": 22, "totalStudents": 298, "courses": 42, "email": "me@mit.edu", "phone": "+91-9876543212", "location": "Building C, Floor 1", "description": "Thermal engineering, manufacturing, and design specializations", "mappedStaff": 22},
+        {"id": 4, "name": "Civil Engineering", "code": "CE", "head": "Prof. Ramesh Gupta", "hod": "Prof. Ramesh Gupta", "totalFaculty": 16, "totalStudents": 224, "courses": 35, "email": "ce@mit.edu", "phone": "+91-9876543213", "location": "Building D, Floor 2", "description": "Infrastructure, structures, and environmental engineering", "mappedStaff": 16},
+    ]
+
+def get_matching_dept_code(dept_val: str, dept_list: list) -> str:
+    if not dept_val:
+        return None
+    val = dept_val.lower().strip()
+    for d in dept_list:
+        if d.get("code", "").lower() == val:
+            return d.get("code")
+    for d in dept_list:
+        name = d.get("name", "").lower()
+        code = d.get("code", "").lower()
+        if val in name or name in val or val in code or code in val:
+            return d.get("code")
+    if "computer" in val or "cse" in val or "cs" in val:
+        return "CSE"
+    if "electrical" in val or "electronics" in val or "eee" in val or "ece" in val:
+        return "EEE"
+    if "mechanical" in val or "me" in val or "mech" in val:
+        return "ME"
+    if "civil" in val or "ce" in val:
+        return "CE"
+    return None
+
 @router.get("/departments")
 async def list_departments():
-    db = get_db()
-    col = db["system_departments"]
-    depts = []
-    async for d in col.find():
-        d["_id"] = str(d["_id"])
-        depts.append(d)
-    if not depts:
-        defaults = [
-            {"id": 1, "name": "Computer Science & Engineering", "code": "CSE", "head": "Prof. Dr. Amjad Khan", "hod": "Prof. Dr. Amjad Khan", "totalFaculty": 24, "totalStudents": 312, "courses": 45, "email": "cse@mit.edu", "phone": "+91-9876543210", "location": "Building A, Floor 3", "description": "Excellence in computer science education and research", "mappedStaff": 24},
-            {"id": 2, "name": "Electrical Engineering", "code": "EEE", "head": "Prof. K.V. Rao", "hod": "Prof. K.V. Rao", "totalFaculty": 18, "totalStudents": 256, "courses": 38, "email": "eee@mit.edu", "phone": "+91-9876543211", "location": "Building B, Floor 2", "description": "Power systems, control systems, and renewable energy focus", "mappedStaff": 18},
-            {"id": 3, "name": "Mechanical Engineering", "code": "ME", "head": "Prof. S. Natarajan", "hod": "Prof. S. Natarajan", "totalFaculty": 22, "totalStudents": 298, "courses": 42, "email": "me@mit.edu", "phone": "+91-9876543212", "location": "Building C, Floor 1", "description": "Thermal engineering, manufacturing, and design specializations", "mappedStaff": 22},
-            {"id": 4, "name": "Civil Engineering", "code": "CE", "head": "Prof. Ramesh Gupta", "hod": "Prof. Ramesh Gupta", "totalFaculty": 16, "totalStudents": 224, "courses": 35, "email": "ce@mit.edu", "phone": "+91-9876543213", "location": "Building D, Floor 2", "description": "Infrastructure, structures, and environmental engineering", "mappedStaff": 16},
-        ]
-        await col.insert_many(defaults)
-        return defaults
+    try:
+        db = get_db()
+        use_db = True
+    except Exception:
+        db = None
+        use_db = False
+
+    if use_db:
+        col = db["system_departments"]
+        depts = []
+        async for d in col.find():
+            d["_id"] = str(d["_id"])
+            depts.append(d)
+        if not depts:
+            depts = _get_default_departments()
+            await col.insert_many(deepcopy(depts))
+    else:
+        depts = _get_default_departments()
+
+    student_counts = {}
+    faculty_counts = {}
+    course_counts = {}
+
+    if use_db:
+        async for s in db["students"].find({}, {"department": 1, "subjects": 1}):
+            dept_code = get_matching_dept_code(s.get("department"), depts)
+            if dept_code:
+                student_counts[dept_code] = student_counts.get(dept_code, 0) + 1
+                subjects = s.get("subjects") or []
+                if dept_code not in course_counts:
+                    course_counts[dept_code] = set()
+                for sub in subjects:
+                    sub_code = sub.get("code") or sub.get("name")
+                    if sub_code:
+                        course_counts[dept_code].add(sub_code)
+                        
+        async for f in db["faculty"].find({}, {"department": 1, "departmentId": 1, "department_id": 1}):
+            dept = f.get("department") or f.get("departmentId") or f.get("department_id")
+            dept_code = get_matching_dept_code(dept, depts)
+            if dept_code:
+                faculty_counts[dept_code] = faculty_counts.get(dept_code, 0) + 1
+    else:
+        from backend.dev_store import DEV_STORE
+        for s in DEV_STORE.get("students", []):
+            dept_code = get_matching_dept_code(s.get("department"), depts)
+            if dept_code:
+                student_counts[dept_code] = student_counts.get(dept_code, 0) + 1
+                subjects = s.get("subjects") or []
+                if dept_code not in course_counts:
+                    course_counts[dept_code] = set()
+                for sub in subjects:
+                    sub_code = sub.get("code") or sub.get("name")
+                    if sub_code:
+                        course_counts[dept_code].add(sub_code)
+
+    for d in depts:
+        code = d.get("code")
+        if code in student_counts:
+            d["totalStudents"] = student_counts[code]
+        else:
+            d["totalStudents"] = student_counts.get(code, d.get("totalStudents", 0))
+            
+        if code in faculty_counts:
+            d["totalFaculty"] = faculty_counts[code]
+            d["mappedStaff"] = faculty_counts[code]
+        else:
+            d["totalFaculty"] = faculty_counts.get(code, d.get("totalFaculty", 0))
+            d["mappedStaff"] = faculty_counts.get(code, d.get("mappedStaff", 0))
+            
+        if code in course_counts:
+            d["courses"] = len(course_counts[code])
+        else:
+            d["courses"] = d.get("courses", 0)
+
     return depts
 
 

@@ -2,10 +2,13 @@ import { useEffect, useState } from 'react';
 import PriorityBadge from './PriorityBadge';
 import './NotificationDropdown.css';
 import { buildApiUrl } from '../api/apiBase';
+import { getUserSession } from '../auth/sessionController';
 
 export default function NotificationDropdown({ role = 'student', isOpen = false, onClose }) {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
+  const session = getUserSession();
+  const userId = session?.userId || '';
 
   useEffect(() => {
     if (!isOpen) return;
@@ -13,7 +16,9 @@ export default function NotificationDropdown({ role = 'student', isOpen = false,
     const fetchNotifications = async () => {
       setLoading(true);
       try {
-        const response = await fetch(buildApiUrl(`/notifications/${role}?limit=5`));
+        const params = new URLSearchParams({ limit: '5' });
+        if (userId) params.append('userId', userId);
+        const response = await fetch(buildApiUrl(`/notifications/${role}?${params.toString()}`));
         if (!response.ok) throw new Error(`Failed to fetch notifications (${response.status})`);
         const data = await response.json();
         setNotifications(data.data || []);
@@ -25,7 +30,7 @@ export default function NotificationDropdown({ role = 'student', isOpen = false,
     };
 
     fetchNotifications();
-  }, [isOpen, role]);
+  }, [isOpen, role, userId]);
 
   const handleMarkAsRead = async (notificationId) => {
     try {

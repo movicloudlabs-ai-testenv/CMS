@@ -7,6 +7,7 @@ from backend.db import get_db
 from backend.dev_store import DEV_STORE
 from backend.schemas.common import StudentRecord
 from backend.utils.mongo import serialize_doc
+from backend.utils.attendance_utils import compute_student_attendance_stats
 
 router = APIRouter(prefix="/api/students", tags=["students"])
 
@@ -317,11 +318,22 @@ def _seed_dev_students() -> None:
 async def list_students():
     try:
         db = get_db()
+        use_db = True
     except HTTPException as error:
         if error.status_code == 503:
             _seed_dev_students()
-            return deepcopy(DEV_STORE["students"])
-        raise
+            use_db = False
+        else:
+            raise
+
+    if not use_db:
+        students = deepcopy(DEV_STORE["students"])
+        for s in students:
+            present, total, pct = await compute_student_attendance_stats(s, db=None)
+            s["attendancePct"] = pct
+            s["attendance_present"] = present
+            s["attendance_total"] = total
+        return students
 
     rows = []
     async for row in db["students"].find().sort("_id", -1):
@@ -339,6 +351,12 @@ async def list_students():
         if not serialized.get("rollNumber"):
             serialized["rollNumber"] = serialized.get("student_id") or serialized.get("id")
         
+        # Calculate dynamic attendance stats
+        present, total, pct = await compute_student_attendance_stats(serialized, db=db)
+        serialized["attendancePct"] = pct
+        serialized["attendance_present"] = present
+        serialized["attendance_total"] = total
+        
         rows.append(serialized)
     
     return rows
@@ -348,21 +366,31 @@ async def list_students():
 async def get_student(student_id: str):
     try:
         db = get_db()
+        use_db = True
     except HTTPException as error:
         if error.status_code == 503:
             _seed_dev_students()
-            row = next(
-                (
-                    item
-                    for item in DEV_STORE["students"]
-                    if item.get("id") == student_id or item.get("rollNumber") == student_id or item.get("student_id") == student_id
-                ),
-                None,
-            )
-            if not row:
-                raise HTTPException(status_code=404, detail="Student not found")
-            return deepcopy(row)
-        raise
+            use_db = False
+        else:
+            raise
+
+    if not use_db:
+        row = next(
+            (
+                item
+                for item in DEV_STORE["students"]
+                if item.get("id") == student_id or item.get("rollNumber") == student_id or item.get("student_id") == student_id
+            ),
+            None,
+        )
+        if not row:
+            raise HTTPException(status_code=404, detail="Student not found")
+        res = deepcopy(row)
+        present, total, pct = await compute_student_attendance_stats(res, db=None)
+        res["attendancePct"] = pct
+        res["attendance_present"] = present
+        res["attendance_total"] = total
+        return res
 
     # Try multiple lookup strategies
     row = await db["students"].find_one(
@@ -387,6 +415,12 @@ async def get_student(student_id: str):
     
     serialized = serialize_doc(row)
     
+    # Calculate dynamic attendance stats
+    present, total, pct = await compute_student_attendance_stats(serialized, db=db)
+    serialized["attendancePct"] = pct
+    serialized["attendance_present"] = present
+    serialized["attendance_total"] = total
+
     # Fetch and attach fees for this student
     try:
         fees_collection = db["fees_structure"]
@@ -464,22 +498,32 @@ async def create_student(payload: StudentRecord):
 async def update_student(student_id: str, payload: dict):
     try:
         db = get_db()
+        use_db = True
     except HTTPException as error:
         if error.status_code == 503:
             _seed_dev_students()
-            target = next(
-                (
-                    item
-                    for item in DEV_STORE["students"]
-                    if item.get("id") == student_id or item.get("rollNumber") == student_id or item.get("student_id") == student_id
-                ),
-                None,
-            )
-            if not target:
-                raise HTTPException(status_code=404, detail="Student not found")
-            target.update(payload)
-            return deepcopy(target)
-        raise
+            use_db = False
+        else:
+            raise
+
+    if not use_db:
+        target = next(
+            (
+                item
+                for item in DEV_STORE["students"]
+                if item.get("id") == student_id or item.get("rollNumber") == student_id or item.get("student_id") == student_id
+            ),
+            None,
+        )
+        if not target:
+            raise HTTPException(status_code=404, detail="Student not found")
+        target.update(payload)
+        res = deepcopy(target)
+        present, total, pct = await compute_student_attendance_stats(res, db=None)
+        res["attendancePct"] = pct
+        res["attendance_present"] = present
+        res["attendance_total"] = total
+        return res
 
     # Build lookup query with multiple strategies
     lookup_query = {
@@ -505,7 +549,12 @@ async def update_student(student_id: str, payload: dict):
     )
     if not result:
         raise HTTPException(status_code=404, detail="Student not found")
-    return serialize_doc(result)
+    serialized = serialize_doc(result)
+    present, total, pct = await compute_student_attendance_stats(serialized, db=db)
+    serialized["attendancePct"] = pct
+    serialized["attendance_present"] = present
+    serialized["attendance_total"] = total
+    return serialized
 
 
 @router.delete("/{student_id}")

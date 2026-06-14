@@ -424,6 +424,7 @@ export default function AttendancePage({ noLayout = false }) {
   const [odEditingRequestId, setOdEditingRequestId] = useState('')
   const [facultyOdRequests, setFacultyOdRequests] = useState([])
   const [facultyOdNotice, setFacultyOdNotice] = useState('')
+  const [viewingProofUrl, setViewingProofUrl] = useState('')
 
   useEffect(() => {
     async function fetchAttendance() {
@@ -806,7 +807,7 @@ export default function AttendancePage({ noLayout = false }) {
     const my = scopedStudents[0]
     if (!my) return { present: 0, total: 0 }
     return {
-      present: Math.min(my.total, my.present + approvedOdCountForSummary),
+      present: my.present,
       total: my.total,
     }
   })()
@@ -1864,15 +1865,13 @@ export default function AttendancePage({ noLayout = false }) {
                       <td className="px-6 py-4 text-sm text-slate-600">{request?.reason || '-'}</td>
                       <td className="px-6 py-4 text-sm text-slate-600">
                         {request?.proofImageData ? (
-                          <a
-                            href={request.proofImageData}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1 text-[#276221] font-semibold hover:underline"
+                          <button
+                            onClick={() => setViewingProofUrl(request.proofImageData)}
+                            className="inline-flex items-center gap-1 text-[#276221] font-semibold hover:underline cursor-pointer bg-transparent border-0 p-0"
                           >
                             <span className="material-symbols-outlined text-sm">image</span>
                             View
-                          </a>
+                          </button>
                         ) : '-'}
                       </td>
                       <td className="px-6 py-4">
@@ -2173,15 +2172,13 @@ export default function AttendancePage({ noLayout = false }) {
                       <td className="px-6 py-4 text-sm text-slate-600">{request.reason || '-'}</td>
                       <td className="px-6 py-4 text-sm text-slate-600">
                         {request.proofImageData ? (
-                          <a
-                            href={request.proofImageData}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1 text-[#276221] font-semibold hover:underline"
+                          <button
+                            onClick={() => setViewingProofUrl(request.proofImageData)}
+                            className="inline-flex items-center gap-1 text-[#276221] font-semibold hover:underline cursor-pointer bg-transparent border-0 p-0"
                           >
                             <span className="material-symbols-outlined text-sm">image</span>
                             View
-                          </a>
+                          </button>
                         ) : '-'}
                       </td>
                       <td className="px-6 py-4">
@@ -2226,6 +2223,30 @@ export default function AttendancePage({ noLayout = false }) {
         </div>
       ) : (
         <AttendanceTable data={filteredData} type={currentTableType} isAdmin={isAdmin} />
+      )}
+
+      {viewingProofUrl && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm cursor-pointer"
+          onClick={() => setViewingProofUrl('')}
+        >
+          <div 
+            className="relative max-w-3xl max-h-[90vh] bg-white rounded-2xl p-2 shadow-2xl overflow-hidden m-4 cursor-default"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button 
+              onClick={() => setViewingProofUrl('')} 
+              className="absolute top-4 right-4 bg-black/50 text-white hover:bg-black/70 w-8 h-8 rounded-full flex items-center justify-center transition-all z-10 border-0 cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-lg">close</span>
+            </button>
+            <img 
+              src={viewingProofUrl} 
+              alt="OD Proof" 
+              className="max-w-full max-h-[80vh] rounded-xl object-contain"
+            />
+          </div>
+        </div>
       )}
     </>
   )

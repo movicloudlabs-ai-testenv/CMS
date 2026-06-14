@@ -3,6 +3,7 @@ import NotificationCard from './NotificationCard';
 import CreateNotification from './CreateNotification';
 import './NotificationCenter.css';
 import { buildApiUrl } from '../api/apiBase';
+import { getUserSession } from '../auth/sessionController';
 
 const CATEGORIES = [
   { value: '', label: 'All' },
@@ -32,8 +33,12 @@ export default function NotificationCenter({ role = 'student' }) {
   const [selectedNotification, setSelectedNotification] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
 
+  const session = getUserSession();
+  const userId = session?.userId || '';
+
   useEffect(() =>{
     fetchNotifications();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [role, selectedCategory, selectedPriority, selectedStatus, searchQuery]);
 
   const fetchNotifications = async () =>{
@@ -46,6 +51,7 @@ export default function NotificationCenter({ role = 'student' }) {
       if (selectedPriority) params.append('priority', selectedPriority);
       if (selectedStatus) params.append('status', selectedStatus);
       if (searchQuery) params.append('search', searchQuery);
+      if (userId) params.append('userId', userId);
 
       if (params.toString()) {
         url += `?${params.toString()}`;

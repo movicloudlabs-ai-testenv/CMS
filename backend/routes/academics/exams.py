@@ -16,6 +16,7 @@ from backend.dev_store import list_items
 from backend.dev_store import update_exam as update_dev_exam
 from backend.schemas.academics import ExamCreate, ExamUpdate
 from backend.utils.mongo import serialize_doc
+from backend.utils.notify import send_notification
 
 router = APIRouter(prefix="/api/exams", tags=["academics:exams"])
 
@@ -68,6 +69,7 @@ async def create_exam(payload: ExamCreate):
     result = await db["exams"].insert_one(payload.model_dump())
     created = await db["exams"].find_one({"_id": result.inserted_id})
     return {"success": True, "data": serialize_doc(created)}
+
 
 
 @router.put("/{exam_id}")
@@ -135,6 +137,20 @@ async def publish_exam_results(exam_id: str):
     )
     if not updated:
         raise HTTPException(status_code=404, detail="Exam not found")
+
+    # Send notification to student role
+    await db["notifications"].insert_one({
+        "title": "Exam Results Published",
+        "message": f"The final results for exam '{updated.get('name') or exam_id}' have been published.",
+        "senderRole": "faculty",
+        "receiverRole": "student",
+        "module": "Academic",
+        "priority": "High",
+        "status": "unread",
+        "createdAt": _now_iso(),
+        "relatedData": {"examId": exam_id}
+    })
+
     return {"success": True, "data": serialize_doc(updated)}
 
 
@@ -330,6 +346,24 @@ async def upsert_internal_mark(payload: dict):
         upsert=True,
         return_document=ReturnDocument.AFTER,
     )
+
+    # Send notification to the specific student (gated by their internalMarks preference)
+    await send_notification(
+        db=db,
+        receiver_role="student",
+        event_key="internalMarks",
+        title="Internal Marks Published",
+        message=(
+            f"Your internal marks for exam '{updated.get('examId')}' have been published: "
+            f"{payload.get('internalMarks')}/{payload.get('maxInternal')}."
+        ),
+        sender_role="faculty",
+        module="Academic",
+        priority="Medium",
+        related_data={"studentId": student_id, "examId": exam_id},
+        receiver_user_id=student_id,
+    )
+
     return {"success": True, "data": serialize_doc(updated)}
 
 

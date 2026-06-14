@@ -5,6 +5,8 @@ import StudentTable from '../components/StudentTable'
 import AddStudentModal from '../components/AddStudentModal'
 import { PageContainer, StatsSection } from '../components/common'
 import { buildApiUrl } from '../api/apiBase'
+import { jsPDF } from 'jspdf'
+import autoTable from 'jspdf-autotable'
 
 export default function StudentsPage() {
   const [studentsList, setStudentsList] = useState([])
@@ -135,14 +137,11 @@ export default function StudentsPage() {
 
     if (fmt === 'pdf') {
       try {
-        const { jsPDF } = await import('jspdf')
-        const autoTableModule = await import('jspdf-autotable')
         const doc = new jsPDF()
         const header = Object.keys(rows[0])
         const data = rows.map(r =>header.map(h =>r[h]))
 
         // Support both plugin styles: autoTable(doc, opts) or doc.autoTable(opts)
-        const autoTable = autoTableModule && (autoTableModule.default || autoTableModule)
         if (typeof autoTable === 'function') {
           autoTable(doc, { head: [header], body: data, styles: { fontSize: 8 } })
         } else if (typeof doc.autoTable === 'function') {

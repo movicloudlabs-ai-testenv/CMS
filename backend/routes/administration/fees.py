@@ -5,6 +5,7 @@ from backend.db import get_db
 from backend.schemas.fees_schema import AssignFee
 from backend.utils.fee_calculator import calculate_fee
 from backend.utils.mongo import serialize_doc, parse_object_id
+from backend.utils.notify import send_notification
 
 router = APIRouter(prefix="/api/fees", tags=["Fees"])
 
@@ -53,6 +54,23 @@ async def assign_fee(data: AssignFee):
             "fee_status": "Pending",
             "feeStatus": "Pending"
         }}
+    )
+
+    # Notify the student about new fee assignment (if preference enabled)
+    await send_notification(
+        db=db,
+        receiver_role="student",
+        event_key="feeReminder",
+        title="Fees Assigned",
+        message=(
+            f"Fees of ₹{fee['total']:,.0f} have been assigned for {data.course} "
+            f"Semester {data.semester}. Due status: Pending."
+        ),
+        sender_role="admin",
+        module="Finance",
+        priority="High",
+        related_data={"studentId": data.student_id, "amount": fee["total"]},
+        receiver_user_id=data.student_id,
     )
 
     return {
@@ -221,6 +239,56 @@ async def update_fee_payment(fee_id: str, payload: dict):
                 "transaction_id": transaction_id
             }
             await invoices_collection.insert_one(invoice_record)
+
+    # Notify finance and admin when payment status becomes Paid
+    if payment_status in ("Paid", "paid"):
+        student_id = fee.get("student_id") or ""
+        student_name = fee.get("student_name") or student_id
+        total = fee.get("total_fee") or 0
+        notif_message = (
+            f"Student {student_name} ({student_id}) has successfully paid "
+            f"₹{total:,.0f} for {fee.get('course', 'N/A')} Semester {fee.get('semester', '')}."
+        )
+        # Notify finance
+        await send_notification(
+            db=db,
+            receiver_role="finance",
+            event_key="feePayments",
+            title="Fee Payment Received",
+            message=notif_message,
+            sender_role="student",
+            module="Finance",
+            priority="High",
+            related_data={"studentId": student_id, "amount": total, "feeId": fee_id},
+        )
+        # Notify admin
+        await send_notification(
+            db=db,
+            receiver_role="admin",
+            event_key="feePayments",
+            title="Fee Payment Received",
+            message=notif_message,
+            sender_role="student",
+            module="Finance",
+            priority="High",
+            related_data={"studentId": student_id, "amount": total, "feeId": fee_id},
+        )
+        # Confirm to the student
+        await send_notification(
+            db=db,
+            receiver_role="student",
+            event_key="feeReminder",
+            title="Fee Payment Confirmed",
+            message=(
+                f"Your payment of ₹{total:,.0f} for {fee.get('course', 'N/A')} "
+                f"Semester {fee.get('semester', '')} has been successfully recorded."
+            ),
+            sender_role="system",
+            module="Finance",
+            priority="Medium",
+            related_data={"feeId": fee_id, "amount": total},
+            receiver_user_id=fee.get("student_id"),
+        )
 
     return serialize_doc(result)
 

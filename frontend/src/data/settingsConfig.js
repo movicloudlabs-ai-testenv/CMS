@@ -51,6 +51,15 @@ const SETTINGS_SECTIONS = [
       { id: 'session-limits', label: 'Session & Access Limits' },
     ],
   },
+  {
+    id: 'notifications',
+    label: 'Notification Alerts',
+    icon: 'notifications',
+    roles: ['admin', 'finance'],
+    children: [
+      { id: 'notification-preferences', label: 'Notification Preferences' },
+    ],
+  },
 ];
 
 function normalizeSection(section) {

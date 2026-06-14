@@ -6,6 +6,8 @@ import AddEditFacultyModal from '../components/AddEditFacultyModal';
 import { PageContainer, StatsSection } from '../components/common';
 import { API_BASE } from '../api/apiBase';
 import '../styles.css';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const API_BASE_URL = API_BASE;
 
@@ -86,13 +88,10 @@ export default function FacultyPage() {
 
     if (fmt === 'pdf') {
       try {
-        const { jsPDF } = await import('jspdf')
-        const autoTableModule = await import('jspdf-autotable')
         const doc = new jsPDF()
         const header = Object.keys(rows[0])
         const data = rows.map(r => header.map(h => r[h]))
 
-        const autoTable = autoTableModule && (autoTableModule.default || autoTableModule)
         if (typeof autoTable === 'function') {
           autoTable(doc, { head: [header], body: data, styles: { fontSize: 8 } })
         } else if (typeof doc.autoTable === 'function') {
