@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useLocation } from 'react-router-dom'
 import AcademicSidebar from './AcademicSidebar'
 import TopBar from './TopBar'
 
@@ -31,10 +32,18 @@ export default function Layout({
   onProfileSecondaryAction 
 }) {
   const isMobile = useIsMobile()
+  const location = useLocation()
   const [isSidebarVisible, setIsSidebarVisible] = useState(!isMobile)
   const [isCollapsed, setIsCollapsed] = useState(() => {
     return localStorage.getItem('sidebar_collapsed') === 'true';
   })
+
+  // Auto-close sidebar on mobile when route changes
+  useEffect(() => {
+    if (isMobile) {
+      setIsSidebarVisible(false)
+    }
+  }, [location.pathname, isMobile])
 
   // Auto-close sidebar when switching to mobile, auto-open on desktop
   useEffect(() => {

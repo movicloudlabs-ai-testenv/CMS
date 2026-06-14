@@ -94,6 +94,26 @@ export default function TopBar({
   return (
     <header className={`h-16 md:h-20 bg-white md:bg-white/80 border-b border-slate-100 flex items-center justify-between sticky top-0 z-10 md:backdrop-blur-md transition-all duration-300 px-4 md:px-6`}>
       <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
+        {isMobile && (
+          <button
+            onClick={onToggleSidebar}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              color: '#334155',
+              padding: '6px',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            className="hover:bg-slate-100 active:scale-95 transition-all"
+            aria-label="Toggle Menu"
+          >
+            <span className="material-symbols-outlined text-[24px]">menu</span>
+          </button>
+        )}
         <div className="min-w-0">
           {(!isSidebarVisible || isMobile) && (
             <p className="text-[10px] md:text-xs font-semibold text-[#276221] tracking-wider uppercase leading-none mb-1">

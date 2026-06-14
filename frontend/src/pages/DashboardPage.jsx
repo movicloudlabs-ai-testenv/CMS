@@ -277,7 +277,7 @@ export default function DashboardPage() {
       <div className="role-dashboard" style={{ display: 'flex', flexDirection: 'column', gap: '24px', paddingBottom: '40px' }}>
 
         {/* ── Hero Profile Card ───────────────────────────────────── */}
-        <div style={{
+        <div className="hero-profile-card" style={{
           background: styleSet.grad,
           borderRadius: '20px',
           padding: '32px',
@@ -289,9 +289,9 @@ export default function DashboardPage() {
           <div style={{ position:'absolute', top:'-30px', right:'-30px', width:'160px', height:'160px', background:'rgba(255,255,255,0.05)', borderRadius:'50%' }}/>
           <div style={{ position:'absolute', bottom:'-50px', right:'100px', width:'120px', height:'120px', background:'rgba(255,255,255,0.04)', borderRadius:'50%' }}/>
 
-          <div style={{ position:'relative', zIndex:1, display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:'20px' }}>
+          <div className="hero-profile-container" style={{ position:'relative', zIndex:1, display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:'20px' }}>
             {/* Left: avatar + info */}
-            <div style={{ display:'flex', gap:'20px', alignItems:'center' }}>
+            <div className="hero-profile-left" style={{ display:'flex', gap:'20px', alignItems:'center' }}>
               <div style={{
                 width:'72px', height:'72px', borderRadius:'50%',
                 background: 'rgba(255,255,255,0.2)',
@@ -320,7 +320,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Right: action buttons */}
-            <div style={{ display:'flex', gap:'10px', flexWrap:'wrap' }}>
+            <div className="hero-profile-actions" style={{ display:'flex', gap:'10px', flexWrap:'wrap' }}>
               <button
                 onClick={styleSet.onPrimary}
                 style={{
@@ -356,7 +356,7 @@ export default function DashboardPage() {
         </div>
 
         {/* ── 5 KPI Stat Cards ────────────────────────────────────── */}
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(160px,1fr))', gap:'16px' }}>
+        <div className="kpi-grid-container" style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(160px,1fr))', gap:'16px' }}>
           {currentKpis.map(s => (
             <div key={s.label} style={{
               background:s.bg, borderRadius:'16px', padding:'20px',
@@ -810,6 +810,43 @@ export default function DashboardPage() {
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
         @media (max-width: 1024px) {
           .dashboard-main-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+        @media (max-width: 640px) {
+          .hero-profile-card {
+            padding: 20px !important;
+          }
+          .hero-profile-container {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 20px !important;
+          }
+          .hero-profile-left {
+            flex-direction: column !important;
+            align-items: center !important;
+            text-align: center !important;
+            gap: 16px !important;
+          }
+          .hero-profile-left h2 {
+            justify-content: center !important;
+          }
+          .hero-profile-actions {
+            width: 100% !important;
+            flex-direction: column !important;
+            gap: 8px !important;
+          }
+          .hero-profile-actions button {
+            width: 100% !important;
+            justify-content: center !important;
+            padding: 12px 20px !important;
+          }
+        }
+        @media (max-width: 480px) {
+          .role-dashboard {
+            gap: 16px !important;
+          }
+          .kpi-grid-container {
             grid-template-columns: 1fr !important;
           }
         }
