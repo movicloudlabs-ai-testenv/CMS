@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { TrendingUp, Award, Users, BookOpen, Zap, Target } from 'lucide-react';
+import { buildApiUrl } from '../api/apiBase';
 
 export default function PerformanceAnalyticsPanel({ facultyId, academicYear }) {
   const [metrics, setMetrics] = useState(null);
@@ -15,7 +16,7 @@ export default function PerformanceAnalyticsPanel({ facultyId, academicYear }) {
   const fetchMetrics = async () =>{
     try {
       const response = await fetch(
-        `/api/faculty/${facultyId}/performance-metrics?academic_year=${academicYear}`
+        buildApiUrl(`/faculty/${facultyId}/performance-metrics?academic_year=${academicYear}`)
       );
 
       if (response.status === 404) {
@@ -37,7 +38,7 @@ export default function PerformanceAnalyticsPanel({ facultyId, academicYear }) {
   const fetchHistory = async () =>{
     try {
       const response = await fetch(
-        `/api/faculty/${facultyId}/performance-metrics/history`
+        buildApiUrl(`/faculty/${facultyId}/performance-metrics/history`)
       );
 
       if (response.ok) {

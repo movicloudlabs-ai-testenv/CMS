@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AlertTriangle, Zap, TrendingUp } from 'lucide-react';
+import { buildApiUrl } from '../api/apiBase';
 
 export default function WorkloadDashboard({ facultyId, semester, academicYear }) {
   const [workload, setWorkload] = useState(null);
@@ -14,7 +15,7 @@ export default function WorkloadDashboard({ facultyId, semester, academicYear })
     setLoading(true);
     try {
       const response = await fetch(
-        `/api/faculty/${facultyId}/workload?semester=${semester}&academic_year=${academicYear}`
+        buildApiUrl(`/faculty/${facultyId}/workload?semester=${semester}&academic_year=${academicYear}`)
       );
       
       if (!response.ok) {
@@ -48,7 +49,7 @@ export default function WorkloadDashboard({ facultyId, semester, academicYear })
       };
 
       const response = await fetch(
-        `/api/faculty/${facultyId}/workload`,
+        buildApiUrl(`/faculty/${facultyId}/workload`),
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

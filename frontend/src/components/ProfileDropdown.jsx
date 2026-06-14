@@ -86,26 +86,28 @@ export default function ProfileDropdown({
           </div>
 
           {/* Action Buttons */}
-          <div className="profile-actions">
-            <button
-              className="profile-action-btn primary"
-              onClick={handlePrimaryClick}
-            >
-              {user.primaryAction || 'View Fees'}
-            </button>
-            <button
-              className="profile-action-btn secondary"
-              onClick={handleSecondaryClick}
-            >
-              {user.secondaryAction || 'Manage Department'}
-            </button>
-            <button
-              className="profile-action-btn tertiary"
-              onClick={handleViewProfile}
-            >
-              View Full Profile
-            </button>
-          </div>
+          {role !== 'admin' && (
+            <div className="profile-actions">
+              <button
+                className="profile-action-btn primary"
+                onClick={handlePrimaryClick}
+              >
+                {user.primaryAction || 'View Fees'}
+              </button>
+              <button
+                className="profile-action-btn secondary"
+                onClick={handleSecondaryClick}
+              >
+                {user.secondaryAction || 'Manage Department'}
+              </button>
+              <button
+                className="profile-action-btn tertiary"
+                onClick={handleViewProfile}
+              >
+                View Full Profile
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </>

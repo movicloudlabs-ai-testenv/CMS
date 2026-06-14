@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
+import { buildApiUrl } from '../api/apiBase';
 
 export default function AddEditFacultyModal({ isOpen, onClose, onSuccess, editMode, initialData, faculty }) {
   // Support both 'faculty' and 'initialData' props for edit
@@ -65,8 +66,8 @@ export default function AddEditFacultyModal({ isOpen, onClose, onSuccess, editMo
     try {
       const isEditing = !!editData;
       const url = isEditing
-        ? `/api/faculty/${formData.employeeId}`
-        : `/api/faculty`;
+        ? buildApiUrl(`/faculty/${formData.employeeId}`)
+        : buildApiUrl('/faculty');
         
       const method = isEditing ? 'PUT' : 'POST';
       

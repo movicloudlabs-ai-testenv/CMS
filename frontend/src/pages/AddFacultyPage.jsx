@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useAdmission } from '../context/AdmissionContext';
+import { buildApiUrl } from '../api/apiBase';
 
 export default function AddFacultyPage() {
   const navigate = useNavigate();
@@ -206,7 +207,7 @@ export default function AddFacultyPage() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() =>controller.abort(), 10000); // 10 second timeout
 
-      const response = await fetch('/api/faculty/admission/submit', {
+      const response = await fetch(buildApiUrl('/faculty/admission/submit'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(facultyData),

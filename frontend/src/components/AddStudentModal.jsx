@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { getUserSession, updateUserData } from '../auth/sessionController';
+import { buildApiUrl } from '../api/apiBase';
 
 export default function AddStudentModal({ isOpen, onClose, onSuccess, editStudent }) {
   const [step, setStep] = useState(1);
@@ -174,8 +175,8 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, editStuden
           ? (editStudent.student_id || editStudent.rollNumber || editStudent.id || editStudent._id || formData.id)
           : formData.id;
         const url = editStudent 
-          ? `/api/students/${encodeURIComponent(studentId)}`
-          : '/api/students';
+          ? buildApiUrl(`/students/${encodeURIComponent(studentId)}`)
+          : buildApiUrl('/students');
         
         const method = editStudent ? 'PUT' : 'POST';
 
