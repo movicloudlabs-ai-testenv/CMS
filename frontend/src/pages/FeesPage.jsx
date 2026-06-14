@@ -6,7 +6,7 @@ import { getUserSession } from '../auth/sessionController';
 import { jsPDF } from 'jspdf';
 import { PageContainer, StatsSection } from '../components/common';
 import { listFees, updateFeePayment } from '../api/feesApi';
-import { listInvoices, updateInvoiceStatus } from '../api/invoicesApi';
+import { listInvoices, updateInvoiceStatus, createInvoice } from '../api/invoicesApi';
 
 export default function FeesPage() {
   const session = getUserSession();
@@ -82,14 +82,46 @@ export default function FeesPage() {
     return fees;
   }, [feeAssignments, studentId, role]);
 
-  const handleStatusUpdate = async (feeId, newStatus) =>{
+  const handleStatusUpdate = async (feeId, newStatus) => {
     try {
       await updateFeePayment(feeId, { paymentStatus: newStatus.toLowerCase() });
-      const existingInvoice = invoices.find((inv) =>inv.generatedFrom === feeId);
+      const targetFee = feeAssignments.find((f) => f.id === feeId);
+      const existingInvoice = invoices.find((inv) => inv.generatedFrom === feeId);
+      const formattedStatus = newStatus.charAt(0).toUpperCase() + newStatus.slice(1).toLowerCase();
+      
       if (existingInvoice) {
-        const formattedStatus = newStatus.charAt(0).toUpperCase() + newStatus.slice(1).toLowerCase();
         await updateInvoiceStatus(existingInvoice.id, { payment_status: formattedStatus });
+      } else if (newStatus.toLowerCase() === 'paid' && targetFee) {
+        // Automatically generate invoice since it's paid and doesn't exist
+        const newInvoicePayload = {
+          invoice_id: `BILL${Date.now()}`,
+          student_id: targetFee.studentId,
+          student_name: targetFee.studentName,
+          course: targetFee.course,
+          semester: targetFee.semester,
+          items: [
+            { description: 'Semester Fee', amount: targetFee.semesterFee },
+            { description: 'Book Fee', amount: targetFee.bookFee },
+            { description: 'Exam Fee', amount: targetFee.examFee },
+          ],
+          total: targetFee.totalFee,
+          payment_status: 'Paid',
+          generated_from: targetFee.id,
+          paid_date: new Date().toISOString(),
+          payment_method: 'Manual/Admin Update',
+          transaction_id: `TXN-MANUAL-${Math.floor(Math.random() * 1000000)}`,
+        };
+
+        if (targetFee.hostelFee > 0) {
+          newInvoicePayload.items.push({ description: 'Hostel Fee', amount: targetFee.hostelFee });
+        }
+        if (targetFee.miscFee > 0) {
+          newInvoicePayload.items.push({ description: 'Misc Fee', amount: targetFee.miscFee });
+        }
+
+        await createInvoice(newInvoicePayload);
       }
+      
       await fetchFeesAndInvoices();
       window.dispatchEvent(new CustomEvent('feeAssignmentUpdated'));
       window.dispatchEvent(new CustomEvent('invoiceUpdated'));
@@ -194,8 +226,8 @@ export default function FeesPage() {
             paymentMethod: paymentMethod,
           });
 
-          // 2 Update corresponding invoice in admin_invoices
-          const existingInvoice = invoices.find((inv) =>inv.generatedFrom === selectedFee.id);
+          // 2 Update corresponding invoice in admin_invoices or create a new one
+          const existingInvoice = invoices.find((inv) => inv.generatedFrom === selectedFee.id);
           if (existingInvoice) {
             await updateInvoiceStatus(existingInvoice.id, {
               payment_status: 'Paid',
@@ -203,6 +235,35 @@ export default function FeesPage() {
               payment_method: paymentMethod,
               transaction_id: txnId,
             });
+          } else {
+            // Automatically generate invoice since it's paid and doesn't exist
+            const newInvoicePayload = {
+              invoice_id: `BILL${Date.now()}`,
+              student_id: selectedFee.studentId,
+              student_name: selectedFee.studentName,
+              course: selectedFee.course,
+              semester: selectedFee.semester,
+              items: [
+                { description: 'Semester Fee', amount: selectedFee.semesterFee },
+                { description: 'Book Fee', amount: selectedFee.bookFee },
+                { description: 'Exam Fee', amount: selectedFee.examFee },
+              ],
+              total: selectedFee.totalFee,
+              payment_status: 'Paid',
+              generated_from: selectedFee.id,
+              paid_date: new Date().toISOString(),
+              payment_method: paymentMethod,
+              transaction_id: txnId,
+            };
+
+            if (selectedFee.hostelFee > 0) {
+              newInvoicePayload.items.push({ description: 'Hostel Fee', amount: selectedFee.hostelFee });
+            }
+            if (selectedFee.miscFee > 0) {
+              newInvoicePayload.items.push({ description: 'Misc Fee', amount: selectedFee.miscFee });
+            }
+
+            await createInvoice(newInvoicePayload);
           }
 
           await fetchFeesAndInvoices();

@@ -131,7 +131,8 @@ async def update_fee_payment(fee_id: str, payload: dict):
     )
 
     # Also update the student's fee status
-    if update_data.get("payment_status"):
+    payment_status = update_data.get("payment_status")
+    if payment_status:
         student_id = fee.get("student_id")
         if student_id:
             students_collection = db["students"]
@@ -142,10 +143,84 @@ async def update_fee_payment(fee_id: str, payload: dict):
                     {"rollNumber": student_id}
                 ]},
                 {"$set": {
-                    "fee_status": update_data["payment_status"],
-                    "feeStatus": update_data["payment_status"]
+                    "fee_status": payment_status,
+                    "feeStatus": payment_status
                 }}
             )
+
+        # Update or generate invoice
+        invoices_collection = db["invoices"]
+        existing_invoice = await invoices_collection.find_one({
+            "$or": [
+                {"generated_from": fee_id},
+                {"generated_from": str(oid)},
+                {"generated_from": str(fee.get("_id"))}
+            ]
+        })
+        
+        formatted_status = payment_status.capitalize()  # "Paid", "Pending", "Processing", "Failed"
+        paid_date = update_data.get("paid_date") or (datetime.now().isoformat() if formatted_status == "Paid" else None)
+        payment_method = update_data.get("payment_method") or ("Online" if formatted_status == "Paid" else None)
+        transaction_id = update_data.get("transaction_id") or (f"TXN{int(datetime.now().timestamp())}" if formatted_status == "Paid" else None)
+        
+        if existing_invoice:
+            set_fields = {
+                "payment_status": formatted_status
+            }
+            if paid_date:
+                set_fields["paid_date"] = paid_date
+            if payment_method:
+                set_fields["payment_method"] = payment_method
+            if transaction_id:
+                set_fields["transaction_id"] = transaction_id
+                
+            await invoices_collection.update_one(
+                {"_id": existing_invoice["_id"]},
+                {"$set": set_fields}
+            )
+        elif formatted_status == "Paid":
+            # Generate new invoice since it is paid and doesn't exist
+            fee_breakdown = fee.get("fee_breakdown") or {}
+            
+            # Helper to get numeric fee value safely
+            def get_fee(key_breakdown, key_flat):
+                val = fee_breakdown.get(key_breakdown)
+                if val is None:
+                    val = fee.get(key_flat)
+                return float(val) if val is not None else 0.0
+
+            semester_fee = get_fee("semester_fee", "semesterFee")
+            book_fee = get_fee("book_fee", "bookFee")
+            exam_fee = get_fee("exam_fee", "examFee")
+            hostel_fee = get_fee("hostel_fee", "hostelFee")
+            misc_fee = get_fee("misc_fee", "miscFee")
+            
+            items = [
+                {"description": "Semester Fee", "amount": semester_fee},
+                {"description": "Book Fee", "amount": book_fee},
+                {"description": "Exam Fee", "amount": exam_fee}
+            ]
+            if hostel_fee > 0:
+                items.append({"description": "Hostel Fee", "amount": hostel_fee})
+            if misc_fee > 0:
+                items.append({"description": "Misc Fee", "amount": misc_fee})
+                
+            invoice_record = {
+                "invoice_id": f"BILL{int(datetime.now().timestamp())}",
+                "student_id": fee.get("student_id"),
+                "student_name": fee.get("student_name"),
+                "course": fee.get("course"),
+                "semester": fee.get("semester"),
+                "items": items,
+                "total": float(fee.get("total_fee") or fee.get("totalFee") or (semester_fee + book_fee + exam_fee + hostel_fee + misc_fee)),
+                "generated_date": datetime.now().isoformat(),
+                "payment_status": "Paid",
+                "generated_from": fee_id,
+                "paid_date": paid_date,
+                "payment_method": payment_method,
+                "transaction_id": transaction_id
+            }
+            await invoices_collection.insert_one(invoice_record)
 
     return serialize_doc(result)
 
