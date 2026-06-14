@@ -523,7 +523,7 @@ export default function FacultyDashboardPage() {
         </div>
 
         {/* ── Main 2-column content ───────────────────────────────── */}
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 380px', gap:'20px', alignItems:'start' }}>
+        <div className="dashboard-main-grid" style={{ display:'grid', gridTemplateColumns:'1fr 380px', gap:'20px', alignItems:'start' }}>
 
           {/* Left column */}
           <div style={{ display:'flex', flexDirection:'column', gap:'20px' }}>
@@ -706,6 +706,11 @@ export default function FacultyDashboardPage() {
 
       <style>{`
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+        @media (max-width: 1024px) {
+          .dashboard-main-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
       `}</style>
 
       {/* Modals */}
