@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createUserSession, getUserSession } from '../auth/sessionController';
 import { demoUsers } from '../data/roleConfig';
@@ -42,6 +42,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const loginFormSectionRef = useRef(null);
 
   useEffect(() =>{
     const activeSession = getUserSession();
@@ -52,6 +53,18 @@ export default function LoginPage() {
 
     document.title = 'MIT Connect — Multi Role Login';
   }, [navigate]);
+
+  useEffect(() => {
+    // Auto-scroll to the login section on mobile/tablet views where sections stack
+    if (window.innerWidth <= 1024) {
+      const timer = setTimeout(() => {
+        if (loginFormSectionRef.current) {
+          loginFormSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   const roleIcons = { student: '', admin: '', faculty: '', finance: '' };
 
@@ -103,7 +116,7 @@ export default function LoginPage() {
   return (
     <div className="login-page"><div className="login-shell"><section className="login-showcase"><div className="showcase-badge">Movi Institute of Technology</div><div className="showcase-brand-card"><div className="brand-icon"><GraduationIcon /></div><div><h1>MIT Connect</h1><p>Unified Campus Management System</p></div></div><div className="showcase-copy"><h2>Welcome to the smart MIT workspace</h2><p>One secure place for students, faculty, finance, and administration teams to manage academics,
               records, billing, and campus operations at Movi Institute of Technology.
-            </p></div><div className="showcase-grid"><article className="showcase-card"><h3>Overview</h3><p>Dashboard, students, faculty, and department visibility.</p></article><article className="showcase-card"><h3>Administration</h3><p>Admissions, fee control, and invoice handling.</p></article><article className="showcase-card"><h3>Intelligence</h3><p>Analytics, alerts, and role-based settings in one place.</p></article><article className="showcase-card"><h3>Academics</h3><p>Exams, timetable, attendance, placement, and facilities.</p></article></div></section><section className="login-container"><div className="login-brand login-brand-split"><div className="brand-mark-row"><div className="brand-icon"><GraduationIcon /></div><div><h1>Sign In</h1><p>Access your role-based dashboard</p></div></div></div><div className="role-switcher">{Object.keys(demoUsers).map((roleKey) =>(
+            </p></div><div className="showcase-grid"><article className="showcase-card"><h3>Overview</h3><p>Dashboard, students, faculty, and department visibility.</p></article><article className="showcase-card"><h3>Administration</h3><p>Admissions, fee control, and invoice handling.</p></article><article className="showcase-card"><h3>Intelligence</h3><p>Analytics, alerts, and role-based settings in one place.</p></article><article className="showcase-card"><h3>Academics</h3><p>Exams, timetable, attendance, placement, and facilities.</p></article></div></section><section ref={loginFormSectionRef} className="login-container"><div className="login-brand login-brand-split"><div className="brand-mark-row"><div className="brand-icon"><GraduationIcon /></div><div><h1>Sign In</h1><p>Access your role-based dashboard</p></div></div></div><div className="role-switcher">{Object.keys(demoUsers).map((roleKey) =>(
               <button
                 key={roleKey}
                 type="button"
