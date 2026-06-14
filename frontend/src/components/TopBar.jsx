@@ -116,7 +116,7 @@ export default function TopBar({
             />
           )}
           <button
-            className="p-2 md:p-2.5 text-slate-400 hover:bg-slate-50 rounded-xl transition-all"
+            className="w-10 h-10 md:w-11 md:h-11 flex items-center justify-center text-slate-400 hover:bg-slate-50 hover:text-slate-600 rounded-xl transition-all cursor-pointer"
             onClick={() => navigate('/settings')}
             aria-label="Open settings"
             title="Settings"
@@ -132,7 +132,7 @@ export default function TopBar({
           <button
             type="button"
             onClick={() => setIsProfileOpen(!isProfileOpen)}
-            className="w-9 h-9 md:w-11 md:h-11 rounded-xl bg-slate-100 overflow-hidden border-2 border-white shadow-sm transition-transform group-hover:scale-105 cursor-pointer flex-shrink-0"
+            className="w-10 h-10 md:w-11 md:h-11 rounded-xl bg-slate-100 overflow-hidden border-2 border-white shadow-sm transition-transform group-hover:scale-105 cursor-pointer flex-shrink-0"
             aria-label="Open profile dropdown"
             title="Open profile"
           >
