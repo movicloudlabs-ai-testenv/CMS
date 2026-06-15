@@ -7,7 +7,7 @@ Usage:
     await send_notification(
         db=db,
         receiver_role="student",
-        event_key="feeReminder",        # must match the key in settings_store notifications
+        event_key="feeReminder",        # must match the key in settings notifications
         title="Fees Assigned",
         message="Your semester fees have been assigned.",
         sender_role="admin",
@@ -27,8 +27,6 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Optional
-
-from backend.stores.settings_store import get_notification_prefs
 
 
 async def send_notification(
@@ -51,10 +49,12 @@ async def send_notification(
     """
     # Check preference only if we know which specific user this is for
     if receiver_user_id:
-        prefs = get_notification_prefs(receiver_role, receiver_user_id)
-        # If the preference key exists and is explicitly False, suppress
-        if event_key in prefs and not prefs[event_key]:
-            return False
+        doc = await db["user_settings"].find_one({"userId": receiver_user_id})
+        if doc and "notifications" in doc:
+            prefs = doc["notifications"]
+            # If the preference key exists and is explicitly False, suppress
+            if event_key in prefs and not prefs[event_key]:
+                return False
 
     doc = {
         "title": title,

@@ -4,6 +4,7 @@ import { getUserSession, hasActiveSession } from './auth/sessionController';
 import { AdmissionProvider } from './context/AdmissionContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary';
+import { buildUploadUrl } from './api/apiBase';
 
 // Static imports for core entry pages to keep initial render fast
 import DashboardPageWrapper from './pages/DashboardPageWrapper';
@@ -52,6 +53,36 @@ export default function App() {
       window.removeEventListener('cms-auth-change', handleAuthChange);
       window.removeEventListener('storage', handleAuthChange);
     };
+  }, []);
+
+  // Global effect: sync page title + favicon from portal settings
+  useEffect(() => {
+    function applySystemSettings(data) {
+      if (!data || data.detail) return;
+      if (data.portalName) {
+        document.title = data.portalName;
+      }
+      if (data.faviconFileName) {
+        let link = document.querySelector("link[rel~='icon']");
+        if (!link) {
+          link = document.createElement('link');
+          link.rel = 'icon';
+          document.head.appendChild(link);
+        }
+        link.href = buildUploadUrl(data.faviconFileName);
+      }
+    }
+
+    function loadSettings() {
+      fetch('/api/settings/general')
+        .then(res => res.json())
+        .then(applySystemSettings)
+        .catch(() => {});
+    }
+
+    loadSettings();
+    window.addEventListener('cms-settings-update', loadSettings);
+    return () => window.removeEventListener('cms-settings-update', loadSettings);
   }, []);
 
   return (

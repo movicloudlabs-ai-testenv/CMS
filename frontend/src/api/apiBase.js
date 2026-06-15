@@ -35,3 +35,10 @@ export function buildApiUrl(path) {
   const normalizedPath = String(path || '').startsWith('/') ? path : `/${path}`;
   return `${API_BASE}${normalizedPath}`;
 }
+
+export function buildUploadUrl(fileName) {
+  if (!fileName) return '';
+  if (fileName.startsWith('http') || fileName.startsWith('/uploads')) return fileName;
+  const base = hostBase || '';
+  return `${trimTrailingSlash(base)}/uploads/${fileName}`;
+}

@@ -28,7 +28,6 @@ from backend.routes.dashboard_summary import router as dashboard_router
 from backend.routes.notifications import router as notifications_router
 from backend.routes.payroll import router as payroll_router
 from backend.routes.payroll_and_development import router as payroll_dev_router
-from backend.routes.settings import router as settings_router
 from backend.routes.staff import router as staff_router
 from backend.routes.faculty import router as faculty_router
 from backend.routes.faculty_management import router as faculty_mgmt_router
@@ -85,6 +84,11 @@ DIST_INDEX_FILE = DIST_DIR / "index.html"
 # Only mount static assets if dist folder exists (production build)
 if DIST_ASSETS_DIR.exists():
     app.mount("/assets", StaticFiles(directory=str(DIST_ASSETS_DIR)), name="assets")
+
+# Mount static uploads directory
+uploads_dir = BASE_DIR / "backend" / "static" / "uploads"
+uploads_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
 
 # Helper function to create dev mode guidance HTML
 def get_dev_mode_html():
@@ -235,7 +239,6 @@ app.include_router(attendance_router)
 app.include_router(placement_router)
 app.include_router(facility_router)
 app.include_router(notifications_router)
-app.include_router(settings_router)
 app.include_router(students_router)
 app.include_router(admissions_router)
 app.include_router(fees_router)

@@ -22,14 +22,33 @@ export default function TopBar({
   const [avatarUrl, setAvatarUrl] = useState(null)
   const navigate = useNavigate()
   const session = getUserSession()
-  const dynamicUser = getUserData()
+  const [userData, setUserData] = useState(getUserData())
+  const dynamicUser = userData
   const role = session?.role || 'student'
+  const [systemSettings, setSystemSettings] = useState(null)
 
   useEffect(() => {
-    const loadAvatar = () => {
-      const userData = getUserData()
-      if (userData && userData.avatar) {
-        setAvatarUrl(userData.avatar)
+    function loadSettings() {
+      fetch('/api/settings/general')
+        .then(res => res.json())
+        .then(data => {
+          if (data && !data.detail) {
+            setSystemSettings(data)
+          }
+        })
+        .catch(err => console.error("Error loading system settings in TopBar:", err))
+    }
+    loadSettings()
+    window.addEventListener('cms-settings-update', loadSettings)
+    return () => window.removeEventListener('cms-settings-update', loadSettings)
+  }, [])
+
+  useEffect(() => {
+    const loadUserData = () => {
+      const uData = getUserData()
+      setUserData(uData)
+      if (uData && uData.avatar) {
+        setAvatarUrl(uData.avatar)
       } else if (session?.userId && role === 'student') {
         fetch(buildApiUrl(`/students/${encodeURIComponent(session.userId)}`))
           .then(res => res.json())
@@ -45,10 +64,10 @@ export default function TopBar({
       }
     }
 
-    loadAvatar()
-    window.addEventListener('cms-auth-change', loadAvatar)
+    loadUserData()
+    window.addEventListener('cms-auth-change', loadUserData)
     return () => {
-      window.removeEventListener('cms-auth-change', loadAvatar)
+      window.removeEventListener('cms-auth-change', loadUserData)
     }
   }, [session?.userId, role])
   
@@ -94,7 +113,7 @@ export default function TopBar({
   return (
     <header className={`h-16 md:h-20 bg-white md:bg-white/80 border-b border-slate-100 flex items-center justify-between sticky top-0 z-10 md:backdrop-blur-md transition-all duration-300 px-4 md:px-6`}>
       <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
-        {isMobile && (
+        {(!isSidebarVisible || isMobile) && (
           <button
             onClick={onToggleSidebar}
             style={{
@@ -117,7 +136,7 @@ export default function TopBar({
         <div className="min-w-0">
           {(!isSidebarVisible || isMobile) && (
             <p className="text-[10px] md:text-xs font-semibold text-[#276221] tracking-wider uppercase leading-none mb-1">
-              MIT Connect
+              {systemSettings?.portalName || 'MIT Connect'}
             </p>
           )}
           <h2 className="text-base md:text-[20px] font-bold text-slate-800 tracking-tight truncate leading-tight">

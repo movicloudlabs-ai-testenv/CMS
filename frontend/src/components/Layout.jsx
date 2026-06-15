@@ -71,8 +71,9 @@ export default function Layout({
       <AcademicSidebar 
         isSidebarVisible={isSidebarVisible} 
         onToggleSidebar={toggleSidebar} 
-        isCollapsed={isCollapsed}
-        onToggleCollapse={toggleCollapse}
+        isCollapsed={isMobile ? false : isCollapsed}
+        onToggleCollapse={isMobile ? null : toggleCollapse}
+        isMobile={isMobile}
       />
 
       {/* Mobile backdrop overlay */}

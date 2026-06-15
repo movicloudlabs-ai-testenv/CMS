@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { userSettingsApi } from '../../api/userSettingsApi';
 import { useSettingsContext } from '../../context/SettingsContext';
 import { SettingsCard, SettingsActions, SettingsError, SettingsLoader, SettingsToast, inputCls, labelCls, isDirty } from '../settings/SettingsPanelCommon';
+import { updateUserData } from '../../auth/sessionController';
 
 function isEmail(v) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
@@ -67,6 +68,7 @@ export default function ProfileSettings({ role, userId }) {
       setProfile(updated);
       setBaseline(updated);
       setSectionData('profile', updated);
+      updateUserData(updated);
       setToast('Profile updated successfully.');
     } catch (e) {
       setError(e.message);

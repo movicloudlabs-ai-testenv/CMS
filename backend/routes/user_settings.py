@@ -12,538 +12,39 @@ from __future__ import annotations
 
 from copy import deepcopy
 from datetime import datetime, timezone
+import random
 from typing import Any, Optional
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, UploadFile, File
 
 from backend.db import get_db
 
 router = APIRouter(prefix="/api/settings", tags=["user-settings"])
 
 
-# ── Default seeds ──────────────────────────────────────────────────────────────
+# ── File Upload — MUST be defined BEFORE wildcard /{role}/{user_id} routes ──────
 
-def _student_defaults() -> dict:
-    return {
-        "profile": {
-            "name": "",
-            "email": "",
-            "phone": "",
-            "bio": "",
-            "address": "",
-        },
-        "notifications": {
-            "email": True,
-            "sms": False,
-            "examReminder": True,
-            "feeReminder": True,
-        },
-        "appearance": {
-            "theme": "dark",
-            "fontSize": "medium",
-            "accentColor": "blue",
-            "layoutDensity": "comfortable",
-        },
-        "language": {
-            "language": "English",
-            "region": "India",
-            "timezone": "Asia/Kolkata",
-            "dateFormat": "DD/MM/YYYY",
-        },
-        "privacy": {
-            "profileVisible": True,
-            "searchable": True,
-            "allowDirectMessages": True,
-        },
-        "accessibility": {
-            "highContrast": False,
-            "reduceMotion": False,
-            "textToSpeech": False,
-            "largeClickTargets": False,
-        },
-    }
+@router.post("/upload")
+async def upload_settings_file(file: UploadFile = File(...)):
+    from pathlib import Path
 
+    # Absolute path: backend/routes/ -> backend/ -> backend/static/uploads
+    _BACKEND_DIR = Path(__file__).resolve().parent.parent
+    upload_path = _BACKEND_DIR / "static" / "uploads"
+    upload_path.mkdir(parents=True, exist_ok=True)
 
-def _faculty_defaults() -> dict:
-    return {
-        **_student_defaults(),
-        "profile": {
-            "name": "",
-            "email": "",
-            "department": "",
-            "phone": "",
-            "bio": "",
-        },
-        "notifications": {
-            "assignmentAlerts": True,
-            "studentMessages": True,
-            "email": True,
-            "sms": False,
-        },
-        "appearance": {
-            "theme": "light",
-            "fontSize": "medium",
-            "accentColor": "teal",
-            "layoutDensity": "comfortable",
-        },
-        "teachingPreferences": {
-            "preferredMode": "Hybrid",
-            "officeHours": "10 AM - 12 PM",
-            "autoPublishGrades": False,
-        },
-    }
+    clean_name = Path(file.filename).name
+    target_path = upload_path / clean_name
 
+    contents = await file.read()
+    target_path.write_bytes(contents)
 
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return {"fileName": clean_name, "url": f"/uploads/{clean_name}"}
 
 
-# ── Helpers ────────────────────────────────────────────────────────────────────
-
-def _normalize_role(role: str) -> Optional[str]:
-    v = role.lower()
-    if v in ("student", "students"):
-        return "student"
-    if v == "faculty":
-        return "faculty"
-    if v == "admin":
-        return "admin"
-    if v == "finance":
-        return "finance"
-    return None
-
-
-def _settings_collection():
-    return get_db()["user_settings"]
-
-
-def _sessions_collection():
-    return get_db()["user_sessions"]
-
-
-def _login_history_collection():
-    return get_db()["login_history"]
-
-
-def _delete_requests_collection():
-    return get_db()["delete_requests"]
-
-
-def _credentials_collection():
-    return get_db()["user_credentials"]
-
-
-async def _get_or_create_settings(role: str, user_id: str) -> dict:
-    """Fetch user settings from MongoDB, or create with defaults if not found."""
-    col = _settings_collection()
-    doc = await col.find_one({"userId": user_id})
-    if doc:
-        doc["_id"] = str(doc["_id"])
-        return doc
-
-    # Seed defaults based on role
-    if role == "faculty":
-        defaults = _faculty_defaults()
-    else:
-        defaults = _student_defaults()
-
-    record = {
-        "userId": user_id,
-        "role": role,
-        "createdAt": _now_iso(),
-        **defaults,
-    }
-    await col.insert_one(record)
-    record["_id"] = str(record.get("_id", ""))
-    return record
-
-
-async def _get_section(role: str, user_id: str, section: str):
-    settings = await _get_or_create_settings(role, user_id)
-    return settings.get(section)
-
-
-async def _update_section(role: str, user_id: str, section: str, data: dict):
-    col = _settings_collection()
-    # Get current settings first to merge
-    settings = await _get_or_create_settings(role, user_id)
-    current = settings.get(section, {})
-    if isinstance(current, dict):
-        merged = {**current, **data}
-    else:
-        merged = data
-
-    await col.update_one(
-        {"userId": user_id},
-        {"$set": {section: merged, "updatedAt": _now_iso()}}
-    )
-    return merged
-
-
-# ── Profile ────────────────────────────────────────────────────────────────────
-
-@router.get("/{role}/{user_id}/profile")
-async def get_profile(role: str, user_id: str):
-    r = _normalize_role(role)
-    if not r:
-        raise HTTPException(status_code=400, detail="Invalid role")
-    data = await _get_section(r, user_id, "profile")
-    if not data:
-        raise HTTPException(status_code=404, detail="Profile not found")
-    return data
-
-
-@router.put("/{role}/{user_id}/profile")
-async def update_profile(role: str, user_id: str, body: dict):
-    r = _normalize_role(role)
-    if not r:
-        raise HTTPException(status_code=400, detail="Invalid role")
-    updated = await _update_section(r, user_id, "profile", body)
-    return {"message": "Profile updated successfully", "data": updated}
-
-
-# ── Notifications Preferences ──────────────────────────────────────────────────
-
-@router.get("/{role}/{user_id}/notifications")
-async def get_notification_prefs(role: str, user_id: str):
-    r = _normalize_role(role)
-    if not r:
-        raise HTTPException(status_code=400, detail="Invalid role")
-    data = await _get_section(r, user_id, "notifications")
-    if not data:
-        raise HTTPException(status_code=404, detail="Notification preferences not found")
-    return data
-
-
-@router.put("/{role}/{user_id}/notifications")
-async def update_notification_prefs(role: str, user_id: str, body: dict):
-    r = _normalize_role(role)
-    if not r:
-        raise HTTPException(status_code=400, detail="Invalid role")
-    updated = await _update_section(r, user_id, "notifications", body)
-    return {"message": "Notification preferences updated successfully", "data": updated}
-
-
-# ── Appearance ─────────────────────────────────────────────────────────────────
-
-@router.get("/{role}/{user_id}/appearance")
-async def get_appearance(role: str, user_id: str):
-    r = _normalize_role(role)
-    if not r:
-        raise HTTPException(status_code=400, detail="Invalid role")
-    data = await _get_section(r, user_id, "appearance")
-    return data or {}
-
-
-@router.put("/{role}/{user_id}/appearance")
-async def update_appearance(role: str, user_id: str, body: dict):
-    r = _normalize_role(role)
-    if not r:
-        raise HTTPException(status_code=400, detail="Invalid role")
-    updated = await _update_section(r, user_id, "appearance", body)
-    return {"message": "Appearance settings updated successfully.", "data": updated}
-
-
-@router.get("/{user_id}/appearance")
-async def get_appearance_by_userid(user_id: str):
-    data = await _get_section("student", user_id, "appearance")
-    return data or {}
-
-
-@router.put("/{user_id}/appearance")
-async def update_appearance_by_userid(user_id: str, body: dict):
-    updated = await _update_section("student", user_id, "appearance", body)
-    return {"message": "Appearance settings updated successfully.", "data": updated}
-
-
-# ── Language ───────────────────────────────────────────────────────────────────
-
-@router.get("/{role}/{user_id}/language")
-async def get_language(role: str, user_id: str):
-    r = _normalize_role(role)
-    if not r:
-        raise HTTPException(status_code=400, detail="Invalid role")
-    data = await _get_section(r, user_id, "language")
-    return data or {}
-
-
-@router.put("/{role}/{user_id}/language")
-async def update_language(role: str, user_id: str, body: dict):
-    r = _normalize_role(role)
-    if not r:
-        raise HTTPException(status_code=400, detail="Invalid role")
-    updated = await _update_section(r, user_id, "language", body)
-    return {"message": "Language & region settings updated successfully.", "data": updated}
-
-
-@router.get("/{user_id}/language")
-async def get_language_by_userid(user_id: str):
-    data = await _get_section("student", user_id, "language")
-    return data or {}
-
-
-@router.put("/{user_id}/language")
-async def update_language_by_userid(user_id: str, body: dict):
-    updated = await _update_section("student", user_id, "language", body)
-    return {"message": "Language & region settings updated successfully.", "data": updated}
-
-
-# ── Privacy ────────────────────────────────────────────────────────────────────
-
-@router.get("/{role}/{user_id}/privacy")
-async def get_privacy(role: str, user_id: str):
-    r = _normalize_role(role)
-    if not r:
-        raise HTTPException(status_code=400, detail="Invalid role")
-    data = await _get_section(r, user_id, "privacy")
-    return data or {}
-
-
-@router.put("/{role}/{user_id}/privacy")
-async def update_privacy(role: str, user_id: str, body: dict):
-    r = _normalize_role(role)
-    if not r:
-        raise HTTPException(status_code=400, detail="Invalid role")
-    updated = await _update_section(r, user_id, "privacy", body)
-    return {"message": "Privacy settings updated successfully.", "data": updated}
-
-
-@router.get("/{user_id}/privacy")
-async def get_privacy_by_userid(user_id: str):
-    data = await _get_section("student", user_id, "privacy")
-    return data or {}
-
-
-@router.put("/{user_id}/privacy")
-async def update_privacy_by_userid(user_id: str, body: dict):
-    updated = await _update_section("student", user_id, "privacy", body)
-    return {"message": "Privacy settings updated successfully.", "data": updated}
-
-
-# ── Accessibility ──────────────────────────────────────────────────────────────
-
-@router.get("/{role}/{user_id}/accessibility")
-async def get_accessibility(role: str, user_id: str):
-    r = _normalize_role(role)
-    if not r:
-        raise HTTPException(status_code=400, detail="Invalid role")
-    data = await _get_section(r, user_id, "accessibility")
-    return data or {}
-
-
-@router.put("/{role}/{user_id}/accessibility")
-async def update_accessibility(role: str, user_id: str, body: dict):
-    r = _normalize_role(role)
-    if not r:
-        raise HTTPException(status_code=400, detail="Invalid role")
-    updated = await _update_section(r, user_id, "accessibility", body)
-    return {"message": "Accessibility settings updated successfully.", "data": updated}
-
-
-@router.get("/{user_id}/accessibility")
-async def get_accessibility_by_userid(user_id: str):
-    data = await _get_section("student", user_id, "accessibility")
-    return data or {}
-
-
-@router.put("/{user_id}/accessibility")
-async def update_accessibility_by_userid(user_id: str, body: dict):
-    updated = await _update_section("student", user_id, "accessibility", body)
-    return {"message": "Accessibility settings updated successfully.", "data": updated}
-
-
-# ── Teaching Preferences (Faculty only) ────────────────────────────────────────
-
-@router.get("/faculty/{user_id}/teaching")
-async def get_teaching_prefs(user_id: str):
-    data = await _get_section("faculty", user_id, "teachingPreferences")
-    if not data:
-        raise HTTPException(status_code=404, detail="Teaching preferences not found")
-    return data
-
-
-@router.put("/faculty/{user_id}/teaching")
-async def update_teaching_prefs(user_id: str, body: dict):
-    updated = await _update_section("faculty", user_id, "teachingPreferences", body)
-    return {"message": "Teaching preferences updated successfully", "data": updated}
-
-
-# ── Password ───────────────────────────────────────────────────────────────────
-
-@router.post("/change-password")
-async def change_password(body: dict):
-    user_id = body.get("userId")
-    old_password = body.get("oldPassword")
-    new_password = body.get("newPassword")
-
-    if not user_id or not old_password or not new_password:
-        raise HTTPException(status_code=400, detail="userId, oldPassword, and newPassword are required.")
-
-    if len(str(new_password)) < 8:
-        raise HTTPException(status_code=400, detail="New password must contain at least 8 characters.")
-
-    col = _credentials_collection()
-    cred = await col.find_one({"userId": user_id})
-
-    if not cred:
-        # Try looking up in students/faculty collections
-        db = get_db()
-        student = await db["students"].find_one({"$or": [{"id": user_id}, {"rollNumber": user_id}]})
-        if student:
-            stored_pw = student.get("password", student.get("rollNumber", student.get("id")))
-            if stored_pw != old_password:
-                raise HTTPException(status_code=400, detail="Current password is incorrect.")
-            await col.insert_one({"userId": user_id, "password": new_password, "updatedAt": _now_iso()})
-            return {"message": "Password changed successfully."}
-
-        faculty = await db["faculty"].find_one({"$or": [{"employee_id": user_id}, {"faculty_id": user_id}]})
-        if faculty:
-            stored_pw = faculty.get("password", faculty.get("employee_id", faculty.get("faculty_id")))
-            if stored_pw != old_password:
-                raise HTTPException(status_code=400, detail="Current password is incorrect.")
-            await col.insert_one({"userId": user_id, "password": new_password, "updatedAt": _now_iso()})
-            return {"message": "Password changed successfully."}
-
-        raise HTTPException(status_code=404, detail="User account not found.")
-
-    if cred.get("password") != old_password:
-        raise HTTPException(status_code=400, detail="Current password is incorrect.")
-
-    await col.update_one({"userId": user_id}, {"$set": {"password": new_password, "updatedAt": _now_iso()}})
-    return {"message": "Password changed successfully."}
-
-
-# ── Email ──────────────────────────────────────────────────────────────────────
-
-@router.put("/email")
-async def update_email(body: dict):
-    user_id = body.get("userId")
-    email = body.get("email")
-    role = body.get("role")
-
-    if not user_id or not email:
-        raise HTTPException(status_code=400, detail="userId and email are required.")
-
-    r = _normalize_role(role) if role else "student"
-    updated = await _update_section(r, user_id, "profile", {"email": email})
-    return {"message": "Email updated successfully.", "data": {"email": updated.get("email")}}
-
-
-# ── Sessions ───────────────────────────────────────────────────────────────────
-
-@router.get("/{role}/{user_id}/sessions")
-async def get_sessions(role: str, user_id: str):
-    r = _normalize_role(role)
-    if not r:
-        raise HTTPException(status_code=400, detail="Invalid role")
-    col = _sessions_collection()
-    sessions = []
-    async for s in col.find({"userId": user_id}):
-        s["_id"] = str(s["_id"])
-        sessions.append(s)
-
-    if not sessions:
-        # Return a default current session
-        return [{"id": f"sess-{uuid4().hex[:8]}", "device": "Current Browser", "location": "Unknown", "active": True, "lastSeen": _now_iso()}]
-    return sessions
-
-
-@router.get("/{user_id}/sessions")
-async def get_sessions_by_userid(user_id: str):
-    return await get_sessions("student", user_id)
-
-
-@router.post("/logout-all")
-async def logout_all(body: dict):
-    user_id = body.get("userId")
-    if not user_id:
-        raise HTTPException(status_code=400, detail="userId is required.")
-
-    col = _sessions_collection()
-    result = await col.update_many(
-        {"userId": user_id},
-        {"$set": {"active": False, "lastSeen": _now_iso()}}
-    )
-    return {"message": "All devices logged out successfully.", "data": []}
-
-
-# ── Login History ──────────────────────────────────────────────────────────────
-
-@router.get("/{role}/{user_id}/login-history")
-async def get_login_history(role: str, user_id: str):
-    r = _normalize_role(role)
-    if not r:
-        raise HTTPException(status_code=400, detail="Invalid role")
-    col = _login_history_collection()
-    history = []
-    async for h in col.find({"userId": user_id}).sort("timestamp", -1).limit(20):
-        h["_id"] = str(h["_id"])
-        history.append(h)
-
-    if not history:
-        return [{"timestamp": _now_iso(), "status": "success", "ip": "127.0.0.1"}]
-    return history
-
-
-@router.get("/{user_id}/login-history")
-async def get_login_history_by_userid(user_id: str):
-    return await get_login_history("student", user_id)
-
-
-# ── Export Data ────────────────────────────────────────────────────────────────
-
-@router.get("/{role}/{user_id}/export-data")
-async def export_data(role: str, user_id: str):
-    r = _normalize_role(role)
-    if not r:
-        raise HTTPException(status_code=400, detail="Invalid role")
-    settings = await _get_or_create_settings(r, user_id)
-    settings.pop("_id", None)
-    return {
-        "fileName": f"{user_id}-settings-export.json",
-        "data": {
-            "userId": user_id,
-            "role": r,
-            "exportedAt": _now_iso(),
-            "settings": settings,
-        }
-    }
-
-
-@router.get("/{user_id}/export-data")
-async def export_data_by_userid(user_id: str):
-    return await export_data("student", user_id)
-
-
-# ── Delete Request ─────────────────────────────────────────────────────────────
-
-@router.post("/{role}/{user_id}/delete-request")
-async def create_delete_request(role: str, user_id: str, body: dict = None):
-    r = _normalize_role(role)
-    if not r:
-        raise HTTPException(status_code=400, detail="Invalid role")
-
-    col = _delete_requests_collection()
-    entry = {
-        "id": f"DEL-{int(datetime.now(timezone.utc).timestamp())}",
-        "userId": user_id,
-        "role": r,
-        "reason": (body or {}).get("reason", "User requested account deletion"),
-        "requestedAt": _now_iso(),
-        "status": "pending",
-    }
-    await col.insert_one(entry)
-    entry.pop("_id", None)
-    return {"message": "Account deletion request submitted.", "data": entry}
-
-
-@router.post("/{user_id}/delete-request")
-async def create_delete_request_by_userid(user_id: str, body: dict = None):
-    return await create_delete_request("student", user_id, body)
-
-
-# ── Admin System Settings (from mockBackend.js) ───────────────────────────────
+# ── Admin System Settings ─────────────────────────────────────────────────────
+# These MUST come before any wildcard /{role}/{user_id} routes in FastAPI.
 
 @router.get("/general")
 async def get_general_settings():
@@ -554,15 +55,12 @@ async def get_general_settings():
         doc.pop("_id", None)
         doc.pop("type", None)
         return doc
-    # Return defaults
     defaults = {
         "portalName": "MIT Connect",
         "language": "English",
         "timezone": "Asia/Kolkata",
         "dateFormat": "DD/MM/YYYY",
         "theme": "Ocean Blue",
-        "logoFileName": "mit-logo.png",
-        "faviconFileName": "mit-favicon.ico",
     }
     await col.insert_one({"type": "general", **defaults})
     return defaults
@@ -572,11 +70,7 @@ async def get_general_settings():
 async def update_general_settings(body: dict):
     db = get_db()
     col = db["system_settings"]
-    await col.update_one(
-        {"type": "general"},
-        {"$set": body},
-        upsert=True
-    )
+    await col.update_one({"type": "general"}, {"$set": body}, upsert=True)
     doc = await col.find_one({"type": "general"})
     doc.pop("_id", None)
     doc.pop("type", None)
@@ -772,6 +266,601 @@ async def update_data_management_settings(body: dict):
     doc.pop("_id", None)
     doc.pop("type", None)
     return doc
+
+
+# ── Default seeds ──────────────────────────────────────────────────────────────
+
+def _student_defaults() -> dict:
+    return {
+        "profile": {
+            "name": "",
+            "email": "",
+            "phone": "",
+            "bio": "",
+            "address": "",
+        },
+        "notifications": {
+            "email": True,
+            "sms": False,
+            "examReminder": True,
+            "feeReminder": True,
+        },
+        "appearance": {
+            "theme": "dark",
+            "fontSize": "medium",
+            "accentColor": "blue",
+            "layoutDensity": "comfortable",
+        },
+        "language": {
+            "language": "English",
+            "region": "India",
+            "timezone": "Asia/Kolkata",
+            "dateFormat": "DD/MM/YYYY",
+        },
+        "privacy": {
+            "profileVisible": True,
+            "searchable": True,
+            "allowDirectMessages": True,
+        },
+        "accessibility": {
+            "highContrast": False,
+            "reduceMotion": False,
+            "textToSpeech": False,
+            "largeClickTargets": False,
+        },
+    }
+
+
+def _faculty_defaults() -> dict:
+    return {
+        **_student_defaults(),
+        "profile": {
+            "name": "",
+            "email": "",
+            "department": "",
+            "phone": "",
+            "bio": "",
+        },
+        "notifications": {
+            "assignmentAlerts": True,
+            "studentMessages": True,
+            "email": True,
+            "sms": False,
+        },
+        "appearance": {
+            "theme": "light",
+            "fontSize": "medium",
+            "accentColor": "teal",
+            "layoutDensity": "comfortable",
+        },
+        "teachingPreferences": {
+            "preferredMode": "Hybrid",
+            "officeHours": "10 AM - 12 PM",
+            "autoPublishGrades": False,
+        },
+    }
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+# ── Helpers ────────────────────────────────────────────────────────────────────
+
+def _normalize_role(role: str) -> Optional[str]:
+    v = role.lower()
+    if v in ("student", "students"):
+        return "student"
+    if v == "faculty":
+        return "faculty"
+    if v == "admin":
+        return "admin"
+    if v == "finance":
+        return "finance"
+    return None
+
+
+def _settings_collection():
+    return get_db()["user_settings"]
+
+
+def _sessions_collection():
+    return get_db()["user_sessions"]
+
+
+def _login_history_collection():
+    return get_db()["login_history"]
+
+
+def _delete_requests_collection():
+    return get_db()["delete_requests"]
+
+
+def _credentials_collection():
+    return get_db()["user_credentials"]
+
+
+async def _get_or_create_settings(role: str, user_id: str) -> dict:
+    """Fetch user settings from MongoDB, or create with defaults if not found."""
+    col = _settings_collection()
+    doc = await col.find_one({"userId": user_id})
+    if doc:
+        doc["_id"] = str(doc["_id"])
+        return doc
+
+    # Seed defaults based on role
+    if role == "faculty":
+        defaults = _faculty_defaults()
+    else:
+        defaults = _student_defaults()
+
+    record = {
+        "userId": user_id,
+        "role": role,
+        "createdAt": _now_iso(),
+        **defaults,
+    }
+    await col.insert_one(record)
+    record["_id"] = str(record.get("_id", ""))
+    return record
+
+
+async def _get_section(role: str, user_id: str, section: str):
+    settings = await _get_or_create_settings(role, user_id)
+    return settings.get(section)
+
+
+async def _update_section(role: str, user_id: str, section: str, data: dict):
+    col = _settings_collection()
+    # Get current settings first to merge
+    settings = await _get_or_create_settings(role, user_id)
+    current = settings.get(section, {})
+    if isinstance(current, dict):
+        merged = {**current, **data}
+    else:
+        merged = data
+
+    await col.update_one(
+        {"userId": user_id},
+        {"$set": {section: merged, "updatedAt": _now_iso()}}
+    )
+    return merged
+
+
+# ── Profile ────────────────────────────────────────────────────────────────────
+
+@router.get("/{role}/{user_id}/profile")
+async def get_profile(role: str, user_id: str):
+    r = _normalize_role(role)
+    if not r:
+        raise HTTPException(status_code=400, detail="Invalid role")
+    data = await _get_section(r, user_id, "profile")
+    if not data:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    return data
+
+
+@router.put("/{role}/{user_id}/profile")
+async def update_profile(role: str, user_id: str, body: dict):
+    r = _normalize_role(role)
+    if not r:
+        raise HTTPException(status_code=400, detail="Invalid role")
+    updated = await _update_section(r, user_id, "profile", body)
+    
+    # Propagate to primary collection
+    db = get_db()
+    name = body.get("name")
+    email = body.get("email")
+    phone = body.get("phone")
+    bio = body.get("bio")
+    
+    if r == "student":
+        address = body.get("address")
+        await db["students"].update_many(
+            {"$or": [{"id": user_id}, {"rollNumber": user_id}]},
+            {"$set": {"name": name, "email": email, "phone": phone, "bio": bio, "address": address}}
+        )
+    elif r == "faculty":
+        dept = body.get("department")
+        await db["faculty"].update_many(
+            {"$or": [{"employee_id": user_id}, {"faculty_id": user_id}, {"id": user_id}]},
+            {"$set": {"name": name, "email": email, "phone": phone, "bio": bio, "department": dept, "departmentId": dept}}
+        )
+        await db["staff_Details"].update_many(
+            {"$or": [{"staffId": user_id}, {"employee_id": user_id}, {"id": user_id}]},
+            {"$set": {"staffName": name, "email": email, "phone": phone}}
+        )
+    elif r == "admin":
+        await db["admin_users"].update_many(
+            {"$or": [{"userId": user_id}, {"id": user_id}]},
+            {"$set": {"name": name, "email": email}}
+        )
+    elif r == "finance":
+        await db["finance_users"].update_many(
+            {"$or": [{"userId": user_id}, {"id": user_id}]},
+            {"$set": {"name": name, "email": email}}
+        )
+        
+    return {"message": "Profile updated successfully", "data": updated}
+
+
+# ── Notifications Preferences ──────────────────────────────────────────────────
+
+@router.get("/{role}/{user_id}/notifications")
+async def get_notification_prefs(role: str, user_id: str):
+    r = _normalize_role(role)
+    if not r:
+        raise HTTPException(status_code=400, detail="Invalid role")
+    data = await _get_section(r, user_id, "notifications")
+    if not data:
+        raise HTTPException(status_code=404, detail="Notification preferences not found")
+    return data
+
+
+@router.put("/{role}/{user_id}/notifications")
+async def update_notification_prefs(role: str, user_id: str, body: dict):
+    r = _normalize_role(role)
+    if not r:
+        raise HTTPException(status_code=400, detail="Invalid role")
+    updated = await _update_section(r, user_id, "notifications", body)
+    return {"message": "Notification preferences updated successfully", "data": updated}
+
+
+# ── Appearance ─────────────────────────────────────────────────────────────────
+
+@router.get("/{role}/{user_id}/appearance")
+async def get_appearance(role: str, user_id: str):
+    r = _normalize_role(role)
+    if not r:
+        raise HTTPException(status_code=400, detail="Invalid role")
+    data = await _get_section(r, user_id, "appearance")
+    return data or {}
+
+
+@router.put("/{role}/{user_id}/appearance")
+async def update_appearance(role: str, user_id: str, body: dict):
+    r = _normalize_role(role)
+    if not r:
+        raise HTTPException(status_code=400, detail="Invalid role")
+    updated = await _update_section(r, user_id, "appearance", body)
+    return {"message": "Appearance settings updated successfully.", "data": updated}
+
+
+@router.get("/{user_id}/appearance")
+async def get_appearance_by_userid(user_id: str):
+    data = await _get_section("student", user_id, "appearance")
+    return data or {}
+
+
+@router.put("/{user_id}/appearance")
+async def update_appearance_by_userid(user_id: str, body: dict):
+    updated = await _update_section("student", user_id, "appearance", body)
+    return {"message": "Appearance settings updated successfully.", "data": updated}
+
+
+# ── Language ───────────────────────────────────────────────────────────────────
+
+@router.get("/{role}/{user_id}/language")
+async def get_language(role: str, user_id: str):
+    r = _normalize_role(role)
+    if not r:
+        raise HTTPException(status_code=400, detail="Invalid role")
+    data = await _get_section(r, user_id, "language")
+    return data or {}
+
+
+@router.put("/{role}/{user_id}/language")
+async def update_language(role: str, user_id: str, body: dict):
+    r = _normalize_role(role)
+    if not r:
+        raise HTTPException(status_code=400, detail="Invalid role")
+    updated = await _update_section(r, user_id, "language", body)
+    return {"message": "Language & region settings updated successfully.", "data": updated}
+
+
+@router.get("/{user_id}/language")
+async def get_language_by_userid(user_id: str):
+    data = await _get_section("student", user_id, "language")
+    return data or {}
+
+
+@router.put("/{user_id}/language")
+async def update_language_by_userid(user_id: str, body: dict):
+    updated = await _update_section("student", user_id, "language", body)
+    return {"message": "Language & region settings updated successfully.", "data": updated}
+
+
+# ── Privacy ────────────────────────────────────────────────────────────────────
+
+@router.get("/{role}/{user_id}/privacy")
+async def get_privacy(role: str, user_id: str):
+    r = _normalize_role(role)
+    if not r:
+        raise HTTPException(status_code=400, detail="Invalid role")
+    data = await _get_section(r, user_id, "privacy")
+    return data or {}
+
+
+@router.put("/{role}/{user_id}/privacy")
+async def update_privacy(role: str, user_id: str, body: dict):
+    r = _normalize_role(role)
+    if not r:
+        raise HTTPException(status_code=400, detail="Invalid role")
+    updated = await _update_section(r, user_id, "privacy", body)
+    return {"message": "Privacy settings updated successfully.", "data": updated}
+
+
+@router.get("/{user_id}/privacy")
+async def get_privacy_by_userid(user_id: str):
+    data = await _get_section("student", user_id, "privacy")
+    return data or {}
+
+
+@router.put("/{user_id}/privacy")
+async def update_privacy_by_userid(user_id: str, body: dict):
+    updated = await _update_section("student", user_id, "privacy", body)
+    return {"message": "Privacy settings updated successfully.", "data": updated}
+
+
+# ── Accessibility ──────────────────────────────────────────────────────────────
+
+@router.get("/{role}/{user_id}/accessibility")
+async def get_accessibility(role: str, user_id: str):
+    r = _normalize_role(role)
+    if not r:
+        raise HTTPException(status_code=400, detail="Invalid role")
+    data = await _get_section(r, user_id, "accessibility")
+    return data or {}
+
+
+@router.put("/{role}/{user_id}/accessibility")
+async def update_accessibility(role: str, user_id: str, body: dict):
+    r = _normalize_role(role)
+    if not r:
+        raise HTTPException(status_code=400, detail="Invalid role")
+    updated = await _update_section(r, user_id, "accessibility", body)
+    return {"message": "Accessibility settings updated successfully.", "data": updated}
+
+
+@router.get("/{user_id}/accessibility")
+async def get_accessibility_by_userid(user_id: str):
+    data = await _get_section("student", user_id, "accessibility")
+    return data or {}
+
+
+@router.put("/{user_id}/accessibility")
+async def update_accessibility_by_userid(user_id: str, body: dict):
+    updated = await _update_section("student", user_id, "accessibility", body)
+    return {"message": "Accessibility settings updated successfully.", "data": updated}
+
+
+# ── Teaching Preferences (Faculty only) ────────────────────────────────────────
+
+@router.get("/faculty/{user_id}/teaching")
+async def get_teaching_prefs(user_id: str):
+    data = await _get_section("faculty", user_id, "teachingPreferences")
+    if not data:
+        raise HTTPException(status_code=404, detail="Teaching preferences not found")
+    return data
+
+
+@router.put("/faculty/{user_id}/teaching")
+async def update_teaching_prefs(user_id: str, body: dict):
+    updated = await _update_section("faculty", user_id, "teachingPreferences", body)
+    return {"message": "Teaching preferences updated successfully", "data": updated}
+
+
+# ── Password ───────────────────────────────────────────────────────────────────
+
+@router.post("/change-password")
+async def change_password(body: dict):
+    user_id = body.get("userId")
+    old_password = body.get("oldPassword")
+    new_password = body.get("newPassword")
+
+    if not user_id or not old_password or not new_password:
+        raise HTTPException(status_code=400, detail="userId, oldPassword, and newPassword are required.")
+
+    if len(str(new_password)) < 8:
+        raise HTTPException(status_code=400, detail="New password must contain at least 8 characters.")
+
+    db = get_db()
+    
+    # 1. Verify current password
+    verified = False
+    
+    # Check user_credentials
+    col = _credentials_collection()
+    cred = await col.find_one({"userId": user_id})
+    if cred:
+        if cred.get("password") == old_password:
+            verified = True
+    else:
+        # Fallback to role collections
+        student = await db["students"].find_one({"$or": [{"id": user_id}, {"rollNumber": user_id}]})
+        if student:
+            stored_pw = student.get("password") or student.get("rollNumber") or student.get("id")
+            if stored_pw == old_password:
+                verified = True
+        else:
+            faculty = await db["faculty"].find_one({"$or": [{"employee_id": user_id}, {"faculty_id": user_id}, {"id": user_id}]})
+            if not faculty:
+                faculty = await db["staff_Details"].find_one({"$or": [{"staffId": user_id}, {"employee_id": user_id}, {"id": user_id}]})
+            if faculty:
+                stored_pw = faculty.get("password") or faculty.get("employee_id") or faculty.get("faculty_id") or faculty.get("staffId") or faculty.get("id")
+                if stored_pw == old_password:
+                    verified = True
+            else:
+                admin = await db["admin_users"].find_one({"$or": [{"userId": user_id}, {"id": user_id}]})
+                if admin:
+                    stored_pw = admin.get("password") or admin.get("userId") or admin.get("id")
+                    if stored_pw == old_password:
+                        verified = True
+                else:
+                    finance = await db["finance_users"].find_one({"$or": [{"userId": user_id}, {"id": user_id}]})
+                    if finance:
+                        stored_pw = finance.get("password") or finance.get("userId") or finance.get("id")
+                        if stored_pw == old_password:
+                            verified = True
+
+    if not verified:
+        raise HTTPException(status_code=400, detail="Current password is incorrect.")
+
+    # 2. Update password everywhere
+    await col.update_one({"userId": user_id}, {"$set": {"password": new_password, "updatedAt": _now_iso()}}, upsert=True)
+    await db["students"].update_many({"$or": [{"id": user_id}, {"rollNumber": user_id}]}, {"$set": {"password": new_password}})
+    await db["faculty"].update_many({"$or": [{"employee_id": user_id}, {"faculty_id": user_id}, {"id": user_id}]}, {"$set": {"password": new_password}})
+    await db["staff_Details"].update_many({"$or": [{"staffId": user_id}, {"employee_id": user_id}, {"id": user_id}]}, {"$set": {"password": new_password}})
+    await db["admin_users"].update_many({"$or": [{"userId": user_id}, {"id": user_id}]}, {"$set": {"password": new_password}})
+    await db["finance_users"].update_many({"$or": [{"userId": user_id}, {"id": user_id}]}, {"$set": {"password": new_password}})
+
+    return {"message": "Password changed successfully."}
+
+
+# ── Email ──────────────────────────────────────────────────────────────────────
+
+@router.put("/email")
+async def update_email(body: dict):
+    user_id = body.get("userId")
+    email = body.get("email")
+    role = body.get("role")
+
+    if not user_id or not email:
+        raise HTTPException(status_code=400, detail="userId and email are required.")
+
+    r = _normalize_role(role) if role else "student"
+    updated = await _update_section(r, user_id, "profile", {"email": email})
+    
+    # Propagate to primary collections
+    db = get_db()
+    if r == "student":
+        await db["students"].update_many({"$or": [{"id": user_id}, {"rollNumber": user_id}]}, {"$set": {"email": email}})
+    elif r == "faculty":
+        await db["faculty"].update_many({"$or": [{"employee_id": user_id}, {"faculty_id": user_id}, {"id": user_id}]}, {"$set": {"email": email}})
+        await db["staff_Details"].update_many({"$or": [{"staffId": user_id}, {"employee_id": user_id}, {"id": user_id}]}, {"$set": {"email": email}})
+    elif r == "admin":
+        await db["admin_users"].update_many({"$or": [{"userId": user_id}, {"id": user_id}]}, {"$set": {"email": email}})
+    elif r == "finance":
+        await db["finance_users"].update_many({"$or": [{"userId": user_id}, {"id": user_id}]}, {"$set": {"email": email}})
+        
+    return {"message": "Email updated successfully.", "data": {"email": updated.get("email")}}
+
+
+# ── Sessions ───────────────────────────────────────────────────────────────────
+
+@router.get("/{role}/{user_id}/sessions")
+async def get_sessions(role: str, user_id: str):
+    r = _normalize_role(role)
+    if not r:
+        raise HTTPException(status_code=400, detail="Invalid role")
+    col = _sessions_collection()
+    sessions = []
+    async for s in col.find({"userId": user_id}):
+        s["_id"] = str(s["_id"])
+        sessions.append(s)
+
+    if not sessions:
+        # Return a default current session
+        return [{"id": f"sess-{uuid4().hex[:8]}", "device": "Current Browser", "location": "Unknown", "active": True, "lastSeen": _now_iso()}]
+    return sessions
+
+
+@router.get("/{user_id}/sessions")
+async def get_sessions_by_userid(user_id: str):
+    return await get_sessions("student", user_id)
+
+
+@router.post("/logout-all")
+async def logout_all(body: dict):
+    user_id = body.get("userId")
+    if not user_id:
+        raise HTTPException(status_code=400, detail="userId is required.")
+
+    col = _sessions_collection()
+    result = await col.update_many(
+        {"userId": user_id},
+        {"$set": {"active": False, "lastSeen": _now_iso()}}
+    )
+    return {"message": "All devices logged out successfully.", "data": []}
+
+
+# ── Login History ──────────────────────────────────────────────────────────────
+
+@router.get("/{role}/{user_id}/login-history")
+async def get_login_history(role: str, user_id: str):
+    r = _normalize_role(role)
+    if not r:
+        raise HTTPException(status_code=400, detail="Invalid role")
+    col = _login_history_collection()
+    history = []
+    async for h in col.find({"userId": user_id}).sort("timestamp", -1).limit(20):
+        h["_id"] = str(h["_id"])
+        history.append(h)
+
+    if not history:
+        return [{"timestamp": _now_iso(), "status": "success", "ip": "127.0.0.1"}]
+    return history
+
+
+@router.get("/{user_id}/login-history")
+async def get_login_history_by_userid(user_id: str):
+    return await get_login_history("student", user_id)
+
+
+# ── Export Data ────────────────────────────────────────────────────────────────
+
+@router.get("/{role}/{user_id}/export-data")
+async def export_data(role: str, user_id: str):
+    r = _normalize_role(role)
+    if not r:
+        raise HTTPException(status_code=400, detail="Invalid role")
+    settings = await _get_or_create_settings(r, user_id)
+    settings.pop("_id", None)
+    return {
+        "fileName": f"{user_id}-settings-export.json",
+        "data": {
+            "userId": user_id,
+            "role": r,
+            "exportedAt": _now_iso(),
+            "settings": settings,
+        }
+    }
+
+
+@router.get("/{user_id}/export-data")
+async def export_data_by_userid(user_id: str):
+    return await export_data("student", user_id)
+
+
+# ── Delete Request ─────────────────────────────────────────────────────────────
+
+@router.post("/{role}/{user_id}/delete-request")
+async def create_delete_request(role: str, user_id: str, body: dict = None):
+    r = _normalize_role(role)
+    if not r:
+        raise HTTPException(status_code=400, detail="Invalid role")
+
+    col = _delete_requests_collection()
+    entry = {
+        "id": f"DEL-{int(datetime.now(timezone.utc).timestamp())}",
+        "userId": user_id,
+        "role": r,
+        "reason": (body or {}).get("reason", "User requested account deletion"),
+        "requestedAt": _now_iso(),
+        "status": "pending",
+    }
+    await col.insert_one(entry)
+    entry.pop("_id", None)
+    return {"message": "Account deletion request submitted.", "data": entry}
+
+
+@router.post("/{user_id}/delete-request")
+async def create_delete_request_by_userid(user_id: str, body: dict = None):
+    return await create_delete_request("student", user_id, body)
+
+
+# ── Admin System Settings (from mockBackend.js) ───────────────────────────────
+# NOTE: moved to top of file — before wildcard routes — to avoid FastAPI shadowing.
 
 
 # ── System endpoints (backup, restore, export, monitoring) ─────────────────────
@@ -1018,4 +1107,156 @@ async def delete_department(dept_id: int):
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Department not found")
     return {"message": "Department deleted"}
+
+
+@router.put("/users")
+async def replace_users(body: list[dict]):
+    db = get_db()
+    col = db["system_users"]
+    
+    # 1. Fetch previous list of users to identify deletions
+    prev_users = []
+    async for pu in col.find():
+        prev_users.append(pu)
+        
+    # 2. Re-create system_users collection content
+    await col.delete_many({})
+    for u in body:
+        u.pop("_id", None)
+    if body:
+        await col.insert_many(body)
+        
+    # 3. Synchronize deletions
+    new_emails = {u.get("email") for u in body if u.get("email")}
+    for pu in prev_users:
+        p_email = pu.get("email")
+        p_role = pu.get("role")
+        if p_email and p_email not in new_emails:
+            if p_role == "student":
+                await db["students"].delete_many({"email": p_email})
+            elif p_role == "faculty":
+                await db["faculty"].delete_many({"email": p_email})
+                await db["staff_Details"].delete_many({"email": p_email})
+            elif p_role == "admin":
+                await db["admin_users"].delete_many({"email": p_email})
+            elif p_role == "finance":
+                await db["finance_users"].delete_many({"email": p_email})
+                
+    # 4. Synchronize additions / updates
+    for u in body:
+        name = u.get("name")
+        email = u.get("email")
+        role = u.get("role")
+        active = u.get("active", True)
+        
+        if not email:
+            continue
+            
+        if role == "student":
+            student = await db["students"].find_one({"email": email})
+            if student:
+                await db["students"].update_many(
+                    {"email": email},
+                    {"$set": {"name": name, "status": "Active" if active else "Suspended"}}
+                )
+            else:
+                uid = f"STU-{datetime.now(timezone.utc).year}-{random.randint(1000, 9999)}"
+                new_stu = {
+                    "id": uid,
+                    "rollNumber": uid,
+                    "roll_number": uid,
+                    "name": name,
+                    "email": email,
+                    "status": "Active" if active else "Suspended",
+                    "password": "student123",
+                    "department": "Computer Science",
+                    "subjects": [],
+                    "fees": [],
+                    "documents": [],
+                    "cgpa": 0.0,
+                    "attendancePct": 100,
+                }
+                await db["students"].insert_one(new_stu)
+                
+        elif role == "faculty":
+            faculty = await db["faculty"].find_one({"email": email})
+            if faculty:
+                await db["faculty"].update_many(
+                    {"email": email},
+                    {"$set": {"name": name, "employment_status": "Active" if active else "Suspended"}}
+                )
+                await db["staff_Details"].update_many(
+                    {"email": email},
+                    {"$set": {"staffName": name}}
+                )
+            else:
+                uid = f"FAC-{random.randint(100, 999)}"
+                new_fac = {
+                    "id": uid,
+                    "employeeId": uid,
+                    "employee_id": uid,
+                    "name": name,
+                    "email": email,
+                    "status": "Active" if active else "Suspended",
+                    "employment_status": "Active" if active else "Suspended",
+                    "password": "faculty123",
+                    "department_id": "CS",
+                    "departmentId": "Computer Science",
+                    "designation": "Assistant Professor",
+                }
+                await db["faculty"].insert_one(new_fac)
+                
+        elif role == "admin":
+            admin = await db["admin_users"].find_one({"email": email})
+            if admin:
+                await db["admin_users"].update_many(
+                    {"email": email},
+                    {"$set": {"name": name}}
+                )
+            else:
+                uid = f"ADM-{random.randint(1000, 9999)}"
+                new_adm = {
+                    "userId": uid,
+                    "id": uid,
+                    "name": name,
+                    "email": email,
+                    "password": "admin123",
+                    "role": "admin",
+                    "createdAt": datetime.now(timezone.utc).isoformat(),
+                }
+                await db["admin_users"].insert_one(new_adm)
+                
+        elif role == "finance":
+            finance = await db["finance_users"].find_one({"email": email})
+            if finance:
+                await db["finance_users"].update_many(
+                    {"email": email},
+                    {"$set": {"name": name}}
+                )
+            else:
+                uid = f"FIN-{random.randint(100, 999)}"
+                new_fin = {
+                    "userId": uid,
+                    "id": uid,
+                    "name": name,
+                    "email": email,
+                    "password": "finance123",
+                    "role": "finance",
+                    "createdAt": datetime.now(timezone.utc).isoformat(),
+                }
+                await db["finance_users"].insert_one(new_fin)
+
+    return {"message": "User directory replaced successfully."}
+
+
+@router.put("/departments")
+async def replace_departments(body: list[dict]):
+    db = get_db()
+    col = db["system_departments"]
+    await col.delete_many({})
+    for d in body:
+        d.pop("_id", None)
+    if body:
+        await col.insert_many(body)
+    return {"message": "Departments replaced successfully."}
 

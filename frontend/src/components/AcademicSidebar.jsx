@@ -2,6 +2,7 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
 import { getUserSession, destroyUserSession, getUserData } from '../auth/sessionController';
 import { cmsRoles, roleMenuGroups } from '../data/roleConfig';
+import { buildUploadUrl } from '../api/apiBase';
 
 const iconMap = {
   Dashboard: 'dashboard',
@@ -47,7 +48,8 @@ export default function AcademicSidebar({
   isSidebarVisible = true, 
   onToggleSidebar,
   isCollapsed = false,
-  onToggleCollapse
+  onToggleCollapse,
+  isMobile = false
 }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -58,6 +60,23 @@ export default function AcademicSidebar({
   
   // Track collapsed groups
   const [collapsedGroups, setCollapsedGroups] = useState({});
+  const [systemSettings, setSystemSettings] = useState(null);
+
+  useEffect(() => {
+    function loadSettings() {
+      fetch('/api/settings/general')
+        .then(res => res.json())
+        .then(data => {
+          if (data && !data.detail) {
+            setSystemSettings(data);
+          }
+        })
+        .catch(err => console.error("Error loading system settings in sidebar:", err));
+    }
+    loadSettings();
+    window.addEventListener('cms-settings-update', loadSettings);
+    return () => window.removeEventListener('cms-settings-update', loadSettings);
+  }, []);
 
   const roleMeta = dynamicUser ? {
     label: dynamicUser.designation || dynamicUser.role || role.toUpperCase(),
@@ -142,8 +161,19 @@ export default function AcademicSidebar({
       {isCollapsed ? (
         <div className="flex flex-col items-center py-3 gap-2 border-b border-slate-600/40 mb-2 flex-shrink-0">
           {/* Logo icon — always visible */}
-          <div className="bg-white/10 w-10 h-10 rounded-lg flex items-center justify-center text-white shadow-sm">
-            <span className="material-symbols-outlined text-[22px]">school</span>
+          <div className="bg-white/10 w-10 h-10 rounded-lg flex items-center justify-center text-white shadow-sm overflow-hidden flex-shrink-0">
+            {systemSettings?.logoFileName ? (
+              <img
+                src={buildUploadUrl(systemSettings.logoFileName)}
+                alt="Logo"
+                className="w-full h-full object-contain p-1"
+                onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextSibling.style.display = 'flex'; }}
+              />
+            ) : null}
+            <span
+              className="material-symbols-outlined text-[22px]"
+              style={{ display: systemSettings?.logoFileName ? 'none' : 'flex' }}
+            >school</span>
           </div>
           {/* Chevron to expand */}
           {onToggleCollapse && (
@@ -161,16 +191,38 @@ export default function AcademicSidebar({
         <div className="px-4 flex items-center justify-between border-b border-slate-600/40 mb-2 h-16 flex-shrink-0">
           {/* Logo + Name */}
           <div className="flex items-center gap-3 overflow-hidden min-w-0">
-            <div className="bg-white/10 w-10 h-10 rounded-lg flex items-center justify-center text-white shadow-sm flex-shrink-0">
-              <span className="material-symbols-outlined text-[22px]">school</span>
+            <div className="bg-white/10 w-10 h-10 rounded-lg flex items-center justify-center text-white shadow-sm flex-shrink-0 overflow-hidden">
+              {systemSettings?.logoFileName ? (
+                <img
+                  src={buildUploadUrl(systemSettings.logoFileName)}
+                  alt="Logo"
+                  className="w-full h-full object-contain p-1"
+                  onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextSibling.style.display = 'flex'; }}
+                />
+              ) : null}
+              <span
+                className="material-symbols-outlined text-[22px]"
+                style={{ display: systemSettings?.logoFileName ? 'none' : 'flex' }}
+              >school</span>
             </div>
             <div className="min-w-0">
-              <h1 className="font-bold text-white text-sm leading-none truncate">MIT Connect</h1>
+              <h1 className="font-bold text-white text-sm leading-none truncate">{systemSettings?.portalName || "MIT Connect"}</h1>
               <p style={{ color: 'rgba(255,255,255,0.5)' }} className="text-[10px] mt-1 truncate">{roleMeta.label} Portal</p>
             </div>
           </div>
+          {/* Close button on mobile */}
+          {isMobile && onToggleSidebar && (
+            <button
+              onClick={onToggleSidebar}
+              style={{ color: 'rgba(255,255,255,0.75)', backgroundColor: 'rgba(255,255,255,0.07)' }}
+              className="p-1.5 rounded-lg hover:bg-white/15 transition-all flex items-center justify-center flex-shrink-0 ml-2 cursor-pointer"
+              title="Close Sidebar"
+            >
+              <span className="material-symbols-outlined text-[20px]">close</span>
+            </button>
+          )}
           {/* Chevron to collapse */}
-          {onToggleCollapse && (
+          {onToggleCollapse && !isMobile && (
             <button
               onClick={onToggleCollapse}
               style={{ color: 'rgba(255,255,255,0.75)', backgroundColor: 'rgba(255,255,255,0.07)' }}

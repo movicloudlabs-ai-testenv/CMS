@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createUserSession, getUserSession } from '../auth/sessionController';
 import { demoUsers } from '../data/roleConfig';
-import { API_BASE } from '../api/apiBase';
+import { API_BASE, buildUploadUrl } from '../api/apiBase';
 
 function GraduationIcon() {
   return (
@@ -44,6 +44,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const loginFormSectionRef = useRef(null);
 
+  const [systemSettings, setSystemSettings] = useState(null);
+
   useEffect(() =>{
     const activeSession = getUserSession();
     if (activeSession) {
@@ -51,7 +53,17 @@ export default function LoginPage() {
       return;
     }
 
-    document.title = 'MIT Connect — Multi Role Login';
+    fetch('/api/settings/general')
+      .then(res => res.json())
+      .then(data => {
+        if (data && !data.detail) {
+          setSystemSettings(data);
+          if (data.portalName) {
+            document.title = `${data.portalName} — Multi Role Login`;
+          }
+        }
+      })
+      .catch(err => console.error("Error loading system settings in login:", err));
   }, [navigate]);
 
   useEffect(() => {
@@ -114,9 +126,9 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="login-page"><div className="login-shell"><section className="login-showcase"><div className="showcase-badge">Movi Institute of Technology</div><div className="showcase-brand-card"><div className="brand-icon"><GraduationIcon /></div><div><h1>MIT Connect</h1><p>Unified Campus Management System</p></div></div><div className="showcase-copy"><h2>Welcome to the smart MIT workspace</h2><p>One secure place for students, faculty, finance, and administration teams to manage academics,
-              records, billing, and campus operations at Movi Institute of Technology.
-            </p></div><div className="showcase-grid"><article className="showcase-card"><h3>Overview</h3><p>Dashboard, students, faculty, and department visibility.</p></article><article className="showcase-card"><h3>Administration</h3><p>Admissions, fee control, and invoice handling.</p></article><article className="showcase-card"><h3>Intelligence</h3><p>Analytics, alerts, and role-based settings in one place.</p></article><article className="showcase-card"><h3>Academics</h3><p>Exams, timetable, attendance, placement, and facilities.</p></article></div></section><section ref={loginFormSectionRef} className="login-container"><div className="login-brand login-brand-split"><div className="brand-mark-row"><div className="brand-icon"><GraduationIcon /></div><div><h1>Sign In</h1><p>Access your role-based dashboard</p></div></div></div><div className="role-switcher">{Object.keys(demoUsers).map((roleKey) =>(
+    <div className="login-page"><div className="login-shell"><section className="login-showcase"><div className="showcase-badge">{systemSettings?.portalName || "Movi Institute of Technology"}</div><div className="showcase-brand-card"><div className="brand-icon overflow-hidden" style={systemSettings?.logoFileName ? { backgroundColor: 'white' } : {}}>{systemSettings?.logoFileName ? (<img src={buildUploadUrl(systemSettings.logoFileName)} alt="Logo" className="w-full h-full object-contain p-2" onError={(e) => { e.currentTarget.style.display='none'; e.currentTarget.nextSibling.style.display='inline'; }} />) : null}{!systemSettings?.logoFileName ? <GraduationIcon /> : <span style={{display:'none'}}><GraduationIcon /></span>}</div><div><h1>{systemSettings?.portalName || "MIT Connect"}</h1><p>Unified Campus Management System</p></div></div><div className="showcase-copy"><h2>Welcome to the smart {systemSettings?.portalName || "MIT"} workspace</h2><p>One secure place for students, faculty, finance, and administration teams to manage academics,
+              records, billing, and campus operations at {systemSettings?.portalName || "Movi Institute of Technology"}.
+            </p></div><div className="showcase-grid"><article className="showcase-card"><h3>Overview</h3><p>Dashboard, students, faculty, and department visibility.</p></article><article className="showcase-card"><h3>Administration</h3><p>Admissions, fee control, and invoice handling.</p></article><article className="showcase-card"><h3>Intelligence</h3><p>Analytics, alerts, and role-based settings in one place.</p></article><article className="showcase-card"><h3>Academics</h3><p>Exams, timetable, attendance, placement, and facilities.</p></article></div></section><section ref={loginFormSectionRef} className="login-container"><div className="login-brand login-brand-split"><div className="brand-mark-row"><div className="brand-icon overflow-hidden" style={systemSettings?.logoFileName ? { backgroundColor: 'white' } : {}}>{systemSettings?.logoFileName ? (<img src={buildUploadUrl(systemSettings.logoFileName)} alt="Logo" className="w-full h-full object-contain p-2" onError={(e) => { e.currentTarget.style.display='none'; e.currentTarget.nextSibling.style.display='inline'; }} />) : null}{!systemSettings?.logoFileName ? <GraduationIcon /> : <span style={{display:'none'}}><GraduationIcon /></span>}</div><div><h1>Sign In</h1><p>Access your role-based dashboard</p></div></div></div><div className="role-switcher">{Object.keys(demoUsers).map((roleKey) =>(
               <button
                 key={roleKey}
                 type="button"
