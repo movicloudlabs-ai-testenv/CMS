@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { settingsApi } from '../../api/settingsApi';
 import { SettingsActions, SettingsCard, SettingsError, SettingsLoader, SettingsToast, inputCls, labelCls, isDirty } from './SettingsPanelCommon';
-import { buildUploadUrl } from '../../api/apiBase';
+import { buildUploadUrl, buildApiUrl } from '../../api/apiBase';
 
 export default function GeneralSettings() {
   const [form, setForm] = useState(null);
@@ -29,7 +29,7 @@ export default function GeneralSettings() {
     formData.append('file', file);
     
     try {
-      const response = await fetch('/api/settings/upload', {
+      const response = await fetch(buildApiUrl('/settings/upload'), {
         method: 'POST',
         body: formData,
       });
@@ -128,7 +128,17 @@ export default function GeneralSettings() {
             {form.logoFileName && (
               <div className="mt-3 flex items-center gap-3">
                 <img src={buildUploadUrl(form.logoFileName)} alt="Logo Preview" className="h-10 w-auto object-contain rounded border border-slate-200 p-1 bg-slate-50" />
-                <p className="text-xs text-slate-500">Current: <span className="font-medium">{form.logoFileName}</span></p>
+                <div className="flex flex-col gap-1">
+                  <p className="text-xs text-slate-500">Current: <span className="font-medium">{form.logoFileName}</span></p>
+                  <button
+                    type="button"
+                    onClick={() => setField('logoFileName', '')}
+                    className="text-xs text-red-600 hover:text-red-800 hover:underline font-medium flex items-center gap-1 w-fit transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-sm">delete</span>
+                    Remove Logo
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -143,7 +153,17 @@ export default function GeneralSettings() {
             {form.faviconFileName && (
               <div className="mt-3 flex items-center gap-3">
                 <img src={buildUploadUrl(form.faviconFileName)} alt="Favicon Preview" className="h-8 w-8 object-contain rounded border border-slate-200 p-1 bg-slate-50" />
-                <p className="text-xs text-slate-500">Current: <span className="font-medium">{form.faviconFileName}</span></p>
+                <div className="flex flex-col gap-1">
+                  <p className="text-xs text-slate-500">Current: <span className="font-medium">{form.faviconFileName}</span></p>
+                  <button
+                    type="button"
+                    onClick={() => setField('faviconFileName', '')}
+                    className="text-xs text-red-600 hover:text-red-800 hover:underline font-medium flex items-center gap-1 w-fit transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-sm">delete</span>
+                    Remove Favicon
+                  </button>
+                </div>
               </div>
             )}
           </div>
