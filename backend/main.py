@@ -86,9 +86,20 @@ if DIST_ASSETS_DIR.exists():
     app.mount("/assets", StaticFiles(directory=str(DIST_ASSETS_DIR)), name="assets")
 
 # Mount static uploads directory
+class SafeStaticFiles(StaticFiles):
+    async def get_response(self, path: str, scope):
+        try:
+            return await super().get_response(path, scope)
+        except HTTPException as ex:
+            if ex.status_code == 404:
+                default_logo = Path(self.directory) / "logo.jpeg"
+                if default_logo.exists():
+                    return FileResponse(str(default_logo))
+            raise ex
+
 uploads_dir = BASE_DIR / "backend" / "static" / "uploads"
 uploads_dir.mkdir(parents=True, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
+app.mount("/uploads", SafeStaticFiles(directory=str(uploads_dir)), name="uploads")
 
 # Helper function to create dev mode guidance HTML
 def get_dev_mode_html():
