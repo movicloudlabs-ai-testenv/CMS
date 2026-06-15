@@ -97,14 +97,14 @@ export default function ExamsPage({ noLayout = false }) {
 
   // Handle opening unified hall ticket
   const handleOpenAllHallTickets = () => {
-    const registeredExams = getRegisteredExams()
-    if (registeredExams.length === 0) {
-      alert('No exams registered yet.')
+    const registeredEndSemExams = getRegisteredExams().filter(e => e.type === 'End-Sem')
+    if (registeredEndSemExams.length === 0) {
+      alert('No end-semester exams registered yet.')
       return
     }
 
     // Open hall ticket with one consolidated subject list for this student
-    setSelectedExam(registeredExams[0])
+    setSelectedExam(registeredEndSemExams[0])
     setHallTicketMode('all')
     setShowHallTicket(true)
   }
@@ -118,11 +118,12 @@ export default function ExamsPage({ noLayout = false }) {
     })
 
     if (mode === 'single' && exam) {
+      if (exam.type !== 'End-Sem') return []
       return [mapExam(exam)]
     }
 
-    const registeredExams = getRegisteredExams()
-    return registeredExams.map(mapExam)
+    const registeredEndSemExams = getRegisteredExams().filter(e => e.type === 'End-Sem')
+    return registeredEndSemExams.map(mapExam)
   }
 
   // Fetch exams from backend
@@ -156,7 +157,7 @@ export default function ExamsPage({ noLayout = false }) {
         const mark = marksByExam[examId]
         return {
           ...exam,
-          registered: registeredIds.has(examId),
+          registered: registeredIds.has(examId) || exam.type !== 'End-Sem',
           marks: mark?.marks,
           grade: mark?.grade,
         }

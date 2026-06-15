@@ -105,6 +105,10 @@ export const roleMenuGroups = {
       items: ['Fees', 'Payroll'],
     },
     {
+      title: 'Academics',
+      items: ['Attendance'],
+    },
+    {
       title: 'Intelligence',
       items: ['Analytics', 'Settings'],
     },

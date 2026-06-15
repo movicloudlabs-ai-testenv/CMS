@@ -361,6 +361,17 @@ async def schedule_bulk(payload: dict):
                     related_data={"examId": exam_id},
                     receiver_user_id=student_id,
                 )
+                if exam_type != "End-Sem":
+                    dup = await db["exam_registrations"].find_one({"examId": exam_id, "studentId": student_id})
+                    if not dup:
+                        await db["exam_registrations"].insert_one({
+                            "id": _new_id("reg"),
+                            "examId": exam_id,
+                            "studentId": student_id,
+                            "studentName": student.get("name") or student_id,
+                            "status": "Registered",
+                            "registeredAt": _now_iso(),
+                        })
         else:
             from backend.dev_store import create_notification
             DEV_STORE["exams"].append(exam_doc)
@@ -390,6 +401,18 @@ async def schedule_bulk(payload: dict):
                     "createdAt": _now_iso(),
                     "relatedData": {"examId": exam_id}
                 })
+                if exam_type != "End-Sem":
+                    regs = _dev_list("exam_registrations")
+                    dup = next((item for item in regs if str(item.get("examId")) == str(exam_id) and str(item.get("studentId")) == str(student_id)), None)
+                    if not dup:
+                        regs.append({
+                            "id": _new_id("reg"),
+                            "examId": exam_id,
+                            "studentId": student_id,
+                            "studentName": s.get("name") or student_id,
+                            "status": "Registered",
+                            "registeredAt": _now_iso(),
+                        })
         created_exams.append(exam_doc)
 
     return {"success": True, "data": created_exams}
@@ -446,13 +469,60 @@ async def get_enrolled_students(exam_id: str):
 async def create_exam(payload: ExamCreate):
     try:
         db = get_db()
+        use_db = True
     except HTTPException as error:
         if error.status_code == 503:
-            return {"success": True, "data": create_dev_exam(payload.model_dump())}
-        raise
-    result = await db["exams"].insert_one(payload.model_dump())
-    created = await db["exams"].find_one({"_id": result.inserted_id})
-    return {"success": True, "data": serialize_doc(created)}
+            use_db = False
+        else:
+            raise
+
+    exam_data = payload.model_dump()
+    if use_db:
+        result = await db["exams"].insert_one(exam_data)
+        created = await db["exams"].find_one({"_id": result.inserted_id})
+        exam_doc = serialize_doc(created)
+    else:
+        exam_doc = create_dev_exam(exam_data)
+
+    exam_type = exam_doc.get("type")
+    exam_id = exam_doc.get("id") or str(exam_doc.get("_id"))
+    code = exam_doc.get("code")
+    
+    if exam_type != "End-Sem" and code:
+        norm_code = lambda c: str(c or '').replace('-', '').replace(' ', '').upper()
+        if use_db:
+            code_variants = list(set([code, code.replace("-", ""), code.replace(" ", "")]))
+            async for student in db["students"].find({"subjects.code": {"$in": code_variants}}):
+                student_id = student.get("id") or student.get("rollNumber") or str(student.get("_id"))
+                dup = await db["exam_registrations"].find_one({"examId": exam_id, "studentId": student_id})
+                if not dup:
+                    await db["exam_registrations"].insert_one({
+                        "id": _new_id("reg"),
+                        "examId": exam_id,
+                        "studentId": student_id,
+                        "studentName": student.get("name") or student_id,
+                        "status": "Registered",
+                        "registeredAt": _now_iso(),
+                    })
+        else:
+            from backend.routes.students import _seed_dev_students
+            _seed_dev_students()
+            students = [s for s in list_items("students") if any(norm_code(sub.get("code")) == norm_code(code) for sub in s.get("subjects", []))]
+            for s in students:
+                student_id = s.get("id") or s.get("rollNumber") or str(s.get("_id"))
+                regs = _dev_list("exam_registrations")
+                dup = next((item for item in regs if str(item.get("examId")) == str(exam_id) and str(item.get("studentId")) == str(student_id)), None)
+                if not dup:
+                    regs.append({
+                        "id": _new_id("reg"),
+                        "examId": exam_id,
+                        "studentId": student_id,
+                        "studentName": s.get("name") or student_id,
+                        "status": "Registered",
+                        "registeredAt": _now_iso(),
+                    })
+
+    return {"success": True, "data": exam_doc}
 
 
 

@@ -91,9 +91,12 @@ class AttendanceMarkRecord(BaseModel):
     classLabel: str = ""
     date: str
     hour: str
+    subjectCode: str = ""
+    subjectName: str = ""
     markedBy: str = ""
     markedAt: Optional[str] = None
     entries: List[AttendanceMarkEntry] = Field(default_factory=list)
+    locked: bool = False
 
 
 class OdRequestPayload(BaseModel):
