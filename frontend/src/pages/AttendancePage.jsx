@@ -476,6 +476,7 @@ export default function AttendancePage({ noLayout = false }) {
   const [studentClassProfile, setStudentClassProfile] = useState(null)
   const [studentTimetableRecord, setStudentTimetableRecord] = useState(null)
   const [studentOdRequests, setStudentOdRequests] = useState([])
+  const [facultyOdRequests, setFacultyOdRequests] = useState([])
   const [odApplyFromDate, setOdApplyFromDate] = useState('')
   const [odApplyToDate, setOdApplyToDate] = useState('')
   const [odApplyReason, setOdApplyReason] = useState('')
