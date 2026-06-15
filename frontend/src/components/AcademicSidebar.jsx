@@ -2,7 +2,7 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
 import { getUserSession, destroyUserSession, getUserData } from '../auth/sessionController';
 import { cmsRoles, roleMenuGroups } from '../data/roleConfig';
-import { buildUploadUrl } from '../api/apiBase';
+import { buildUploadUrl, API_BASE } from '../api/apiBase';
 
 const iconMap = {
   Dashboard: 'dashboard',
@@ -64,7 +64,7 @@ export default function AcademicSidebar({
 
   useEffect(() => {
     function loadSettings() {
-      fetch('/api/settings/general')
+      fetch(`${API_BASE}/settings/general`)
         .then(res => res.json())
         .then(data => {
           if (data && !data.detail) {

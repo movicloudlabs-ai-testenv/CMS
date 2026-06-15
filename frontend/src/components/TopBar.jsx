@@ -29,7 +29,7 @@ export default function TopBar({
 
   useEffect(() => {
     function loadSettings() {
-      fetch('/api/settings/general')
+      fetch(buildApiUrl('/settings/general'))
         .then(res => res.json())
         .then(data => {
           if (data && !data.detail) {

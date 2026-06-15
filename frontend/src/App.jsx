@@ -4,7 +4,7 @@ import { getUserSession, hasActiveSession } from './auth/sessionController';
 import { AdmissionProvider } from './context/AdmissionContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary';
-import { buildUploadUrl } from './api/apiBase';
+import { buildUploadUrl, API_BASE } from './api/apiBase';
 
 // Static imports for core entry pages to keep initial render fast
 import DashboardPageWrapper from './pages/DashboardPageWrapper';
@@ -74,7 +74,7 @@ export default function App() {
     }
 
     function loadSettings() {
-      fetch('/api/settings/general')
+      fetch(`${API_BASE}/settings/general`)
         .then(res => res.json())
         .then(applySystemSettings)
         .catch(() => {});

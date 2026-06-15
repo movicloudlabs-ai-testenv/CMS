@@ -53,7 +53,7 @@ export default function LoginPage() {
       return;
     }
 
-    fetch('/api/settings/general')
+    fetch(`${API_BASE}/settings/general`)
       .then(res => res.json())
       .then(data => {
         if (data && !data.detail) {
