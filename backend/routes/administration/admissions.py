@@ -461,8 +461,28 @@ async def _create_faculty_from_admission(admission: dict[str, Any]) -> bool:
         })
         
         if existing:
-            print(f"[INFO] Faculty already exists for admission {admission.get('id')}")
-            return False  # Skip duplicate
+            print(f"[INFO] Faculty already exists for admission {admission.get('id')}. Updating status to Active.")
+            faculty_id = existing.get("employee_id") or existing.get("faculty_id") or existing.get("employeeId") or existing.get("id") or admission.get("id")
+            await faculty_collection.update_one(
+                {"_id": existing["_id"]},
+                {
+                    "$set": {
+                        "status": "Active",
+                        "employment_status": "Active",
+                        "employee_id": faculty_id,
+                        "faculty_id": faculty_id,
+                        "qualifications": existing.get("qualifications") or [],
+                        "specializations": existing.get("specializations") or [],
+                        "office_location": existing.get("office_location") or "",
+                        "office_hours": existing.get("office_hours") or [],
+                        "research_interests": existing.get("research_interests") or [],
+                        "join_date": existing.get("join_date") or _today_ymd(),
+                        "publications": existing.get("publications") or [],
+                        "compliance_status": "Compliant"
+                    }
+                }
+            )
+            return True
         
         # Extract data from admission
         admission_id = admission.get("id") or admission.get("admission_id")

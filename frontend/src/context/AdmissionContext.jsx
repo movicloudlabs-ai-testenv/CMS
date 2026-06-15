@@ -145,11 +145,16 @@ export function AdmissionProvider({ children }) {
           ? `${API_BASE}/admissions/faculty/approve/${id}`
           : `${API_BASE}/admissions/faculty/reject/${id}`;
 
-      await fetch(endpoint, { method: 'PUT' });
+      const response = await fetch(endpoint, { method: 'PUT' });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to update faculty status: ${response.statusText}`);
+      }
 
       fetchFacultyAdmissions();
     } catch (err) {
       console.error(' Error updating faculty:', err);
+      throw err;
     }
   };
 

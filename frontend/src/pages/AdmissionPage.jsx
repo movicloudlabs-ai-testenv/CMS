@@ -178,6 +178,14 @@ export default function AdmissionPage() {
           isOpen={showDetailsModal}
           onClose={() =>setShowDetailsModal(false)}
           application={selectedApp}
+          onApprove={() => {
+            handleApprove(selectedApp.id);
+            setShowDetailsModal(false);
+          }}
+          onReject={() => {
+            handleReject(selectedApp.id);
+            setShowDetailsModal(false);
+          }}
         />)}
     </Layout>);
 }
