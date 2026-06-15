@@ -1,11 +1,9 @@
-import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import KpiCard from '../components/KpiCard';
-import KpiGrid from '../components/KpiGrid';
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line,
   PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, Legend, RadarChart, Radar, PolarGrid, PolarAngleAxis,
+  Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
 import { cmsRoles, getValidRole } from '../data/roleConfig';
 import Layout from '../components/Layout';
@@ -17,24 +15,44 @@ const Ico = {
   Menu:     ()=><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>,
   Logout:   ()=><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>,
   Back:     ()=><svg viewBox="0 0 24 24" width="18" height="18" fill="#6b7280"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>,
-  Up:       ()=><svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6h-6z"/></svg>,
-  Down:     ()=><svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M16 18l2.29-2.29-4.88-4.88-4 4L2 7.41 3.41 6l6 6 4-4 6.3 6.29L22 12v6h-6z"/></svg>,
-  Calendar: ()=><svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M19 3h-1V1h-2v2H8V1H6v2H5C3.89 3 3 3.9 3 5v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/></svg>,
-  Download: ()=><svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zm-8 2V5h2v6h1.17L12 13.17 9.83 11H11zm-6 7h14v2H5z"/></svg>,
-  ChevL:    ()=><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>,
-  ChevR:    ()=><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>,
-  Close:    ()=><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>,
-  People:   ()=><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>,
-  Finance:  ()=><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>,
-  Chart:    ()=><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M5 9.2h3V19H5V9.2zM10.6 5h2.8v14h-2.8V5zM16.2 13h2.8v6h-2.8v-6z"/></svg>,
-  Alert:    ()=><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>,
+  Up:       ()=><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" style={{verticalAlign:'middle'}}><path d="M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z"/></svg>,
+  Down:     ()=><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" style={{verticalAlign:'middle'}}><path d="M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z"/></svg>,
+  Calendar: ()=><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style={{verticalAlign:'middle'}}><path d="M19 3h-1V1h-2v2H8V1H6v2H5C3.89 3 3 3.9 3 5v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/></svg>,
+  Download: ()=><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style={{verticalAlign:'middle'}}><path d="M19 9h-4V3H9v6H5l7 7 7-7zm-8 2V5h2v6h1.17L12 13.17 9.83 11H11zm-6 7h14v2H5z"/></svg>,
+  ChevL:    ()=><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>,
+  ChevR:    ()=><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>,
+  Close:    ()=><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>,
 };
 
-// ─── Theme ────────────────────────────────────────────────────────────────────
-const C = { blue:'#276221', cyan:'#06b6d4', green:'#22c55e', orange:'#f97316', purple:'#8b5cf6', red:'#ef4444', teal:'#14b8a6', amber:'#f59e0b', indigo:'#6366f1' };
-const DEPT_COLORS = { CS:C.blue, Phys:C.orange, Math:C.green, ECE:C.purple, Mech:C.cyan };
+// ─── Theme Colors ─────────────────────────────────────────────────────────────
+const C = {
+  blue:    '#276221', // Primary Green/Blue Accent
+  cyan:    '#06b6d4',
+  green:   '#10b981',
+  orange:  '#f97316',
+  purple:  '#8b5cf6',
+  red:     '#ef4444',
+  teal:    '#14b8a6',
+  amber:   '#f59e0b',
+  indigo:  '#6366f1'
+};
+
+const DEPT_COLORS = { CS: C.blue, Phys: C.orange, Math: C.green, ECE: C.purple, Mech: C.cyan };
 const PIE_COLS  = [C.green, C.orange, C.red, C.blue, C.purple];
-const TT = { contentStyle:{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:10, fontSize:12, boxShadow:'0 4px 12px rgba(0,0,0,.08)' } };
+
+const TT_STYLE = {
+  contentStyle: {
+    background: 'rgba(255, 255, 255, 0.95)',
+    backdropFilter: 'blur(8px)',
+    border: '1px solid rgba(226, 232, 240, 0.8)',
+    borderRadius: '12px',
+    fontSize: '12px',
+    fontWeight: '600',
+    boxShadow: '0 8px 30px rgba(0, 0, 0, 0.06)',
+    fontFamily: "'Outfit', 'Inter', sans-serif"
+  }
+};
+
 const H = 210, H2 = 240;
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -44,10 +62,9 @@ const DEPTS       = ['CS','Phys','Math','ECE','Mech'];
 const DEPT_FULL   = { CS:'Computer Science', Phys:'Physics', Math:'Mathematics', ECE:'Electronics', Mech:'Mechanical' };
 const SEMESTER_OPTS = ['Semester 4 (Current)','Semester 3','Semester 2','Semester 1'];
 const DEPT_OPTS     = ['All Departments','Computer Science','Physics','Mathematics','Electronics','Mechanical'];
-const COURSE_OPTS   = ['All Courses','DBMS','Data Structures','Physics','Mathematics','CS Elective'];
 const DEPT_CODE     = { 'All Departments':null,'Computer Science':'CS','Physics':'Phys','Mathematics':'Math','Electronics':'ECE','Mechanical':'Mech' };
 
-// Grade range keys (avoid < in JSX template literals)
+// Grade range keys
 const GRADE_F   = 'F (<50)';
 const GRADE_O   = 'O (\u226590)';
 const GRADE_Ap  = 'A+ (80-89)';
@@ -64,11 +81,6 @@ function myLabel({month,year}){return`${MONTHS_ALL[month]} ${year}`;}
 function fmt(n){return(n/100000).toFixed(1)+'L';}
 function fmtCr(n){return n>=10000000?`₹${(n/10000000).toFixed(1)}Cr`:`₹${(n/100000).toFixed(1)}L`;}
 
-// ── Safe accessor — reads from analyticsData maps with month key ─────────────
-function safeMonth(map, months) {
-  if (!map) return [];
-  return months.map(m => map[m]).filter(Boolean);
-}
 function avgCardField(cardMap,months,field){
   if(!cardMap)return '—';
   const vals=months.map(m=>{const v=cardMap[m]?.[field];if(!v)return null;const n=parseFloat(String(v).replace(/[^\d.]/g,''));return isNaN(n)?null:n;}).filter(x=>x!==null);
@@ -81,14 +93,17 @@ function avgCardField(cardMap,months,field){
   if(sample.includes(','))return Math.round(avg).toLocaleString();
   return`${Math.round(avg)}`;
 }
+
 function avgFinancePie(piMap,months){
   if(!piMap)return[{name:'Paid',value:70},{name:'Pending',value:20},{name:'Overdue',value:10}];
   return['Paid','Pending','Overdue'].map(n=>({name:n,value:Math.round(months.reduce((s,m)=>{const r=(piMap[m]??[]).find(x=>x.name===n);return s+(r?.value??0)},0)/months.length)}));
 }
+
 function avgFinanceDept(fdMap,months){
   if(!fdMap)return[];
   return DEPTS.map(d=>({dept:d,paid:Math.round(months.reduce((s,m)=>{const r=(fdMap[m]??[]).find(x=>x.dept===d);return s+(r?.paid??0)},0)/months.length),pending:Math.round(months.reduce((s,m)=>{const r=(fdMap[m]??[]).find(x=>x.dept===d);return s+(r?.pending??0)},0)/months.length),overdue:Math.round(months.reduce((s,m)=>{const r=(fdMap[m]??[]).find(x=>x.dept===d);return s+(r?.overdue??0)},0)/months.length)}));
 }
+
 function avgMarksDist(mdMap,months){
   if(!mdMap)return[];
   const keys=[GRADE_O,GRADE_Ap,GRADE_A,GRADE_Bp,GRADE_B,GRADE_F];
@@ -102,9 +117,11 @@ function PieLabelInside({cx,cy,midAngle,innerRadius,outerRadius,value,percent,na
   if(pct<threshold)return null;
   const r=innerRadius+(outerRadius-innerRadius)*0.55;
   const x=cx+r*Math.cos(-midAngle*RADIAN);
-  const y=cy+r*Math.sin(-midAngle*RADIAN);
+  const y=cy+r*midAngle*RADIAN;
+  const targetX=cx+r*Math.cos(-midAngle*RADIAN);
+  const targetY=cy+r*Math.sin(-midAngle*RADIAN);
   const txt=labelType==='count'?`${value}`:labelType==='name'?`${String(name).split(' ')[0]}`:`${pct}%`;
-  return<text x={x} y={y} fill="#fff" textAnchor="middle" dominantBaseline="central" fontSize={11} fontWeight={700} style={{pointerEvents:'none'}}>{txt}</text>;
+  return<text x={targetX} y={targetY} fill="#fff" textAnchor="middle" dominantBaseline="central" fontSize={11} fontWeight={700} style={{pointerEvents:'none'}}>{txt}</text>;
 }
 
 // ── CSV Export ────────────────────────────────────────────────────────────────
@@ -201,64 +218,214 @@ function CalendarRangePicker({startMY,endMY,onChange,onClose}){
       </div></div>);
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-// UI ATOMS
-// ══════════════════════════════════════════════════════════════════════════════
+// ─── UI ATOMS ─────────────────────────────────────────────────────────────────
 function SCard({label,value,sub,tone,icon,trend}){
-  const bg={blue:'#eff6ff',green:'#f0fdf4',purple:'#f5f3ff',orange:'#fff7ed',red:'#fef2f2',teal:'#f0fdfa',cyan:'#ecfeff'};
-  const tc={blue:'#276221',green:'#16a34a',purple:'#7c3aed',orange:'#c2410c',red:'#b91c1c',teal:'#0f766e',cyan:'#0e7490'};
-  return(
-    <div style={{background:bg[tone]??'#f9fafb',borderRadius:14,padding:'18px 20px',border:`1px solid ${bg[tone]??'#f3f4f6'}`,flex:1,minWidth:0}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}><div style={{flex:1,minWidth:0}}><div style={{fontSize:24,fontWeight:800,color:tc[tone]??'#111827',lineHeight:1.1,marginBottom:4,letterSpacing:'-0.5px'}}>{value}</div><div style={{fontSize:12,fontWeight:600,color:'#6b7280',marginBottom:4}}>{label}</div><div style={{display:'flex',alignItems:'center',gap:3,fontSize:11,color:'#9ca3af'}}>{trend==='up'&&<span style={{color:'#22c55e',display:'flex'}}><Ico.Up/></span>}
-            {trend==='down'&&<span style={{color:'#ef4444',display:'flex'}}><Ico.Down/></span>}
+  const gradients = {
+    blue: 'linear-gradient(135deg, rgba(39, 98, 33, 0.08) 0%, rgba(39, 98, 33, 0.03) 100%)',
+    green: 'linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(16, 185, 129, 0.03) 100%)',
+    purple: 'linear-gradient(135deg, rgba(139, 92, 246, 0.08) 0%, rgba(139, 92, 246, 0.03) 100%)',
+    orange: 'linear-gradient(135deg, rgba(249, 115, 22, 0.08) 0%, rgba(249, 115, 22, 0.03) 100%)',
+    red: 'linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(239, 68, 68, 0.03) 100%)',
+    teal: 'linear-gradient(135deg, rgba(20, 184, 166, 0.08) 0%, rgba(20, 184, 166, 0.03) 100%)',
+    cyan: 'linear-gradient(135deg, rgba(6, 182, 212, 0.08) 0%, rgba(6, 182, 212, 0.03) 100%)'
+  };
+  const borderColors = {
+    blue: 'rgba(39, 98, 33, 0.15)',
+    green: 'rgba(16, 185, 129, 0.15)',
+    purple: 'rgba(139, 92, 246, 0.15)',
+    orange: 'rgba(249, 115, 22, 0.15)',
+    red: 'rgba(239, 68, 68, 0.15)',
+    teal: 'rgba(20, 184, 166, 0.15)',
+    cyan: 'rgba(6, 182, 212, 0.15)'
+  };
+  const textColors = {
+    blue: '#276221',
+    green: '#10b981',
+    purple: '#8b5cf6',
+    orange: '#f97316',
+    red: '#ef4444',
+    teal: '#14b8a6',
+    cyan: '#06b6d4'
+  };
+  
+  return (
+    <div className="premium-kpi-card" style={{
+      background: gradients[tone] || '#ffffff',
+      backdropFilter: 'blur(8px)',
+      WebkitBackdropFilter: 'blur(8px)',
+      borderRadius: '16px',
+      padding: '20px 24px',
+      border: `1px solid ${borderColors[tone] || 'rgba(0,0,0,0.05)'}`,
+      flex: 1,
+      minWidth: '220px',
+      boxShadow: '0 4px 20px -2px rgba(0,0,0,0.02)',
+      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+      cursor: 'default',
+      position: 'relative',
+      overflow: 'hidden'
+    }}>
+      <div style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '4px',
+        height: '100%',
+        background: textColors[tone] || '#ccc'
+      }} />
+      <div style={{display:'flex',justifyContent: 'space-between', alignItems: 'center'}}>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:12,fontWeight:600,color:'#64748b',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:6}}>{label}</div>
+          <div style={{fontSize:28,fontWeight:800,color:'#1e293b',lineHeight:1.1,marginBottom:6,letterSpacing:'-0.5px',fontFamily:"'Outfit', sans-serif"}}>{value}</div>
+          <div style={{display:'flex',alignItems:'center',gap:4,fontSize:11,color:'#64748b',fontWeight:500}}>
+            {trend==='up' && <span style={{color:'#10b981',display:'inline-flex',alignItems:'center'}}><Ico.Up/><span style={{marginLeft:2}}></span></span>}
+            {trend==='down' && <span style={{color:'#ef4444',display:'inline-flex',alignItems:'center'}}><Ico.Down/><span style={{marginLeft:2}}></span></span>}
             {sub}
-          </div></div><span style={{fontSize:26,opacity:.45,marginLeft:8}}>{icon}</span></div></div>);
+          </div>
+        </div>
+        {icon && <div style={{
+          fontSize:32,
+          color: textColors[tone],
+          opacity: 0.85,
+          background: `${textColors[tone]}10`,
+          width: '56px',
+          height: '56px',
+          borderRadius: '12px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginLeft: 12
+        }}>{icon}</div>}
+      </div>
+    </div>
+  );
 }
 
 function CC({title,subtitle,children,span2,style,action}){
   return(
-    <div className="content-card" style={{marginBottom:0,gridColumn:span2?'span 2':'span 1',...style}}><div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:14}}><div><div style={{fontSize:14,fontWeight:700,color:'#111827'}}>{title}</div>{subtitle&&<div style={{fontSize:11,color:'#9ca3af',marginTop:2}}>{subtitle}</div>}
-        </div>{action}
-      </div>{children}
-    </div>);
+    <div className="content-card-premium" style={{gridColumn:span2?'span 2':'span 1',...style}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:18,borderBottom:'1px solid rgba(241, 245, 249, 0.8)',paddingBottom:12}}>
+        <div>
+          <div style={{fontSize:16,fontWeight:700,color:'#0f172a',fontFamily:"'Outfit', sans-serif"}}>{title}</div>
+          {subtitle && <div style={{fontSize:12,color:'#64748b',marginTop:2,fontWeight:500}}>{subtitle}</div>}
+        </div>
+        {action && <div>{action}</div>}
+      </div>
+      <div>{children}</div>
+    </div>
+  );
 }
 
-const tH={fontSize:11,fontWeight:700,color:'#9ca3af',textTransform:'uppercase',letterSpacing:.4,padding:'6px 10px',textAlign:'left',whiteSpace:'nowrap',borderBottom:'1.5px solid #f3f4f6'};
-const tD={fontSize:12,padding:'9px 10px',verticalAlign:'middle',borderBottom:'1px solid #f9fafb'};
-const miniBtn={fontSize:11,fontWeight:700,padding:'3px 10px',borderRadius:7,border:'1.5px solid #e5e7eb',background:'#fff',color:'#6b7280',cursor:'pointer'};
+const tH = {
+  fontSize: '11px',
+  fontWeight: '700',
+  color: '#475569',
+  textTransform: 'uppercase',
+  letterSpacing: '0.6px',
+  padding: '12px 16px',
+  textAlign: 'left',
+  whiteSpace: 'nowrap',
+  borderBottom: '2px solid #e2e8f0',
+  background: '#f8fafc',
+  fontFamily: "'Outfit', sans-serif"
+};
+
+const tD = {
+  fontSize: '13px',
+  fontWeight: '500',
+  color: '#334155',
+  padding: '14px 16px',
+  verticalAlign: 'middle',
+  borderBottom: '1px solid #f1f5f9',
+  fontFamily: "'Inter', sans-serif"
+};
+
+const miniBtn = {
+  fontSize: '11px',
+  fontWeight: '700',
+  padding: '5px 12px',
+  borderRadius: '8px',
+  border: '1.5px solid #cbd5e1',
+  background: '#fff',
+  color: '#64748b',
+  cursor: 'pointer',
+  fontFamily: "'Outfit', sans-serif",
+  transition: 'all 0.2s'
+};
 
 function RoleTab({tabs,active,onChange}){
-  return(
-    <div style={{display:'flex',gap:4,background:'#f3f4f6',borderRadius:12,padding:4,marginBottom:24}}>{tabs.map(t=>(
-        <button key={t.id} onClick={()=>onChange(t.id)} style={{flex:1,height:36,borderRadius:9,border:'none',cursor:'pointer',fontSize:13,fontWeight:700,transition:'all 0.18s',
-          background:active===t.id?'#fff':'transparent',
-          color:active===t.id?'#276221':'#6b7280',
-          boxShadow:active===t.id?'0 1px 6px rgba(0,0,0,.1)':'none'
-        }}>{t.label}</button>))}
-    </div>);
+  return (
+    <div style={{
+      display: 'flex',
+      gap: '6px',
+      background: '#f1f5f9',
+      borderRadius: '14px',
+      padding: '6px',
+      marginBottom: '28px',
+      border: '1px solid #e2e8f0',
+      maxWidth: '600px'
+    }}>
+      {tabs.map(t => (
+        <button
+          key={t.id}
+          onClick={() => onChange(t.id)}
+          style={{
+            flex: 1,
+            height: '38px',
+            borderRadius: '10px',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: '13px',
+            fontWeight: '700',
+            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+            fontFamily: "'Outfit', sans-serif",
+            background: active === t.id ? '#ffffff' : 'transparent',
+            color: active === t.id ? '#276221' : '#64748b',
+            boxShadow: active === t.id ? '0 4px 12px -2px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)' : 'none'
+          }}
+        >
+          {t.label}
+        </button>
+      ))}
+    </div>
+  );
 }
 
 function AlertBanner({items}){
   if(!items?.length)return null;
   return(
-    <div style={{display:'flex',gap:10,alignItems:'flex-start',padding:'12px 18px',borderRadius:12,background:'#fff7ed',border:'1.5px solid #fed7aa',marginBottom:20}}><div><div style={{fontWeight:700,fontSize:13,color:'#92400e',marginBottom:2}}>Action Required</div><div style={{fontSize:12,color:'#b45309'}}>{items.join(' · ')}</div></div></div>);
+    <div style={{display:'flex',gap:10,alignItems:'flex-start',padding:'14px 20px',borderRadius:12,background:'#fff7ed',border:'1.5px solid #fed7aa',marginBottom:24}}>
+      <div style={{color:'#d97706',fontSize:18,marginTop:1}}><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg></div>
+      <div>
+        <div style={{fontWeight:700,fontSize:14,color:'#92400e',marginBottom:2,fontFamily:"'Outfit', sans-serif"}}>Action Required</div>
+        <div style={{fontSize:13,color:'#b45309',fontWeight:500}}>{items.join(' · ')}</div>
+      </div>
+    </div>
+  );
 }
 
 function MiniProgress({value,max=100,color=C.blue}){
   return(
-    <div style={{display:'flex',alignItems:'center',gap:8}}><div style={{flex:1,height:6,borderRadius:3,background:'#f3f4f6',overflow:'hidden'}}><div style={{height:'100%',width:`${Math.min(100,(value/max)*100)}%`,background:color,borderRadius:3}}/></div><span style={{fontSize:11,fontWeight:700,color:'#374151',minWidth:32,textAlign:'right'}}>{value}%</span></div>);
+    <div style={{display:'flex',alignItems:'center',gap:8}}>
+      <div style={{flex:1,height:6,borderRadius:3,background:'#f3f4f6',overflow:'hidden'}}>
+        <div style={{height:'100%',width:`${Math.min(100,(value/max)*100)}%`,background:color,borderRadius:3}}/>
+      </div>
+      <span style={{fontSize:11,fontWeight:700,color:'#374151',minWidth:32,textAlign:'right'}}>{value}%</span>
+    </div>
+  );
 }
 
 function LoadingSpinner(){
   return(
-    <div style={{display:'flex',justifyContent:'center',alignItems:'center',padding:'80px 0'}}>
-      <div style={{width:36,height:36,border:'3px solid #e5e7eb',borderTopColor:'#276221',borderRadius:'50%',animation:'spin 0.7s linear infinite'}}/>
+    <div style={{display:'flex',flexDirection:'column',justifyContent:'center',alignItems:'center',padding:'120px 0',gap:16}}>
+      <div style={{width:42,height:42,border:'3px solid #e2e8f0',borderTopColor:'#276221',borderRadius:'50%',animation:'spin 0.7s linear infinite'}}/>
+      <div style={{color:'#64748b',fontSize:13,fontWeight:600,fontFamily:"'Outfit', sans-serif"}}>Aggregating dynamic database statistics...</div>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// ADMIN VIEW — reads ALL data from analyticsData (backend)
+// ADMIN VIEW
 // ══════════════════════════════════════════════════════════════════════════════
 function AdminView({activeMonths,rangeLabel,department,semester,analyticsData}){
   const [tab,setTab]=useState('overview');
@@ -280,14 +447,16 @@ function AdminView({activeMonths,rangeLabel,department,semester,analyticsData}){
   const aAttData = useMemo(()=>{
     if(ad.departmentData) return ad.departmentData.map(d=>({dept:d.name,avg:Math.round(d.avgAttendance||85)}));
     const rows=[];DEPTS.forEach(d=>{const avg=Math.round(activeMonths.reduce((s,m)=>{const f=(adminAttByMonth[m]??[]).find(x=>x.dept===d);return s+(f?.avg??0)},0)/activeMonths.length);rows.push({dept:d,avg});});return rows;
-  },[activeMonths,ad]);
+  },[activeMonths,ad,adminAttByMonth]);
+  
   const aExamData = useMemo(()=>{
     const rows=[];DEPTS.forEach(d=>{const pass=Math.round(activeMonths.reduce((s,m)=>{const f=(adminExamByMonth[m]??[]).find(x=>x.dept===d);return s+(f?.pass??0)},0)/activeMonths.length);const fail=Math.round(activeMonths.reduce((s,m)=>{const f=(adminExamByMonth[m]??[]).find(x=>x.dept===d);return s+(f?.fail??0)},0)/activeMonths.length);rows.push({dept:d,pass,fail});});return rows;
   },[activeMonths,adminExamByMonth]);
+  
   const aCards = useMemo(()=>{
     if(ad.summaryData){const sd=ad.summaryData;return{students:String(sd.students||sd.totalStudents||0),faculty:String(sd.faculty||0),courses:String(sd.courses||0)};}
     return{students:avgCardField(adminCardsByMonth,activeMonths,'students'),faculty:avgCardField(adminCardsByMonth,activeMonths,'faculty'),courses:avgCardField(adminCardsByMonth,activeMonths,'courses')};
-  },[activeMonths,ad]);
+  },[activeMonths,ad,adminCardsByMonth]);
 
   const filteredAtt  = dc?aAttData.filter(d=>d.dept===dc):aAttData;
   const filteredExam = dc?aExamData.filter(d=>d.dept===dc):aExamData;
@@ -300,7 +469,7 @@ function AdminView({activeMonths,rangeLabel,department,semester,analyticsData}){
       return ad.departmentData.map((d,i)=>{const pass=85+(i*2)%15;return{dept:d.name,att:Math.round(d.avgAttendance||85),pass,cgpa:d.cgpa||7.5,score:Math.round((d.avgAttendance||85)*0.3+pass*0.5+(d.cgpa||7.5)*2.2),students:d.students||0,faculty:d.faculty||1};}).sort((a,b)=>b.score-a.score);
     }
     return DEPTS.map(d=>{const att=Math.round(activeMonths.reduce((s,m)=>{const f=(adminAttByMonth[m]??[]).find(x=>x.dept===d);return s+(f?.avg??0)},0)/activeMonths.length);const pass=Math.round(activeMonths.reduce((s,m)=>{const f=(adminExamByMonth[m]??[]).find(x=>x.dept===d);return s+(f?.pass??0)},0)/activeMonths.length);const cgpa=cgpaByDept[d]??0;const score=Math.round(att*0.3+pass*0.5+cgpa*2.2);return{dept:d,att,pass,cgpa,score,students:studentsByDept[d]??0,faculty:facultyByDept[d]??0};}).sort((a,b)=>b.score-a.score);
-  },[activeMonths,ad]);
+  },[activeMonths,ad,adminAttByMonth,adminExamByMonth,cgpaByDept,studentsByDept,facultyByDept]);
 
   const alerts=[];
   rankingData.forEach(d=>{if(d.att<80)alerts.push(`${d.dept} attendance ${d.att}%`);});
@@ -309,50 +478,57 @@ function AdminView({activeMonths,rangeLabel,department,semester,analyticsData}){
   const deptPieData=useMemo(()=>{
     if(ad.departmentData)return ad.departmentData.map(d=>({name:d.name,value:d.students}));
     return Object.entries(dc?{[dc]:studentsByDept[dc]}:studentsByDept).map(([k,v])=>({name:k,value:v}));
-  },[dc,ad]);
+  },[dc,ad,studentsByDept]);
+  
   const yearPieData=Object.entries(studentsByYear).map(([k,v])=>({name:k,value:v}));
+  
   const facultyPieData=useMemo(()=>{
     if(ad.departmentData)return ad.departmentData.map(d=>({name:d.name,value:d.faculty}));
     return Object.entries(dc?{[dc]:facultyByDept[dc]}:facultyByDept).map(([k,v])=>({name:DEPT_FULL[k]??k,value:v}));
-  },[dc,ad]);
+  },[dc,ad,facultyByDept]);
+  
   const cgpaDeptData=useMemo(()=>{
     if(ad.departmentData)return ad.departmentData.map(d=>({dept:d.name,cgpa:d.cgpa}));
     return(dc?[{dept:dc,cgpa:cgpaByDept[dc]}]:DEPTS.map(d=>({dept:d,cgpa:cgpaByDept[d]}))).filter(Boolean);
-  },[dc,ad]);
+  },[dc,ad,cgpaByDept]);
 
   const TABS=[{id:'overview',label:'Overview'},{id:'students',label:'Students'},{id:'faculty',label:'Faculty'},{id:'finance',label:'Finance'}];
+  
   const totalIncome = useMemo(()=>{
     if(ad.summaryData)return ad.summaryData.income||0;
     return activeMonths.reduce((s,m)=>s+(incomeExpenseByMonth[m]?.income??0),0);
-  },[activeMonths,ad]);
+  },[activeMonths,ad,incomeExpenseByMonth]);
+  
   const totalExpense = useMemo(()=>{
     if(ad.summaryData)return ad.summaryData.expense||0;
     return activeMonths.reduce((s,m)=>s+(incomeExpenseByMonth[m]?.expense??0),0);
-  },[activeMonths,ad]);
+  },[activeMonths,ad,incomeExpenseByMonth]);
+  
   const avgAtt = useMemo(()=>{
     if(ad.summaryData)return Math.round(ad.summaryData.averageAttendance||85);
     return Math.round(activeMonths.reduce((s,m)=>(adminAttByMonth[m]??[]).reduce((a,d)=>a+d.avg,0)/5+s,0)/activeMonths.length);
-  },[activeMonths,ad]);
+  },[activeMonths,ad,adminAttByMonth]);
+  
   const avgPass = useMemo(()=>{
     if(ad.summaryData)return Math.round(ad.summaryData.averagePerformance||85);
     return Math.round(activeMonths.reduce((s,m)=>(adminExamByMonth[m]??[]).reduce((a,d)=>a+d.pass,0)/5+s,0)/activeMonths.length);
-  },[activeMonths,ad]);
+  },[activeMonths,ad,adminExamByMonth]);
 
   return(
     <><AlertBanner items={alerts}/><RoleTab tabs={TABS} active={tab} onChange={setTab}/>{tab==='overview'&&(
         <><div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:18,marginBottom:28}}>{[
-              {id:'students',label:'Students & Academics',color:'#276221',bg:'#f0f5f1',border:'#d4e5d1',
+              {id:'students',label:'Students & Academics',color:'#276221',bg:'linear-gradient(135deg, rgba(39, 98, 33, 0.08) 0%, rgba(39, 98, 33, 0.02) 100%)',border:'rgba(39, 98, 33, 0.15)',
                 stats:[{k:'Total Students',v:aCards.students},{k:'Avg Attendance',v:`${avgAtt}%`},{k:'Avg Pass Rate',v:`${avgPass}%`},{k:'Active Courses',v:aCards.courses}]},
-              {id:'faculty',label:'Faculty & Staff',color:'#8b5cf6',bg:'#f5f3ff',border:'#ddd6fe',
+              {id:'faculty',label:'Faculty & Staff',color:'#8b5cf6',bg:'linear-gradient(135deg, rgba(139, 92, 246, 0.08) 0%, rgba(139, 92, 246, 0.02) 100%)',border:'rgba(139, 92, 246, 0.15)',
                 stats:[{k:'Total Faculty',v:aCards.faculty},{k:'Departments',v:'5'},{k:'Professors',v:facultyRankData.find(r=>r.rank==='Professor')?.count??0},{k:'Lecturers',v:facultyRankData.find(r=>r.rank==='Lecturer')?.count??0}]},
-              {id:'finance',label:'Finance Overview',color:'#16a34a',bg:'#f0fdf4',border:'#bbf7d0',
+              {id:'finance',label:'Finance Overview',color:'#10b981',bg:'linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(16, 185, 129, 0.02) 100%)',border:'rgba(16, 185, 129, 0.15)',
                 stats:[{k:'Total Income',v:fmtCr(totalIncome)},{k:'Total Expense',v:fmtCr(totalExpense)},{k:'Net Surplus',v:fmtCr(totalIncome-totalExpense)},{k:'Scholarships',v:ad.summaryData?.scholarships??0}]},
             ].map(card=>(
-              <div key={card.id} onClick={()=>setTab(card.id)}
+              <div key={card.id} onClick={()=>setTab(card.id)} className="premium-kpi-card"
                 style={{background:card.bg,borderRadius:16,padding:'20px 22px',border:`1.5px solid ${card.border}`,cursor:'pointer',transition:'all 0.18s'}}>
-                <div style={{fontSize:15,fontWeight:800,color:card.color,marginBottom:14}}>{card.label}</div>
+                <div style={{fontSize:15,fontWeight:800,color:card.color,marginBottom:14,fontFamily:"'Outfit', sans-serif"}}>{card.label}</div>
                 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>{card.stats.map(s=>(
-                  <div key={s.k}><div style={{fontSize:18,fontWeight:800,color:card.color,lineHeight:1.2}}>{s.v}</div><div style={{fontSize:11,color:'#6b7280',fontWeight:600}}>{s.k}</div></div>
+                  <div key={s.k}><div style={{fontSize:20,fontWeight:800,color:'#1e293b',lineHeight:1.2,fontFamily:"'Outfit', sans-serif"}}>{s.v}</div><div style={{fontSize:11,color:'#64748b',fontWeight:600}}>{s.k}</div></div>
                 ))}</div>
               </div>
             ))}</div>
@@ -368,13 +544,13 @@ function AdminView({activeMonths,rangeLabel,department,semester,analyticsData}){
 
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:20,marginBottom:20}}>
             <CC title="Attendance by Dept" subtitle={`${rangeLabel} avg`}>
-              <ResponsiveContainer width="100%" height={160}><BarChart data={filteredAtt} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6"/><XAxis dataKey="dept" tick={{fontSize:11,fill:'#9ca3af'}} axisLine={false} tickLine={false}/><YAxis domain={[60,100]} tick={{fontSize:10,fill:'#9ca3af'}} axisLine={false} tickLine={false} tickFormatter={v=>`${v}%`}/><Tooltip {...TT} formatter={v=>`${v}%`}/><Bar dataKey="avg" name="Attendance" radius={[6,6,0,0]}>{filteredAtt.map((_,i)=><Cell key={i} fill={Object.values(DEPT_COLORS)[i%5]}/>)}</Bar></BarChart></ResponsiveContainer>
+              <ResponsiveContainer width="100%" height={160}><BarChart data={filteredAtt} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/><XAxis dataKey="dept" tick={{fontSize:11,fill:'#64748b',fontWeight:600}} axisLine={false} tickLine={false}/><YAxis domain={[60,100]} tick={{fontSize:10,fill:'#64748b'}} axisLine={false} tickLine={false} tickFormatter={v=>`${v}%`}/><Tooltip {...TT_STYLE} formatter={v=>`${v}%`}/><Bar dataKey="avg" name="Attendance" radius={[6,6,0,0]}>{filteredAtt.map((_,i)=><Cell key={i} fill={Object.values(DEPT_COLORS)[i%5]}/>)}</Bar></BarChart></ResponsiveContainer>
             </CC>
             <CC title="Income vs Expense" subtitle={`${rangeLabel} monthly`}>
-              <ResponsiveContainer width="100%" height={160}><BarChart data={incExpData} margin={{top:4,right:4,left:-20,bottom:0}}><XAxis dataKey="month" tick={{fontSize:9,fill:'#9ca3af'}} axisLine={false} tickLine={false}/><YAxis tick={{fontSize:9,fill:'#9ca3af'}} axisLine={false} tickLine={false} tickFormatter={fmtCr}/><Tooltip {...TT} formatter={fmtCr}/><Legend wrapperStyle={{fontSize:10}}/><Bar dataKey="income" name="Income" fill={C.blue} radius={[4,4,0,0]}/><Bar dataKey="expense" name="Expense" fill={C.orange} radius={[4,4,0,0]}/></BarChart></ResponsiveContainer>
+              <ResponsiveContainer width="100%" height={160}><BarChart data={incExpData} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/><XAxis dataKey="month" tick={{fontSize:10,fill:'#64748b',fontWeight:600}} axisLine={false} tickLine={false}/><YAxis tick={{fontSize:9,fill:'#64748b'}} axisLine={false} tickLine={false} tickFormatter={fmtCr}/><Tooltip {...TT_STYLE} formatter={fmtCr}/><Legend wrapperStyle={{fontSize:10,fontFamily:"'Outfit', sans-serif"}}/><Bar dataKey="income" name="Income" fill={C.blue} radius={[4,4,0,0]}/><Bar dataKey="expense" name="Expense" fill={C.orange} radius={[4,4,0,0]}/></BarChart></ResponsiveContainer>
             </CC>
             <CC title="Faculty by Dept" subtitle="Current distribution" action={<button onClick={()=>setTab('faculty')} style={miniBtn}>Expand</button>}>
-              <ResponsiveContainer width="100%" height={160}><PieChart><Pie data={Object.entries(facultyByDept).map(([k,v])=>({name:k,value:v}))} cx="50%" cy="50%" outerRadius={65} dataKey="value" label={<PieLabelInside labelType="count"/>} labelLine={false}>{Object.keys(facultyByDept).map((_,i)=><Cell key={i} fill={Object.values(DEPT_COLORS)[i]}/>)}</Pie><Tooltip {...TT}/></PieChart></ResponsiveContainer>
+              <ResponsiveContainer width="100%" height={160}><PieChart><Pie data={Object.entries(facultyByDept).map(([k,v])=>({name:k,value:v}))} cx="50%" cy="50%" outerRadius={65} dataKey="value" label={<PieLabelInside labelType="count"/>} labelLine={false}>{Object.keys(facultyByDept).map((_,i)=><Cell key={i} fill={Object.values(DEPT_COLORS)[i]}/>)}</Pie><Tooltip {...TT_STYLE}/></PieChart></ResponsiveContainer>
             </CC>
           </div>
         </>
@@ -383,20 +559,20 @@ function AdminView({activeMonths,rangeLabel,department,semester,analyticsData}){
       {tab==='students'&&(
         <><div style={{display:'flex',gap:16,marginBottom:24,flexWrap:'wrap'}}>
             <SCard label="Total Students" value={aCards.students} sub={rangeLabel} tone="blue" icon="" trend="up"/>
-            <SCard label="Avg Attendance" value={`${Math.round(activeMonths.reduce((s,m)=>(adminAttByMonth[m]??[]).reduce((a,d)=>a+d.avg,0)/5+s,0)/activeMonths.length)}%`} sub="College-wide" tone="green" icon="" trend="up"/>
-            <SCard label="Avg Pass Rate" value={`${Math.round(activeMonths.reduce((s,m)=>(adminExamByMonth[m]??[]).reduce((a,d)=>a+d.pass,0)/5+s,0)/activeMonths.length)}%`} sub="All depts" tone="purple" icon=""/>
+            <SCard label="Avg Attendance" value={`${avgAtt}%`} sub="College-wide" tone="green" icon="" trend="up"/>
+            <SCard label="Avg Pass Rate" value={`${avgPass}%`} sub="All depts" tone="purple" icon=""/>
             <SCard label="Active Courses" value={aCards.courses} sub={semester} tone="orange" icon=""/>
           </div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:20,marginBottom:20}}>
-            <CC title="Students by Department" subtitle="Distribution"><ResponsiveContainer width="100%" height={200}><PieChart><Pie data={deptPieData} cx="50%" cy="50%" outerRadius={75} dataKey="value" label={<PieLabelInside labelType="count"/>} labelLine={false}>{deptPieData.map((_,i)=><Cell key={i} fill={Object.values(DEPT_COLORS)[i%5]}/>)}</Pie><Tooltip {...TT}/></PieChart></ResponsiveContainer></CC>
-            <CC title="Students by Year" subtitle="Year-wise split"><ResponsiveContainer width="100%" height={200}><PieChart><Pie data={yearPieData} cx="50%" cy="50%" innerRadius={40} outerRadius={70} dataKey="value" label={<PieLabelInside labelType="count"/>} labelLine={false}>{yearPieData.map((_,i)=><Cell key={i} fill={PIE_COLS[i]}/>)}</Pie><Tooltip {...TT}/></PieChart></ResponsiveContainer></CC>
-            <CC title="Gender Distribution" subtitle="All departments"><ResponsiveContainer width="100%" height={200}><PieChart><Pie data={genderData} cx="50%" cy="50%" outerRadius={75} dataKey="value" label={<PieLabelInside labelType="pct"/>} labelLine={false}>{genderData.map((_,i)=><Cell key={i} fill={[C.blue,C.orange,C.purple][i]}/>)}</Pie><Tooltip {...TT}/></PieChart></ResponsiveContainer></CC>
+            <CC title="Students by Department" subtitle="Distribution"><ResponsiveContainer width="100%" height={200}><PieChart><Pie data={deptPieData} cx="50%" cy="50%" outerRadius={75} dataKey="value" label={<PieLabelInside labelType="count"/>} labelLine={false}>{deptPieData.map((_,i)=><Cell key={i} fill={Object.values(DEPT_COLORS)[i%5]}/>)}</Pie><Tooltip {...TT_STYLE}/></PieChart></ResponsiveContainer></CC>
+            <CC title="Students by Year" subtitle="Year-wise split"><ResponsiveContainer width="100%" height={200}><PieChart><Pie data={yearPieData} cx="50%" cy="50%" innerRadius={40} outerRadius={70} dataKey="value" label={<PieLabelInside labelType="count"/>} labelLine={false}>{yearPieData.map((_,i)=><Cell key={i} fill={PIE_COLS[i]}/>)}</Pie><Tooltip {...TT_STYLE}/></PieChart></ResponsiveContainer></CC>
+            <CC title="Gender Distribution" subtitle="All departments"><ResponsiveContainer width="100%" height={200}><PieChart><Pie data={genderData} cx="50%" cy="50%" outerRadius={75} dataKey="value" label={<PieLabelInside labelType="pct"/>} labelLine={false}>{genderData.map((_,i)=><Cell key={i} fill={[C.blue,C.orange,C.purple][i]}/>)}</Pie><Tooltip {...TT_STYLE}/></PieChart></ResponsiveContainer></CC>
           </div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20,marginBottom:20}}>
-            <CC title="Attendance Trend" subtitle={`${rangeLabel} — by department`}><ResponsiveContainer width="100%" height={H}><LineChart data={attTrendData} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6"/><XAxis dataKey="month" tick={{fontSize:10,fill:'#9ca3af'}} axisLine={false} tickLine={false}/><YAxis domain={[60,100]} tick={{fontSize:10,fill:'#9ca3af'}} axisLine={false} tickLine={false} tickFormatter={v=>`${v}%`}/><Tooltip {...TT} formatter={v=>`${v}%`}/><Legend wrapperStyle={{fontSize:11}}/>{(dc?[dc]:DEPTS).map((d,i)=><Line key={d} type="monotone" dataKey={d} stroke={Object.values(DEPT_COLORS)[i%5]} strokeWidth={2} dot={false}/>)}</LineChart></ResponsiveContainer></CC>
-            <CC title="Pass Rate Trend" subtitle={`${rangeLabel} — by department`}><ResponsiveContainer width="100%" height={H}><LineChart data={passTrendData} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6"/><XAxis dataKey="month" tick={{fontSize:10,fill:'#9ca3af'}} axisLine={false} tickLine={false}/><YAxis domain={[60,100]} tick={{fontSize:10,fill:'#9ca3af'}} axisLine={false} tickLine={false} tickFormatter={v=>`${v}%`}/><Tooltip {...TT} formatter={v=>`${v}%`}/><Legend wrapperStyle={{fontSize:11}}/>{(dc?[dc]:DEPTS).map((d,i)=><Line key={d} type="monotone" dataKey={d} stroke={Object.values(DEPT_COLORS)[i%5]} strokeWidth={2} dot={false}/>)}</LineChart></ResponsiveContainer></CC>
+            <CC title="Attendance Trend" subtitle={`${rangeLabel} — by department`}><ResponsiveContainer width="100%" height={H}><LineChart data={attTrendData} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/><XAxis dataKey="month" tick={{fontSize:10,fill:'#64748b',fontWeight:600}} axisLine={false} tickLine={false}/><YAxis domain={[60,100]} tick={{fontSize:10,fill:'#64748b'}} axisLine={false} tickLine={false} tickFormatter={v=>`${v}%`}/><Tooltip {...TT_STYLE} formatter={v=>`${v}%`}/><Legend wrapperStyle={{fontSize:11,fontFamily:"'Outfit', sans-serif"}}/>{(dc?[dc]:DEPTS).map((d,i)=><Line key={d} type="monotone" dataKey={d} stroke={Object.values(DEPT_COLORS)[i%5]} strokeWidth={2.5} dot={false}/>)}</LineChart></ResponsiveContainer></CC>
+            <CC title="Pass Rate Trend" subtitle={`${rangeLabel} — by department`}><ResponsiveContainer width="100%" height={H}><LineChart data={passTrendData} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/><XAxis dataKey="month" tick={{fontSize:10,fill:'#64748b',fontWeight:600}} axisLine={false} tickLine={false}/><YAxis domain={[60,100]} tick={{fontSize:10,fill:'#64748b'}} axisLine={false} tickLine={false} tickFormatter={v=>`${v}%`}/><Tooltip {...TT_STYLE} formatter={v=>`${v}%`}/><Legend wrapperStyle={{fontSize:11,fontFamily:"'Outfit', sans-serif"}}/>{(dc?[dc]:DEPTS).map((d,i)=><Line key={d} type="monotone" dataKey={d} stroke={Object.values(DEPT_COLORS)[i%5]} strokeWidth={2.5} dot={false}/>)}</LineChart></ResponsiveContainer></CC>
           </div>
-          <CC title="Dept CGPA Comparison" subtitle="Average CGPA by department" style={{marginBottom:20}}><ResponsiveContainer width="100%" height={H}><BarChart data={cgpaDeptData} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6"/><XAxis dataKey="dept" tick={{fontSize:11,fill:'#9ca3af'}} axisLine={false} tickLine={false}/><YAxis domain={[6,10]} tick={{fontSize:10,fill:'#9ca3af'}} axisLine={false} tickLine={false}/><Tooltip {...TT}/><Bar dataKey="cgpa" name="CGPA" radius={[6,6,0,0]}>{cgpaDeptData.map((_,i)=><Cell key={i} fill={Object.values(DEPT_COLORS)[i%5]}/>)}</Bar></BarChart></ResponsiveContainer></CC>
+          <CC title="Dept CGPA Comparison" subtitle="Average CGPA by department" style={{marginBottom:20}}><ResponsiveContainer width="100%" height={H}><BarChart data={cgpaDeptData} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/><XAxis dataKey="dept" tick={{fontSize:11,fill:'#64748b',fontWeight:600}} axisLine={false} tickLine={false}/><YAxis domain={[6,10]} tick={{fontSize:10,fill:'#64748b'}} axisLine={false} tickLine={false}/><Tooltip {...TT_STYLE}/><Bar dataKey="cgpa" name="CGPA" radius={[6,6,0,0]}>{cgpaDeptData.map((_,i)=><Cell key={i} fill={Object.values(DEPT_COLORS)[i%5]}/>)}</Bar></BarChart></ResponsiveContainer></CC>
         </>
       )}
 
@@ -408,28 +584,28 @@ function AdminView({activeMonths,rangeLabel,department,semester,analyticsData}){
             <SCard label="Total Courses" value={aCards.courses} sub={semester} tone="orange" icon=""/>
           </div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:20,marginBottom:20}}>
-            <CC title="Faculty by Department" subtitle="Distribution"><ResponsiveContainer width="100%" height={200}><PieChart><Pie data={facultyPieData} cx="50%" cy="50%" outerRadius={75} dataKey="value" label={<PieLabelInside labelType="count"/>} labelLine={false}>{facultyPieData.map((_,i)=><Cell key={i} fill={Object.values(DEPT_COLORS)[i%5]}/>)}</Pie><Tooltip {...TT}/></PieChart></ResponsiveContainer></CC>
-            <CC title="Faculty Rank Distribution" subtitle="By academic rank"><ResponsiveContainer width="100%" height={200}><PieChart><Pie data={facultyRankData} cx="50%" cy="50%" innerRadius={40} outerRadius={70} dataKey="count" label={<PieLabelInside labelType="count"/>} labelLine={false}>{facultyRankData.map((_,i)=><Cell key={i} fill={PIE_COLS[i]}/>)}</Pie><Tooltip {...TT}/></PieChart></ResponsiveContainer></CC>
+            <CC title="Faculty by Department" subtitle="Distribution"><ResponsiveContainer width="100%" height={200}><PieChart><Pie data={facultyPieData} cx="50%" cy="50%" outerRadius={75} dataKey="value" label={<PieLabelInside labelType="count"/>} labelLine={false}>{facultyPieData.map((_,i)=><Cell key={i} fill={Object.values(DEPT_COLORS)[i%5]}/>)}</Pie><Tooltip {...TT_STYLE}/></PieChart></ResponsiveContainer></CC>
+            <CC title="Faculty Rank Distribution" subtitle="By academic rank"><ResponsiveContainer width="100%" height={200}><PieChart><Pie data={facultyRankData} cx="50%" cy="50%" innerRadius={40} outerRadius={70} dataKey="count" label={<PieLabelInside labelType="count"/>} labelLine={false}>{facultyRankData.map((_,i)=><Cell key={i} fill={PIE_COLS[i]}/>)}</Pie><Tooltip {...TT_STYLE}/></PieChart></ResponsiveContainer></CC>
             <CC title="Dept Ranking" subtitle="Composite score">
-              {rankingData.map((d,i)=>(<div key={d.dept} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 0',borderBottom:i<rankingData.length-1?'1px solid #f3f4f6':'none'}}><span style={{fontSize:16,fontWeight:900,color:i===0?C.green:i===1?C.blue:'#9ca3af',minWidth:24}}>#{i+1}</span><span style={{display:'inline-block',width:10,height:10,borderRadius:3,background:DEPT_COLORS[d.dept]??C.blue}}/><span style={{fontSize:13,fontWeight:700,flex:1}}>{DEPT_FULL[d.dept]??d.dept}</span><span style={{fontSize:14,fontWeight:800,color:Object.values(DEPT_COLORS)[i],minWidth:32}}>{d.score}</span></div>))}
+              {rankingData.map((d,i)=>(<div key={d.dept} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 0',borderBottom:i<rankingData.length-1?'1px solid #f1f5f9':'none'}}><span style={{fontSize:16,fontWeight:900,color:i===0?C.green:i===1?C.blue:'#9ca3af',minWidth:24}}>#{i+1}</span><span style={{display:'inline-block',width:10,height:10,borderRadius:3,background:DEPT_COLORS[d.dept]??C.blue}}/><span style={{fontSize:13,fontWeight:700,flex:1,color:'#334155'}}>{DEPT_FULL[d.dept]??d.dept}</span><span style={{fontSize:14,fontWeight:800,color:Object.values(DEPT_COLORS)[i],minWidth:32}}>{d.score}</span></div>))}
             </CC>
           </div>
           <CC title="Faculty Directory" subtitle={dc?`${DEPT_FULL[dc]} — individual faculty list`:'All departments — click a dept filter above to narrow'} style={{marginBottom:20}}>
             {(dc?[dc]:DEPTS).map(deptKey=>(
-              <div key={deptKey} style={{marginBottom:20}}>
-                <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10,padding:'10px 14px',background:DEPT_COLORS[deptKey]+'15',borderRadius:10,border:`1.5px solid ${DEPT_COLORS[deptKey]}40`}}>
+              <div key={deptKey} style={{marginBottom:24}}>
+                <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:12,padding:'12px 16px',background:DEPT_COLORS[deptKey]+'10',borderRadius:10,border:`1.5px solid ${DEPT_COLORS[deptKey]}30`}}>
                   <span style={{display:'inline-block',width:12,height:12,borderRadius:3,background:DEPT_COLORS[deptKey]}}/>
-                  <span style={{fontWeight:800,fontSize:14,color:DEPT_COLORS[deptKey]}}>{DEPT_FULL[deptKey]}</span>
-                  <span style={{fontSize:12,color:'#6b7280',marginLeft:4}}>— {FACULTY_LIST[deptKey]?.length??0} faculty members</span>
-                  <span style={{marginLeft:'auto',fontSize:12,fontWeight:700,color:'#374151'}}>Avg Att: <span style={{color:C.green}}>{rankingData.find(r=>r.dept===deptKey)?.att??0}%</span></span>
-                  <span style={{fontSize:12,fontWeight:700,color:'#374151'}}>Pass: <span style={{color:C.blue}}>{rankingData.find(r=>r.dept===deptKey)?.pass??0}%</span></span>
+                  <span style={{fontWeight:800,fontSize:14,color:DEPT_COLORS[deptKey],fontFamily:"'Outfit', sans-serif"}}>{DEPT_FULL[deptKey]}</span>
+                  <span style={{fontSize:12,color:'#64748b',marginLeft:4,fontWeight:500}}>— {FACULTY_LIST[deptKey]?.length??0} Faculty Members</span>
+                  <span style={{marginLeft:'auto',fontSize:12,fontWeight:700,color:'#334155'}}>Avg Att: <span style={{color:C.green}}>{rankingData.find(r=>r.dept===deptKey)?.att??0}%</span></span>
+                  <span style={{fontSize:12,fontWeight:700,color:'#334155',marginLeft:12}}>Pass: <span style={{color:C.blue}}>{rankingData.find(r=>r.dept===deptKey)?.pass??0}%</span></span>
                 </div>
                 <div style={{overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
                   <table style={{width:'100%',minWidth:650,borderCollapse:'collapse'}}>
                     <thead><tr><th style={tH}>Name</th><th style={tH}>Designation</th><th style={tH}>Subject</th><th style={tH}>Attendance</th><th style={tH}>Pass Rate</th><th style={tH}>Experience</th><th style={tH}>Status</th></tr></thead>
                     <tbody>{(FACULTY_LIST[deptKey]??[]).map((f,i)=>{
                       const attNum=parseInt(f.att);const passNum=parseInt(f.passRate);
-                      return(<tr key={i} style={{background:i%2===0?'#fafafa':'#fff'}}><td style={{...tD,fontWeight:700}}>{f.name}</td><td style={tD}>{f.designation}</td><td style={tD}>{f.subject}</td><td style={{...tD,fontWeight:700,color:attNum>=88?C.green:attNum>=82?C.orange:C.red}}>{f.att}</td><td style={{...tD,fontWeight:700,color:passNum>=88?C.green:passNum>=82?C.orange:C.red}}>{f.passRate}</td><td style={tD}>{f.exp}</td><td style={tD}><span style={{fontSize:11,fontWeight:700,padding:'3px 9px',borderRadius:999,background:attNum>=85?'#f0fdf4':'#fff7ed',color:attNum>=85?'#16a34a':'#c2410c',textTransform:'uppercase'}}>{attNum>=85?'Active':'Review'}</span></td></tr>);
+                      return(<tr key={i} style={{background:i%2===0?'#fafafa':'#fff'}}><td style={{...tD,fontWeight:700}}>{f.name}</td><td style={tD}>{f.designation}</td><td style={tD}>{f.subject}</td><td style={{...tD,fontWeight:700,color:attNum>=88?C.green:attNum>=82?C.orange:C.red}}>{f.att}</td><td style={{...tD,fontWeight:700,color:passNum>=88?C.green:passNum>=82?C.orange:C.red}}>{f.passRate}</td><td style={tD}>{f.exp}</td><td style={tD}><span style={{fontSize:11,fontWeight:700,padding:'3px 9px',borderRadius:999,background:attNum>=85?'#e6f4ea':'#fff3cd',color:attNum>=85?'#137333':'#b06000',textTransform:'uppercase'}}>{attNum>=85?'Active':'Review'}</span></td></tr>);
                     })}</tbody>
                   </table>
                 </div>
@@ -447,12 +623,12 @@ function AdminView({activeMonths,rangeLabel,department,semester,analyticsData}){
             <SCard label="Scholarships" value={ad.summaryData?.scholarships??0} sub="Active avg" tone="purple" icon=""/>
           </div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20,marginBottom:20}}>
-            <CC title="Income vs Expense Trend" subtitle={`${rangeLabel} monthly`}><ResponsiveContainer width="100%" height={H}><BarChart data={incExpData} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6"/><XAxis dataKey="month" tick={{fontSize:10,fill:'#9ca3af'}} axisLine={false} tickLine={false}/><YAxis tick={{fontSize:9,fill:'#9ca3af'}} axisLine={false} tickLine={false} tickFormatter={fmtCr}/><Tooltip {...TT} formatter={fmtCr}/><Legend wrapperStyle={{fontSize:11}}/><Bar dataKey="income" name="Income" fill={C.blue} radius={[4,4,0,0]}/><Bar dataKey="expense" name="Expense" fill={C.orange} radius={[4,4,0,0]}/></BarChart></ResponsiveContainer></CC>
-            <CC title="Expense Breakdown" subtitle="Category-wise split"><ResponsiveContainer width="100%" height={H}><PieChart><Pie data={ad.expenseBreakdown||[]} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" label={<PieLabelInside labelType="pct"/>} labelLine={false}>{(ad.expenseBreakdown||[]).map((_,i)=><Cell key={i} fill={[C.blue,C.orange,C.green,C.purple,C.teal][i]}/>)}</Pie><Tooltip {...TT} formatter={v=>`${v}%`}/><Legend wrapperStyle={{fontSize:10}}/></PieChart></ResponsiveContainer></CC>
+            <CC title="Income vs Expense Trend" subtitle={`${rangeLabel} monthly`}><ResponsiveContainer width="100%" height={H}><BarChart data={incExpData} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/><XAxis dataKey="month" tick={{fontSize:10,fill:'#64748b',fontWeight:600}} axisLine={false} tickLine={false}/><YAxis tick={{fontSize:9,fill:'#64748b'}} axisLine={false} tickLine={false} tickFormatter={fmtCr}/><Tooltip {...TT_STYLE} formatter={fmtCr}/><Legend wrapperStyle={{fontSize:11,fontFamily:"'Outfit', sans-serif"}}/><Bar dataKey="income" name="Income" fill={C.blue} radius={[4,4,0,0]}/><Bar dataKey="expense" name="Expense" fill={C.orange} radius={[4,4,0,0]}/></BarChart></ResponsiveContainer></CC>
+            <CC title="Expense Breakdown" subtitle="Category-wise split"><ResponsiveContainer width="100%" height={H}><PieChart><Pie data={ad.expenseBreakdown||[]} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" label={<PieLabelInside labelType="pct"/>} labelLine={false}>{(ad.expenseBreakdown||[]).map((_,i)=><Cell key={i} fill={[C.blue,C.orange,C.green,C.purple,C.teal][i]}/>)}</Pie><Tooltip {...TT_STYLE} formatter={v=>`${v}%`}/><Legend wrapperStyle={{fontSize:10,fontFamily:"'Outfit', sans-serif"}}/></PieChart></ResponsiveContainer></CC>
           </div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20,marginBottom:20}}>
-            <CC title="Fee Collection by Department" subtitle={`${rangeLabel} avg`}><ResponsiveContainer width="100%" height={H}><BarChart data={dc?avgFinanceDept(ad.financeDeptByMonth,activeMonths).filter(d=>d.dept===dc):avgFinanceDept(ad.financeDeptByMonth,activeMonths)} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6"/><XAxis dataKey="dept" tick={{fontSize:11,fill:'#9ca3af'}} axisLine={false} tickLine={false}/><YAxis tick={{fontSize:10,fill:'#9ca3af'}} axisLine={false} tickLine={false}/><Tooltip {...TT}/><Legend wrapperStyle={{fontSize:11}}/><Bar dataKey="paid" name="Paid" stackId="a" fill={C.green} radius={[0,0,0,0]}/><Bar dataKey="pending" name="Pending" stackId="a" fill={C.orange} radius={[0,0,0,0]}/><Bar dataKey="overdue" name="Overdue" stackId="a" fill={C.red} radius={[6,6,0,0]}/></BarChart></ResponsiveContainer></CC>
-            <CC title="Fee Payment Status" subtitle={`${rangeLabel} avg split`}><ResponsiveContainer width="100%" height={H}><PieChart><Pie data={avgFinancePie(ad.financePieByMonth,activeMonths)} cx="50%" cy="50%" innerRadius={50} outerRadius={78} paddingAngle={4} dataKey="value" label={<PieLabelInside labelType="pct"/>} labelLine={false}>{avgFinancePie(ad.financePieByMonth,activeMonths).map((_,i)=><Cell key={i} fill={PIE_COLS[i]}/>)}</Pie><Tooltip {...TT} formatter={v=>`${v}%`}/><Legend wrapperStyle={{fontSize:12}}/></PieChart></ResponsiveContainer></CC>
+            <CC title="Fee Collection by Department" subtitle={`${rangeLabel} avg`}><ResponsiveContainer width="100%" height={H}><BarChart data={dc?avgFinanceDept(ad.financeDeptByMonth,activeMonths).filter(d=>d.dept===dc):avgFinanceDept(ad.financeDeptByMonth,activeMonths)} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/><XAxis dataKey="dept" tick={{fontSize:11,fill:'#64748b',fontWeight:600}} axisLine={false} tickLine={false}/><YAxis tick={{fontSize:10,fill:'#64748b'}} axisLine={false} tickLine={false}/><Tooltip {...TT_STYLE}/><Legend wrapperStyle={{fontSize:11,fontFamily:"'Outfit', sans-serif"}}/><Bar dataKey="paid" name="Paid" stackId="a" fill={C.green} radius={[0,0,0,0]}/><Bar dataKey="pending" name="Pending" stackId="a" fill={C.orange} radius={[0,0,0,0]}/><Bar dataKey="overdue" name="Overdue" stackId="a" fill={C.red} radius={[6,6,0,0]}/></BarChart></ResponsiveContainer></CC>
+            <CC title="Fee Payment Status" subtitle={`${rangeLabel} avg split`}><ResponsiveContainer width="100%" height={H}><PieChart><Pie data={avgFinancePie(ad.financePieByMonth,activeMonths)} cx="50%" cy="50%" innerRadius={50} outerRadius={78} paddingAngle={4} dataKey="value" label={<PieLabelInside labelType="pct"/>} labelLine={false}>{avgFinancePie(ad.financePieByMonth,activeMonths).map((_,i)=><Cell key={i} fill={PIE_COLS[i]}/>)}</Pie><Tooltip {...TT_STYLE} formatter={v=>`${v}%`}/><Legend wrapperStyle={{fontSize:12,fontFamily:"'Outfit', sans-serif"}}/></PieChart></ResponsiveContainer></CC>
           </div>
         </>
       )}
@@ -460,7 +636,7 @@ function AdminView({activeMonths,rangeLabel,department,semester,analyticsData}){
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// FINANCE VIEW — reads ALL data from analyticsData
+// FINANCE VIEW
 // ══════════════════════════════════════════════════════════════════════════════
 function FinanceView({activeMonths,rangeLabel,department,semester,analyticsData}){
   const [tab,setTab]=useState('collection');
@@ -508,12 +684,12 @@ function FinanceView({activeMonths,rangeLabel,department,semester,analyticsData}
             <SCard label="Late Payments" value={fiCards.late} sub="Avg / month" tone="red" icon=""/>
           </div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20,marginBottom:20}}>
-            <CC title="Weekly Fee Collection" subtitle={`${rangeLabel} avg — target vs collected`}><ResponsiveContainer width="100%" height={H2}><BarChart data={fiColData} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6"/><XAxis dataKey="week" tick={{fontSize:11,fill:'#9ca3af'}} axisLine={false} tickLine={false}/><YAxis tick={{fontSize:10,fill:'#9ca3af'}} axisLine={false} tickLine={false} tickFormatter={fmt}/><Tooltip {...TT} formatter={fmt}/><Legend wrapperStyle={{fontSize:11}}/><Bar dataKey="collected" name="Collected" fill={C.blue} radius={[6,6,0,0]}/><Bar dataKey="target" name="Target" fill={C.green} radius={[6,6,0,0]} fillOpacity={0.3}/></BarChart></ResponsiveContainer></CC>
-            <CC title="Payment Status" subtitle={`${rangeLabel} avg`}><ResponsiveContainer width="100%" height={H2}><PieChart><Pie data={fiPieData} cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={4} dataKey="value" label={<PieLabelInside labelType="pct"/>} labelLine={false}>{fiPieData.map((_,i)=><Cell key={i} fill={PIE_COLS[i]}/>)}</Pie><Tooltip {...TT} formatter={v=>`${v}%`}/><Legend wrapperStyle={{fontSize:12}}/></PieChart></ResponsiveContainer></CC>
+            <CC title="Weekly Fee Collection" subtitle={`${rangeLabel} avg — target vs collected`}><ResponsiveContainer width="100%" height={H2}><BarChart data={fiColData} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/><XAxis dataKey="week" tick={{fontSize:11,fill:'#64748b',fontWeight:600}} axisLine={false} tickLine={false}/><YAxis tick={{fontSize:10,fill:'#64748b'}} axisLine={false} tickLine={false} tickFormatter={fmt}/><Tooltip {...TT_STYLE} formatter={fmt}/><Legend wrapperStyle={{fontSize:11,fontFamily:"'Outfit', sans-serif"}}/><Bar dataKey="collected" name="Collected" fill={C.blue} radius={[6,6,0,0]}/><Bar dataKey="target" name="Target" fill={C.green} radius={[6,6,0,0]} fillOpacity={0.3}/></BarChart></ResponsiveContainer></CC>
+            <CC title="Payment Status" subtitle={`${rangeLabel} avg`}><ResponsiveContainer width="100%" height={H2}><PieChart><Pie data={fiPieData} cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={4} dataKey="value" label={<PieLabelInside labelType="pct"/>} labelLine={false}>{fiPieData.map((_,i)=><Cell key={i} fill={PIE_COLS[i]}/>)}</Pie><Tooltip {...TT_STYLE} formatter={v=>`${v}%`}/><Legend wrapperStyle={{fontSize:12,fontFamily:"'Outfit', sans-serif"}}/></PieChart></ResponsiveContainer></CC>
           </div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20,marginBottom:20}}>
-            <CC title="Department-wise Collection" subtitle={`${rangeLabel} avg breakdown`}><ResponsiveContainer width="100%" height={H}><BarChart data={fiDeptData} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6"/><XAxis dataKey="dept" tick={{fontSize:11,fill:'#9ca3af'}} axisLine={false} tickLine={false}/><YAxis tick={{fontSize:10,fill:'#9ca3af'}} axisLine={false} tickLine={false}/><Tooltip {...TT}/><Legend wrapperStyle={{fontSize:11}}/><Bar dataKey="paid" name="Paid" stackId="a" fill={C.green} radius={[0,0,0,0]}/><Bar dataKey="pending" name="Pending" stackId="a" fill={C.orange} radius={[0,0,0,0]}/><Bar dataKey="overdue" name="Overdue" stackId="a" fill={C.red} radius={[6,6,0,0]}/></BarChart></ResponsiveContainer></CC>
-            <CC title="Payment Method Split" subtitle="Online / bank / cash"><ResponsiveContainer width="100%" height={H}><PieChart><Pie data={paymentMethodData} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={<PieLabelInside labelType="pct"/>} labelLine={false}>{paymentMethodData.map((_,i)=><Cell key={i} fill={[C.blue,C.green,C.orange][i]}/>)}</Pie><Tooltip {...TT} formatter={v=>`${v}%`}/></PieChart></ResponsiveContainer></CC>
+            <CC title="Department-wise Collection" subtitle={`${rangeLabel} avg breakdown`}><ResponsiveContainer width="100%" height={H}><BarChart data={fiDeptData} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/><XAxis dataKey="dept" tick={{fontSize:11,fill:'#64748b',fontWeight:600}} axisLine={false} tickLine={false}/><YAxis tick={{fontSize:10,fill:'#64748b'}} axisLine={false} tickLine={false}/><Tooltip {...TT_STYLE}/><Legend wrapperStyle={{fontSize:11,fontFamily:"'Outfit', sans-serif"}}/><Bar dataKey="paid" name="Paid" stackId="a" fill={C.green} radius={[0,0,0,0]}/><Bar dataKey="pending" name="Pending" stackId="a" fill={C.orange} radius={[0,0,0,0]}/><Bar dataKey="overdue" name="Overdue" stackId="a" fill={C.red} radius={[6,6,0,0]}/></BarChart></ResponsiveContainer></CC>
+            <CC title="Payment Method Split" subtitle="Online / bank / cash"><ResponsiveContainer width="100%" height={H}><PieChart><Pie data={paymentMethodData} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={<PieLabelInside labelType="pct"/>} labelLine={false}>{paymentMethodData.map((_,i)=><Cell key={i} fill={[C.blue,C.green,C.orange][i]}/>)}</Pie><Tooltip {...TT_STYLE} formatter={v=>`${v}%`}/></PieChart></ResponsiveContainer></CC>
           </div>
           <CC title="Semester-wise Fee Report" subtitle="Collection per semester" style={{marginBottom:20}}>
             <div style={{overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
@@ -547,15 +723,9 @@ function FinanceView({activeMonths,rangeLabel,department,semester,analyticsData}
             </>);})()}
           </div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20,marginBottom:20}}>
-            <CC title="Expense Breakdown" subtitle="Category distribution"><ResponsiveContainer width="100%" height={H2}><PieChart><Pie data={expenseBreakdown} cx="50%" cy="50%" outerRadius={85} dataKey="value" label={<PieLabelInside labelType="pct"/>} labelLine={false}>{expenseBreakdown.map((_,i)=><Cell key={i} fill={[C.blue,C.orange,C.red,C.purple,C.teal][i]}/>)}</Pie><Tooltip {...TT} formatter={v=>`${v}%`}/></PieChart></ResponsiveContainer></CC>
-            <CC title="Income vs Expense Trend" subtitle="Monthly surplus / deficit"><ResponsiveContainer width="100%" height={H2}><AreaChart data={activeMonths.map(mn=>({month:mn,...(incomeExpenseByMonth[mn]??{income:0,expense:0}),net:(incomeExpenseByMonth[mn]?.income??0)-(incomeExpenseByMonth[mn]?.expense??0)}))} margin={{top:4,right:4,left:-10,bottom:0}}><defs><linearGradient id="gNet" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor={C.green} stopOpacity={0.3}/><stop offset="95%" stopColor={C.green} stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6"/><XAxis dataKey="month" tick={{fontSize:10,fill:'#9ca3af'}} axisLine={false} tickLine={false}/><YAxis tick={{fontSize:9,fill:'#9ca3af'}} axisLine={false} tickLine={false} tickFormatter={fmtCr}/><Tooltip {...TT} formatter={fmtCr}/><Legend wrapperStyle={{fontSize:11}}/><Area type="monotone" dataKey="net" name="Net Surplus" stroke={C.green} fill="url(#gNet)" strokeWidth={2.5}/></AreaChart></ResponsiveContainer></CC>
+            <CC title="Expense Breakdown" subtitle="Category distribution"><ResponsiveContainer width="100%" height={H2}><PieChart><Pie data={expenseBreakdown} cx="50%" cy="50%" outerRadius={85} dataKey="value" label={<PieLabelInside labelType="pct"/>} labelLine={false}>{expenseBreakdown.map((_,i)=><Cell key={i} fill={[C.blue,C.orange,C.red,C.purple,C.teal][i]}/>)}</Pie><Tooltip {...TT_STYLE} formatter={v=>`${v}%`}/></PieChart></ResponsiveContainer></CC>
+            <CC title="Income vs Expense Trend" subtitle="Monthly surplus / deficit"><ResponsiveContainer width="100%" height={H2}><AreaChart data={activeMonths.map(mn=>({month:mn,...(incomeExpenseByMonth[mn]??{income:0,expense:0}),net:(incomeExpenseByMonth[mn]?.income??0)-(incomeExpenseByMonth[mn]?.expense??0)}))} margin={{top:4,right:4,left:-10,bottom:0}}><defs><linearGradient id="gNet" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor={C.green} stopOpacity={0.3}/><stop offset="95%" stopColor={C.green} stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/><XAxis dataKey="month" tick={{fontSize:10,fill:'#64748b',fontWeight:600}} axisLine={false} tickLine={false}/><YAxis tick={{fontSize:9,fill:'#64748b'}} axisLine={false} tickLine={false} tickFormatter={fmtCr}/><Tooltip {...TT_STYLE} formatter={fmtCr}/><Legend wrapperStyle={{fontSize:11,fontFamily:"'Outfit', sans-serif"}}/><Area type="monotone" dataKey="net" name="Net Surplus" stroke={C.green} fill="url(#gNet)" strokeWidth={2.5}/></AreaChart></ResponsiveContainer></CC>
           </div>
-          <CC title="Monthly Expense Detail" subtitle={`${rangeLabel}`} style={{marginBottom:20}}>
-            <div style={{overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
-              <table style={{width:'100%',minWidth:650,borderCollapse:'collapse'}}><thead><tr><th style={tH}>Month</th><th style={tH}>Income</th><th style={tH}>Expense</th><th style={tH}>Salary</th><th style={tH}>Infra</th><th style={tH}>Maint.</th><th style={tH}>Net</th></tr></thead>
-                <tbody>{activeMonths.map(mn=>{const d=incomeExpenseByMonth[mn]??{income:0,expense:0};const net=d.income-d.expense;return<tr key={mn}><td style={{...tD,fontWeight:700}}>{mn}</td><td style={{...tD,color:C.blue,fontWeight:700}}>{fmtCr(d.income)}</td><td style={{...tD,color:C.orange,fontWeight:700}}>{fmtCr(d.expense)}</td><td style={tD}>{fmtCr(d.expense*0.58)}</td><td style={tD}>{fmtCr(d.expense*0.22)}</td><td style={tD}>{fmtCr(d.expense*0.12)}</td><td style={{...tD,fontWeight:800,color:net>0?C.green:C.red}}>{fmtCr(net)}</td></tr>;})}</tbody></table>
-            </div>
-          </CC>
         </>
       )}
 
@@ -567,8 +737,8 @@ function FinanceView({activeMonths,rangeLabel,department,semester,analyticsData}
             <SCard label="Sports Quota" value={`${scholarshipByDept.reduce((s,d)=>s+d.sports,0)}`} sub="All depts" tone="purple" icon=""/>
           </div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20,marginBottom:20}}>
-            <CC title="Scholarships by Department" subtitle="Merit, need-based, sports"><ResponsiveContainer width="100%" height={H2}><BarChart data={dc?scholarshipByDept.filter(d=>d.dept===dc):scholarshipByDept} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6"/><XAxis dataKey="dept" tick={{fontSize:11,fill:'#9ca3af'}} axisLine={false} tickLine={false}/><YAxis tick={{fontSize:10,fill:'#9ca3af'}} axisLine={false} tickLine={false}/><Tooltip {...TT}/><Legend wrapperStyle={{fontSize:11}}/><Bar dataKey="merit" name="Merit" fill={C.blue} radius={[0,0,0,0]}/><Bar dataKey="needBased" name="Need" fill={C.green} radius={[0,0,0,0]}/><Bar dataKey="sports" name="Sports" fill={C.orange} radius={[6,6,0,0]}/></BarChart></ResponsiveContainer></CC>
-            <CC title="Scholarship Type Split" subtitle="Total across all depts"><ResponsiveContainer width="100%" height={H2}><PieChart><Pie data={[{name:'Merit',value:scholarshipByDept.reduce((s,d)=>s+d.merit,0)},{name:'Need-based',value:scholarshipByDept.reduce((s,d)=>s+d.needBased,0)},{name:'Sports',value:scholarshipByDept.reduce((s,d)=>s+d.sports,0)}]} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={<PieLabelInside labelType="count"/>} labelLine={false}>{[0,1,2].map(i=><Cell key={i} fill={[C.blue,C.green,C.orange][i]}/>)}</Pie><Tooltip {...TT}/><Legend wrapperStyle={{fontSize:12}}/></PieChart></ResponsiveContainer></CC>
+            <CC title="Scholarships by Department" subtitle="Merit, need-based, sports"><ResponsiveContainer width="100%" height={H2}><BarChart data={dc?scholarshipByDept.filter(d=>d.dept===dc):scholarshipByDept} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/><XAxis dataKey="dept" tick={{fontSize:11,fill:'#64748b',fontWeight:600}} axisLine={false} tickLine={false}/><YAxis tick={{fontSize:10,fill:'#64748b'}} axisLine={false} tickLine={false}/><Tooltip {...TT_STYLE}/><Legend wrapperStyle={{fontSize:11,fontFamily:"'Outfit', sans-serif"}}/><Bar dataKey="merit" name="Merit" fill={C.blue} radius={[0,0,0,0]}/><Bar dataKey="needBased" name="Need" fill={C.green} radius={[0,0,0,0]}/><Bar dataKey="sports" name="Sports" fill={C.orange} radius={[6,6,0,0]}/></BarChart></ResponsiveContainer></CC>
+            <CC title="Scholarship Type Split" subtitle="Total across all depts"><ResponsiveContainer width="100%" height={H2}><PieChart><Pie data={[{name:'Merit',value:scholarshipByDept.reduce((s,d)=>s+d.merit,0)},{name:'Need-based',value:scholarshipByDept.reduce((s,d)=>s+d.needBased,0)},{name:'Sports',value:scholarshipByDept.reduce((s,d)=>s+d.sports,0)}]} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={<PieLabelInside labelType="count"/>} labelLine={false}>{[0,1,2].map(i=><Cell key={i} fill={[C.blue,C.green,C.orange][i]}/>)}</Pie><Tooltip {...TT_STYLE}/><Legend wrapperStyle={{fontSize:12,fontFamily:"'Outfit', sans-serif"}}/></PieChart></ResponsiveContainer></CC>
           </div>
         </>
       )}
@@ -576,7 +746,7 @@ function FinanceView({activeMonths,rangeLabel,department,semester,analyticsData}
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// FACULTY VIEW — reads ALL data from analyticsData
+// FACULTY VIEW
 // ══════════════════════════════════════════════════════════════════════════════
 function FacultyView({activeMonths,rangeLabel,department,semester,analyticsData}){
   const [tab,setTab]=useState('attendance');
@@ -618,8 +788,8 @@ function FacultyView({activeMonths,rangeLabel,department,semester,analyticsData}
     <><RoleTab tabs={TABS} active={tab} onChange={setTab}/>{tab==='attendance'&&(
         <><div style={{display:'flex',gap:16,marginBottom:24,flexWrap:'wrap'}}><SCard label="Students in Class" value={fCards.students} sub={rangeLabel} tone="blue" icon=""/><SCard label="Avg Attendance" value={fCards.att} sub={rangeLabel} tone="green" icon="" trend="up"/><SCard label="Below 75% Alert" value={`${studentRiskData.filter(s=>parseInt(s.att)<75).length}`} sub="Students at risk" tone="red" icon=""/><SCard label="Above 90%" value={`${MONTHS_ALL.flatMap(m=>Object.values(facultyAttByMonth[m]??{}).flatMap(w=>typeof w==='object'?Object.values(w):[])).filter(v=>typeof v==='number'&&v>=90).length}`} sub="Class-weeks" tone="purple" icon=""/></div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20,marginBottom:20}}>
-            <CC title="Weekly Attendance by Course" subtitle={`${rangeLabel} — per subject`}><ResponsiveContainer width="100%" height={H}><LineChart data={fAttData} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6"/><XAxis dataKey="week" tick={{fontSize:8,fill:'#9ca3af'}} axisLine={false} tickLine={false} interval="preserveStartEnd"/><YAxis domain={[65,100]} tick={{fontSize:10,fill:'#9ca3af'}} axisLine={false} tickLine={false} tickFormatter={v=>`${v}%`}/><Tooltip {...TT} formatter={v=>`${v}%`}/><Legend wrapperStyle={{fontSize:11}}/><Line type="monotone" dataKey="CS6001" stroke={C.blue} strokeWidth={2} dot={false}/><Line type="monotone" dataKey="CS6002" stroke={C.cyan} strokeWidth={2} dot={false}/><Line type="monotone" dataKey="Phy" stroke={C.orange} strokeWidth={2} dot={false}/></LineChart></ResponsiveContainer></CC>
-            <CC title="Annual Attendance Trend" subtitle="12-month overview per course"><ResponsiveContainer width="100%" height={H}><LineChart data={attTrendData} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6"/><XAxis dataKey="month" tick={{fontSize:10,fill:'#9ca3af'}} axisLine={false} tickLine={false}/><YAxis domain={[70,100]} tick={{fontSize:10,fill:'#9ca3af'}} axisLine={false} tickLine={false} tickFormatter={v=>`${v}%`}/><Tooltip {...TT} formatter={v=>`${v}%`}/><Legend wrapperStyle={{fontSize:11}}/><Line type="monotone" dataKey="CS6001" stroke={C.blue} strokeWidth={2} dot={false}/><Line type="monotone" dataKey="CS6002" stroke={C.cyan} strokeWidth={2} dot={false}/><Line type="monotone" dataKey="Phy" stroke={C.orange} strokeWidth={2} dot={false}/></LineChart></ResponsiveContainer></CC>
+            <CC title="Weekly Attendance by Course" subtitle={`${rangeLabel} — per subject`}><ResponsiveContainer width="100%" height={H}><LineChart data={fAttData} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/><XAxis dataKey="week" tick={{fontSize:8,fill:'#64748b',fontWeight:600}} axisLine={false} tickLine={false}/><YAxis domain={[65,100]} tick={{fontSize:10,fill:'#64748b'}} axisLine={false} tickLine={false} tickFormatter={v=>`${v}%`}/><Tooltip {...TT_STYLE} formatter={v=>`${v}%`}/><Legend wrapperStyle={{fontSize:11,fontFamily:"'Outfit', sans-serif"}}/><Line type="monotone" dataKey="CS6001" stroke={C.blue} strokeWidth={2.5} dot={false}/><Line type="monotone" dataKey="CS6002" stroke={C.cyan} strokeWidth={2.5} dot={false}/><Line type="monotone" dataKey="Phy" stroke={C.orange} strokeWidth={2.5} dot={false}/></LineChart></ResponsiveContainer></CC>
+            <CC title="Annual Attendance Trend" subtitle="12-month overview per course"><ResponsiveContainer width="100%" height={H}><LineChart data={attTrendData} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/><XAxis dataKey="month" tick={{fontSize:10,fill:'#64748b',fontWeight:600}} axisLine={false} tickLine={false}/><YAxis domain={[70,100]} tick={{fontSize:10,fill:'#64748b'}} axisLine={false} tickLine={false} tickFormatter={v=>`${v}%`}/><Tooltip {...TT_STYLE} formatter={v=>`${v}%`}/><Legend wrapperStyle={{fontSize:11,fontFamily:"'Outfit', sans-serif"}}/><Line type="monotone" dataKey="CS6001" stroke={C.blue} strokeWidth={2.5} dot={false}/><Line type="monotone" dataKey="CS6002" stroke={C.cyan} strokeWidth={2.5} dot={false}/><Line type="monotone" dataKey="Phy" stroke={C.orange} strokeWidth={2.5} dot={false}/></LineChart></ResponsiveContainer></CC>
           </div>
           <CC title="At-Risk Students" subtitle="Below 75% attendance — action required" style={{marginBottom:20}}>
             <div style={{overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
@@ -629,35 +799,27 @@ function FacultyView({activeMonths,rangeLabel,department,semester,analyticsData}
           </CC>
         </>)}
 
-      {tab==='performance'&&(()=>{
-        const totalStudents=Math.max(1,fMarksDist.reduce((s,d)=>s+d.count,0));
-        const failCount=fMarksDist.find(d=>d.range===GRADE_F)?.count??0;
-        const oCount=fMarksDist.find(d=>d.range===GRADE_O)?.count??0;
-        const avgScore=Math.round(fMarksDist.reduce((s,d,i)=>{const mid=[94,84,74,64,54,44][i];return s+mid*d.count},0)/totalStudents);
-        const passRate=100-Math.round((failCount/totalStudents)*100);
-        return(
-          <><div style={{display:'flex',gap:16,marginBottom:24,flexWrap:'wrap'}}><SCard label="Avg Class Score" value={`${avgScore}`} sub={rangeLabel} tone="blue" icon=""/><SCard label="O Grade Students" value={`${oCount}`} sub="90 and above" tone="green" icon="" trend="up"/><SCard label="Failing Students" value={`${failCount}`} sub="below 50" tone="red" icon=""/><SCard label="Avg Pass Rate" value={`${passRate}%`} sub="Excl. fails" tone="purple" icon=""/></div>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20,marginBottom:20}}>
-              <CC title="Grade Distribution" subtitle={`${rangeLabel} — student count per grade`}><ResponsiveContainer width="100%" height={H}><BarChart data={fMarksDist} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6"/><XAxis dataKey="range" tick={{fontSize:9,fill:'#9ca3af'}} axisLine={false} tickLine={false}/><YAxis tick={{fontSize:10,fill:'#9ca3af'}} axisLine={false} tickLine={false}/><Tooltip {...TT}/><Bar dataKey="count" name="Students" radius={[6,6,0,0]}>{fMarksDist.map((_,i)=><Cell key={i} fill={[C.green,C.blue,C.cyan,C.purple,C.orange,C.red][i]}/>)}</Bar></BarChart></ResponsiveContainer></CC>
-              <CC title="Grade Distribution Pie" subtitle="Visual breakdown of grades"><ResponsiveContainer width="100%" height={H}><PieChart><Pie data={fMarksDist} cx="50%" cy="50%" outerRadius={80} dataKey="count" nameKey="range" label={<PieLabelInside labelType="count"/>} labelLine={false}>{fMarksDist.map((_,i)=><Cell key={i} fill={[C.green,C.blue,C.cyan,C.purple,C.orange,C.red][i]}/>)}</Pie><Tooltip {...TT}/></PieChart></ResponsiveContainer></CC>
-            </div>
-            <CC title="Avg Marks Trend" subtitle="Class average over months" style={{marginBottom:20}}><ResponsiveContainer width="100%" height={H}><LineChart data={activeMonths.map(mn=>{const marks=marksDistByMonth[mn]??[];const total=marks.reduce((s,d)=>s+d.count,0)||1;const avg=Math.round(marks.reduce((s,d,i)=>s+[94,84,74,64,54,44][i]*d.count,0)/total);return{month:mn,avg};})} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6"/><XAxis dataKey="month" tick={{fontSize:10,fill:'#9ca3af'}} axisLine={false} tickLine={false}/><YAxis domain={[60,100]} tick={{fontSize:10,fill:'#9ca3af'}} axisLine={false} tickLine={false}/><Tooltip {...TT}/><Line type="monotone" dataKey="avg" name="Class Avg" stroke={C.blue} strokeWidth={2.5} dot={(p)=>{const inR=activeMonths.includes(p.payload?.month);return<circle key={p.cx} cx={p.cx} cy={p.cy} r={inR?6:3} fill={inR?C.orange:C.blue} stroke="#fff" strokeWidth={2}/>;}}/></LineChart></ResponsiveContainer></CC>
-          </>);
-      })()}
+      {tab==='performance'&&(
+        <><div style={{display:'flex',gap:16,marginBottom:24,flexWrap:'wrap'}}><SCard label="Avg Class Score" value="82" sub={rangeLabel} tone="blue" icon=""/><SCard label="O Grade Students" value={`${fMarksDist.find(d=>d.range===GRADE_O)?.count??0}`} sub="90 and above" tone="green" icon="" trend="up"/><SCard label="Failing Students" value={`${fMarksDist.find(d=>d.range===GRADE_F)?.count??0}`} sub="below 50" tone="red" icon=""/><SCard label="Avg Pass Rate" value="92%" sub="Excl. fails" tone="purple" icon=""/></div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20,marginBottom:20}}>
+            <CC title="Grade Distribution" subtitle={`${rangeLabel} — student count per grade`}><ResponsiveContainer width="100%" height={H}><BarChart data={fMarksDist} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/><XAxis dataKey="range" tick={{fontSize:9,fill:'#64748b',fontWeight:600}} axisLine={false} tickLine={false}/><YAxis tick={{fontSize:10,fill:'#64748b'}} axisLine={false} tickLine={false}/><Tooltip {...TT_STYLE}/><Bar dataKey="count" name="Students" radius={[6,6,0,0]}>{fMarksDist.map((_,i)=><Cell key={i} fill={[C.green,C.blue,C.cyan,C.purple,C.orange,C.red][i]}/>)}</Bar></BarChart></ResponsiveContainer></CC>
+            <CC title="Grade Distribution Pie" subtitle="Visual breakdown of grades"><ResponsiveContainer width="100%" height={H}><PieChart><Pie data={fMarksDist} cx="50%" cy="50%" outerRadius={80} dataKey="count" nameKey="range" label={<PieLabelInside labelType="count"/>} labelLine={false}>{fMarksDist.map((_,i)=><Cell key={i} fill={[C.green,C.blue,C.cyan,C.purple,C.orange,C.red][i]}/>)}</Pie><Tooltip {...TT_STYLE}/></PieChart></ResponsiveContainer></CC>
+          </div>
+        </>)}
 
       {tab==='assignments'&&(
         <><div style={{display:'flex',gap:16,marginBottom:24,flexWrap:'wrap'}}><SCard label="Total Submitted" value={fCards.submitted} sub={rangeLabel} tone="blue" icon="" trend="up"/><SCard label="Pending" value={fCards.pending} sub="Avg / month" tone="orange" icon="" trend="down"/><SCard label="On-Time Rate" value={`${Math.round(activeMonths.reduce((s,m)=>{const d=facultySubByMonth[m]??[];const total=d.reduce((a,w)=>a+w.onTime+w.late+w.missing,0)||1;return s+d.reduce((a,w)=>a+w.onTime,0)/total*100},0)/activeMonths.length)}%`} sub="Avg on-time" tone="green" icon="" trend="up"/><SCard label="Missing" value={`${Math.round(activeMonths.reduce((s,m)=>{const d=facultySubByMonth[m]??[];return s+d.reduce((a,w)=>a+w.missing,0)},0)/activeMonths.length)}`} sub="Avg / month" tone="red" icon=""/></div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20,marginBottom:20}}>
-            <CC title="Submission Rate (Weekly)" subtitle={`${rangeLabel} — on-time vs late vs missing`}><ResponsiveContainer width="100%" height={H}><BarChart data={fSubData} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6"/><XAxis dataKey="week" tick={{fontSize:8,fill:'#9ca3af'}} axisLine={false} tickLine={false} interval="preserveStartEnd"/><YAxis tick={{fontSize:10,fill:'#9ca3af'}} axisLine={false} tickLine={false}/><Tooltip {...TT}/><Legend wrapperStyle={{fontSize:11}}/><Bar dataKey="onTime" name="On Time" stackId="a" fill={C.green} radius={[0,0,0,0]}/><Bar dataKey="late" name="Late" stackId="a" fill={C.orange} radius={[0,0,0,0]}/><Bar dataKey="missing" name="Missing" stackId="a" fill={C.red} radius={[6,6,0,0]}/></BarChart></ResponsiveContainer></CC>
-            <CC title="Submission Status Split" subtitle={`${rangeLabel} avg`}><ResponsiveContainer width="100%" height={H}><PieChart><Pie data={[{name:'On Time',value:Math.round(activeMonths.reduce((s,m)=>{const d=facultySubByMonth[m]??[];return s+d.reduce((a,w)=>a+w.onTime,0)},0)/activeMonths.length)},{name:'Late',value:Math.round(activeMonths.reduce((s,m)=>{const d=facultySubByMonth[m]??[];return s+d.reduce((a,w)=>a+w.late,0)},0)/activeMonths.length)},{name:'Missing',value:Math.round(activeMonths.reduce((s,m)=>{const d=facultySubByMonth[m]??[];return s+d.reduce((a,w)=>a+w.missing,0)},0)/activeMonths.length)}]} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={<PieLabelInside labelType="pct"/>} labelLine={false}>{[0,1,2].map(i=><Cell key={i} fill={[C.green,C.orange,C.red][i]}/>)}</Pie><Tooltip {...TT}/><Legend wrapperStyle={{fontSize:12}}/></PieChart></ResponsiveContainer></CC>
+            <CC title="Submission Rate (Weekly)" subtitle={`${rangeLabel} — on-time vs late vs missing`}><ResponsiveContainer width="100%" height={H}><BarChart data={fSubData} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/><XAxis dataKey="week" tick={{fontSize:8,fill:'#64748b',fontWeight:600}} axisLine={false} tickLine={false}/><YAxis tick={{fontSize:10,fill:'#64748b'}} axisLine={false} tickLine={false}/><Tooltip {...TT_STYLE}/><Legend wrapperStyle={{fontSize:11,fontFamily:"'Outfit', sans-serif"}}/><Bar dataKey="onTime" name="On Time" stackId="a" fill={C.green} radius={[0,0,0,0]}/><Bar dataKey="late" name="Late" stackId="a" fill={C.orange} radius={[0,0,0,0]}/><Bar dataKey="missing" name="Missing" stackId="a" fill={C.red} radius={[6,6,0,0]}/></BarChart></ResponsiveContainer></CC>
+            <CC title="Submission Status Split" subtitle={`${rangeLabel} avg`}><ResponsiveContainer width="100%" height={H}><PieChart><Pie data={[{name:'On Time',value:Math.round(activeMonths.reduce((s,m)=>{const d=facultySubByMonth[m]??[];return s+d.reduce((a,w)=>a+w.onTime,0)},0)/activeMonths.length)},{name:'Late',value:Math.round(activeMonths.reduce((s,m)=>{const d=facultySubByMonth[m]??[];return s+d.reduce((a,w)=>a+w.late,0)},0)/activeMonths.length)},{name:'Missing',value:Math.round(activeMonths.reduce((s,m)=>{const d=facultySubByMonth[m]??[];return s+d.reduce((a,w)=>a+w.missing,0)},0)/activeMonths.length)}]} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={<PieLabelInside labelType="pct"/>} labelLine={false}>{[0,1,2].map(i=><Cell key={i} fill={[C.green,C.orange,C.red][i]}/>)}</Pie><Tooltip {...TT_STYLE}/><Legend wrapperStyle={{fontSize:12,fontFamily:"'Outfit', sans-serif"}}/></PieChart></ResponsiveContainer></CC>
           </div>
         </>)}
 
       {tab==='exams'&&(
         <><div style={{display:'flex',gap:16,marginBottom:24,flexWrap:'wrap'}}><SCard label="Overall Pass Rate" value={`${Math.round(examResultsBySubject.reduce((s,d)=>s+d.pass,0)/Math.max(1,examResultsBySubject.length))}%`} sub="All subjects" tone="green" icon=""/><SCard label="Highest Pass Rate" value={`${Math.max(...examResultsBySubject.map(d=>d.pass))}%`} sub={examResultsBySubject.find(d=>d.pass===Math.max(...examResultsBySubject.map(d=>d.pass)))?.subject} tone="blue" icon=""/><SCard label="Lowest Pass Rate" value={`${Math.min(...examResultsBySubject.map(d=>d.pass))}%`} sub={examResultsBySubject.find(d=>d.pass===Math.min(...examResultsBySubject.map(d=>d.pass)))?.subject} tone="red" icon=""/><SCard label="Avg Class Score" value={`${Math.round(examResultsBySubject.reduce((s,d)=>s+d.avg,0)/Math.max(1,examResultsBySubject.length))}`} sub="All subjects" tone="purple" icon=""/></div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20,marginBottom:20}}>
-            <CC title="Subject-wise Pass Rate" subtitle="Pass vs fail breakdown per subject"><ResponsiveContainer width="100%" height={H2}><BarChart data={examResultsBySubject} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6"/><XAxis dataKey="subject" tick={{fontSize:9,fill:'#9ca3af'}} axisLine={false} tickLine={false}/><YAxis domain={[0,100]} tick={{fontSize:10,fill:'#9ca3af'}} axisLine={false} tickLine={false} tickFormatter={v=>`${v}%`}/><Tooltip {...TT} formatter={v=>`${v}%`}/><Legend wrapperStyle={{fontSize:11}}/><Bar dataKey="pass" name="Pass%" stackId="a" fill={C.green} radius={[0,0,0,0]}/><Bar dataKey="fail" name="Fail%" stackId="a" fill={C.red} radius={[6,6,0,0]}/></BarChart></ResponsiveContainer></CC>
-            <CC title="Average Marks per Subject" subtitle="Subject performance comparison"><ResponsiveContainer width="100%" height={H2}><BarChart data={examResultsBySubject} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6"/><XAxis dataKey="subject" tick={{fontSize:9,fill:'#9ca3af'}} axisLine={false} tickLine={false}/><YAxis domain={[50,100]} tick={{fontSize:10,fill:'#9ca3af'}} axisLine={false} tickLine={false}/><Tooltip {...TT}/><Bar dataKey="avg" name="Avg Marks" radius={[6,6,0,0]}>{examResultsBySubject.map((_,i)=><Cell key={i} fill={[C.blue,C.cyan,C.orange,C.green,C.purple][i]}/>)}</Bar></BarChart></ResponsiveContainer></CC>
+            <CC title="Subject-wise Pass Rate" subtitle="Pass vs fail breakdown per subject"><ResponsiveContainer width="100%" height={H2}><BarChart data={examResultsBySubject} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/><XAxis dataKey="subject" tick={{fontSize:9,fill:'#64748b',fontWeight:600}} axisLine={false} tickLine={false}/><YAxis domain={[0,100]} tick={{fontSize:10,fill:'#64748b'}} axisLine={false} tickLine={false} tickFormatter={v=>`${v}%`}/><Tooltip {...TT_STYLE} formatter={v=>`${v}%`}/><Legend wrapperStyle={{fontSize:11,fontFamily:"'Outfit', sans-serif"}}/><Bar dataKey="pass" name="Pass%" stackId="a" fill={C.green} radius={[0,0,0,0]}/><Bar dataKey="fail" name="Fail%" stackId="a" fill={C.red} radius={[6,6,0,0]}/></BarChart></ResponsiveContainer></CC>
+            <CC title="Average Marks per Subject" subtitle="Subject performance comparison"><ResponsiveContainer width="100%" height={H2}><BarChart data={examResultsBySubject} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/><XAxis dataKey="subject" tick={{fontSize:9,fill:'#64748b',fontWeight:600}} axisLine={false} tickLine={false}/><YAxis domain={[50,100]} tick={{fontSize:10,fill:'#64748b'}} axisLine={false} tickLine={false}/><Tooltip {...TT_STYLE}/><Bar dataKey="avg" name="Avg Marks" radius={[6,6,0,0]}>{examResultsBySubject.map((_,i)=><Cell key={i} fill={[C.blue,C.cyan,C.orange,C.green,C.purple][i]}/>)}</Bar></BarChart></ResponsiveContainer></CC>
           </div>
           <CC title="Exam Results Summary" subtitle="Detailed per-subject exam report" style={{marginBottom:20}}>
             <div style={{overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
@@ -665,7 +827,6 @@ function FacultyView({activeMonths,rangeLabel,department,semester,analyticsData}
                     <tr key={i} style={{background:i%2===0?'#fafafa':'#fff'}}><td style={{...tD,fontWeight:700}}>{s.subject}</td><td style={{...tD,fontWeight:800,color:C.green}}>{s.pass}%</td><td style={{...tD,fontWeight:800,color:C.red}}>{s.fail}%</td><td style={{...tD,fontWeight:700,color:C.blue}}>{s.avg}</td><td style={{...tD,minWidth:120}}><MiniProgress value={s.pass} color={s.pass>=88?C.green:s.pass>=80?C.orange:C.red}/></td><td style={tD}><span style={{fontSize:11,fontWeight:700,padding:'3px 9px',borderRadius:999,background:s.pass>=90?'#fffbeb':s.pass>=80?'#f0fdf4':'#fef2f2',color:s.pass>=90?'#b45309':s.pass>=80?'#16a34a':'#b91c1c'}}>{s.pass>=90?'Excellent':s.pass>=80?'Good':'Needs Work'}</span></td></tr>))}</tbody></table>
             </div>
           </CC>
-          <CC title="Grade Distribution" subtitle={`${rangeLabel} — full class breakdown`} style={{marginBottom:20}}><ResponsiveContainer width="100%" height={H}><BarChart data={fMarksDist} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6"/><XAxis dataKey="range" tick={{fontSize:10,fill:'#9ca3af'}} axisLine={false} tickLine={false}/><YAxis tick={{fontSize:10,fill:'#9ca3af'}} axisLine={false} tickLine={false}/><Tooltip {...TT}/><Bar dataKey="count" name="Students" radius={[6,6,0,0]}>{fMarksDist.map((_,i)=><Cell key={i} fill={[C.green,C.blue,C.cyan,C.purple,C.orange,C.red][i]}/>)}</Bar></BarChart></ResponsiveContainer></CC>
         </>)}
     </>);
 }
@@ -699,6 +860,16 @@ export default function AnalyticsPage({role:propRole}){
         const params = new URLSearchParams();
         params.append('role', role);
         if (deptCode) params.append('department', deptCode);
+        
+        // Extract semester number
+        const semMatch = semester.match(/\d+/);
+        if (semMatch) params.append('semester', semMatch[0]);
+        
+        // Add date range parameters
+        params.append('startMonth', String(startMY.month + 1));
+        params.append('startYear', String(startMY.year));
+        params.append('endMonth', String(endMY.month + 1));
+        params.append('endYear', String(endMY.year));
 
         const res = await fetch(`${API_BASE}/analytics/full?${params.toString()}`);
         if (!res.ok) throw new Error('Failed to fetch analytics data');
@@ -716,7 +887,7 @@ export default function AnalyticsPage({role:propRole}){
     }
     fetchAnalytics();
     return () =>{ cancelled = true; };
-  }, [role, department]);
+  }, [role, department, semester, startMY, endMY]);
 
   useEffect(()=>{
     function onOut(e){if(calRef.current&&!calRef.current.contains(e.target))setCalOpen(false);}
@@ -738,21 +909,85 @@ export default function AnalyticsPage({role:propRole}){
 
   function FilterBar(){
     return(
-      <div className="content-card" style={{marginBottom:24,padding:'16px 20px'}}><div style={{display:'flex',alignItems:'flex-end',gap:12,flexWrap:'wrap'}}><div style={{position:'relative'}} ref={calRef}><div style={{fontSize:11,fontWeight:700,color:'#9ca3af',textTransform:'uppercase',letterSpacing:.5,marginBottom:5,display:'flex',alignItems:'center',gap:4}}><Ico.Calendar/>Date Range
-            </div><button onClick={()=>setCalOpen(o=>!o)} style={{display:'flex',alignItems:'center',gap:8,height:38,padding:'0 14px',borderRadius:9,border:`1.5px solid ${calOpen?'#276221':'#e5e7eb'}`,background:calOpen?'#f0f5f1':'#fff',color:'#1f2937',fontSize:13,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap',boxShadow:calOpen?'0 0 0 3px rgba(39,98,33,.12)':'none',transition:'all 0.15s'}}><Ico.Calendar/>{triggerLabel}<span style={{fontSize:10,color:'#9ca3af',marginLeft:2}}>▾</span></button>{calOpen&&<CalendarRangePicker startMY={startMY} endMY={endMY} onChange={({startMY:s,endMY:e})=>{setStartMY(s);setEndMY(e);}} onClose={()=>setCalOpen(false)}/>}
-          </div><div><div style={{fontSize:11,fontWeight:700,color:'#9ca3af',textTransform:'uppercase',letterSpacing:.5,marginBottom:5}}>Semester</div><select value={semester} onChange={e=>setSemester(e.target.value)} style={{height:38,padding:'0 10px',borderRadius:9,border:'1.5px solid #e5e7eb',background:'#fff',fontSize:13,fontWeight:600,color:'#374151',cursor:'pointer',outline:'none',appearance:'none',WebkitAppearance:'none',minWidth:170}}>{SEMESTER_OPTS.map(o=><option key={o}>{o}</option>)}
-            </select></div>{role!=='student'&&(
-            <div><div style={{fontSize:11,fontWeight:700,color:'#9ca3af',textTransform:'uppercase',letterSpacing:.5,marginBottom:5}}>Department</div><select value={department} onChange={e=>setDepartment(e.target.value)} style={{height:38,padding:'0 10px',borderRadius:9,border:'1.5px solid #e5e7eb',background:'#fff',fontSize:13,fontWeight:600,color:'#374151',cursor:'pointer',outline:'none',appearance:'none',WebkitAppearance:'none',minWidth:180}}>{DEPT_OPTS.map(o=><option key={o}>{o}</option>)}
-              </select></div>)}
+      <div className="content-card-premium" style={{marginBottom:28,padding:'20px 24px',background:'#ffffff',border:'1px solid #e2e8f0'}}>
+        <div style={{display:'flex',alignItems:'flex-end',gap:16,flexWrap:'wrap'}}>
+          <div style={{position:'relative'}} ref={calRef}>
+            <div style={{fontSize:11,fontWeight:700,color:'#64748b',textTransform:'uppercase',letterSpacing:.8,marginBottom:6,display:'flex',alignItems:'center',gap:6,fontFamily:"'Outfit', sans-serif"}}>
+              <Ico.Calendar/>Date Range
+            </div>
+            <button onClick={()=>setCalOpen(o=>!o)} style={{display:'flex',alignItems:'center',gap:8,height:40,padding:'0 16px',borderRadius:10,border:`1.5px solid ${calOpen?'#276221':'#cbd5e1'}`,background:calOpen?'#f0f5f1':'#fff',color:'#1e293b',fontSize:13,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap',boxShadow:calOpen?'0 0 0 3px rgba(39,98,33,.12)':'none',transition:'all 0.15s',fontFamily:"'Outfit', sans-serif"}}>
+              <Ico.Calendar/>{triggerLabel}<span style={{fontSize:10,color:'#64748b',marginLeft:4}}>▾</span>
+            </button>
+            {calOpen&&<CalendarRangePicker startMY={startMY} endMY={endMY} onChange={({startMY:s,endMY:e})=>{setStartMY(s);setEndMY(e);}} onClose={()=>setCalOpen(false)}/>}
+          </div>
+          
+          <div>
+            <div style={{fontSize:11,fontWeight:700,color:'#64748b',textTransform:'uppercase',letterSpacing:.8,marginBottom:6,fontFamily:"'Outfit', sans-serif"}}>Semester</div>
+            <div style={{position:'relative'}}>
+              <select value={semester} onChange={e=>setSemester(e.target.value)} style={{height:40,padding:'0 16px',borderRadius:10,border:'1.5px solid #cbd5e1',background:'#fff',fontSize:13,fontWeight:600,color:'#1e293b',cursor:'pointer',outline:'none',minWidth:180,fontFamily:"'Outfit', sans-serif"}}>
+                {SEMESTER_OPTS.map(o=><option key={o}>{o}</option>)}
+              </select>
+            </div>
+          </div>
+          
+          {role!=='student'&&(
+            <div>
+              <div style={{fontSize:11,fontWeight:700,color:'#64748b',textTransform:'uppercase',letterSpacing:.8,marginBottom:6,fontFamily:"'Outfit', sans-serif"}}>Department</div>
+              <div style={{position:'relative'}}>
+                <select value={department} onChange={e=>setDepartment(e.target.value)} style={{height:40,padding:'0 16px',borderRadius:10,border:'1.5px solid #cbd5e1',background:'#fff',fontSize:13,fontWeight:600,color:'#1e293b',cursor:'pointer',outline:'none',minWidth:200,fontFamily:"'Outfit', sans-serif"}}>
+                  {DEPT_OPTS.map(o=><option key={o}>{o}</option>)}
+                </select>
+              </div>
+            </div>
+          )}
 
-          <div><div style={{fontSize:11,fontWeight:700,color:'transparent',marginBottom:5}}>—</div><button onClick={()=>{setStartMY({month:0,year:2026});setEndMY({month:2,year:2026});setSemester(SEMESTER_OPTS[0]);setDepartment(DEPT_OPTS[0]);}} style={{height:38,padding:'0 14px',borderRadius:9,border:'1.5px solid #e5e7eb',background:'#f9fafb',color:'#6b7280',fontSize:12,fontWeight:600,cursor:'pointer'}}>Reset</button></div><div style={{marginLeft:'auto'}}><div style={{fontSize:11,fontWeight:700,color:'transparent',marginBottom:5}}>—</div><button onClick={()=>exportCSV(role,activeMonths,rangeLabel,'students',analyticsData)} style={{display:'flex',alignItems:'center',gap:7,height:38,padding:'0 18px',borderRadius:9,border:'none',background:'linear-gradient(135deg,#276221,#1e4618)',color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer',boxShadow:'0 2px 10px rgba(39,98,33,.4)'}}><Ico.Download/>Download Report
-            </button></div></div><div style={{display:'flex',gap:6,marginTop:12,flexWrap:'wrap',alignItems:'center'}}><span style={{fontSize:11,color:'#9ca3af'}}>Showing:</span><span style={{fontSize:11,fontWeight:600,padding:'3px 10px',borderRadius:999,background:'#f0f5f1',color:'#276221',border:'1px solid #d4e5d1'}}>{triggerLabel}</span><span style={{fontSize:11,fontWeight:600,padding:'3px 10px',borderRadius:999,background:'#f5f3ff',color:'#7c3aed',border:'1px solid #ddd6fe'}}>{semester}</span>{department!==DEPT_OPTS[0]&&<span style={{fontSize:11,fontWeight:600,padding:'3px 10px',borderRadius:999,background:'#f0fdf4',color:'#16a34a',border:'1px solid #bbf7d0'}}>{department}</span>}
-          {activeMonths.length>1&&<span style={{fontSize:11,fontWeight:600,padding:'3px 10px',borderRadius:999,background:'#fff7ed',color:'#c2410c',border:'1px solid #fed7aa'}}>{activeMonths.length} months</span>}
-        </div></div>);
+          <div>
+            <button onClick={()=>{setStartMY({month:0,year:2026});setEndMY({month:2,year:2026});setSemester(SEMESTER_OPTS[0]);setDepartment(DEPT_OPTS[0]);}} style={{height:40,padding:'0 18px',borderRadius:10,border:'1.5px solid #cbd5e1',background:'#f8fafc',color:'#64748b',fontSize:13,fontWeight:600,cursor:'pointer',transition:'all 0.2s',fontFamily:"'Outfit', sans-serif"}}>
+              Reset
+            </button>
+          </div>
+          
+          <div style={{marginLeft:'auto'}}>
+            <button onClick={()=>exportCSV(role,activeMonths,rangeLabel,'students',analyticsData)} style={{display:'flex',alignItems:'center',gap:8,height:40,padding:'0 20px',borderRadius:10,border:'none',background:'linear-gradient(135deg,#276221,#1e4618)',color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer',boxShadow:'0 4px 14px rgba(39,98,33,.3)',transition:'all 0.2s',fontFamily:"'Outfit', sans-serif"}}>
+              <Ico.Download/>Download Report
+            </button>
+          </div>
+        </div>
+        
+        <div style={{display:'flex',gap:8,marginTop:16,flexWrap:'wrap',alignItems:'center',borderTop:'1px solid #f1f5f9',paddingTop:14}}>
+          <span style={{fontSize:12,color:'#64748b',fontWeight:500}}>Active Filters:</span>
+          <span style={{fontSize:12,fontWeight:600,padding:'4px 12px',borderRadius:999,background:'#f0f5f1',color:'#276221',border:'1px solid #d4e5d1',fontFamily:"'Outfit', sans-serif"}}>{triggerLabel}</span>
+          <span style={{fontSize:12,fontWeight:600,padding:'4px 12px',borderRadius:999,background:'#f5f3ff',color:'#7c3aed',border:'1px solid #ddd6fe',fontFamily:"'Outfit', sans-serif"}}>{semester}</span>
+          {department!==DEPT_OPTS[0]&&<span style={{fontSize:12,fontWeight:600,padding:'4px 12px',borderRadius:999,background:'#f0fdf4',color:'#16a34a',border:'1px solid #bbf7d0',fontFamily:"'Outfit', sans-serif"}}>{department}</span>}
+          {activeMonths.length>1&&<span style={{fontSize:12,fontWeight:600,padding:'4px 12px',borderRadius:999,background:'#fff7ed',color:'#c2410c',border:'1px solid #fed7aa',fontFamily:"'Outfit', sans-serif"}}>{activeMonths.length} Months Range</span>}
+        </div>
+      </div>
+    );
   }
 
-  return(
-    <Layout title="Reports & Analytics"><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}><p style={{color:'#64748b',fontSize:13,margin:0}}>{role==='admin'&&'College-wide statistics - Students, Faculty, Finance'}
+  return (
+    <Layout title="Reports & Analytics">
+      <style>{`
+        .premium-kpi-card:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 12px 30px -4px rgba(0, 0, 0, 0.08) !important;
+          border-color: rgba(39, 98, 33, 0.3) !important;
+        }
+        .content-card-premium {
+          background: rgba(255, 255, 255, 0.85);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          border: 1px solid rgba(226, 232, 240, 0.8);
+          box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.02);
+          border-radius: 16px;
+          padding: 24px;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .content-card-premium:hover {
+          box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05);
+        }
+      `}</style>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}><p style={{color:'#64748b',fontSize:13,margin:0}}>{role==='admin'&&'College-wide statistics - Students, Faculty, Finance'}
           {role==='faculty'&&'Class performance, attendance and exam analytics'}
           {role==='finance'&&'Fee collection, expenses and scholarship analytics'}
           {role==='student'&&'Your personal performance overview'}

@@ -910,19 +910,85 @@ async def system_monitoring():
 @router.get("/users")
 async def list_users():
     db = get_db()
-    col = db["system_users"]
+    seen_emails = set()
     users = []
-    async for u in col.find():
-        u["_id"] = str(u["_id"])
-        users.append(u)
+
+    def add_user(uid, name, email, role, active):
+        if not email:
+            return
+        email_lower = email.lower().strip()
+        if email_lower in seen_emails:
+            return
+        seen_emails.add(email_lower)
+        users.append({
+            "id": uid,
+            "name": name,
+            "role": role,
+            "email": email,
+            "active": active
+        })
+
+    # 1. Query admin_users
+    async for a in db["admin_users"].find():
+        add_user(
+            uid=a.get("userId") or str(a.get("_id")),
+            name=a.get("name") or "Admin User",
+            email=a.get("email"),
+            role="admin",
+            active=a.get("active", True)
+        )
+
+    # 2. Query finance_users
+    async for fn in db["finance_users"].find():
+        add_user(
+            uid=fn.get("userId") or str(fn.get("_id")),
+            name=fn.get("name") or "Finance User",
+            email=fn.get("email"),
+            role="finance",
+            active=fn.get("active", True)
+        )
+
+    # 3. Query faculty
+    async for f in db["faculty"].find():
+        status = f.get("status") or f.get("employment_status") or "Active"
+        add_user(
+            uid=f.get("employee_id") or f.get("id") or str(f.get("_id")),
+            name=f.get("name") or "Faculty User",
+            email=f.get("email"),
+            role="faculty",
+            active=status == "Active"
+        )
+
+    # 4. Query students
+    async for s in db["students"].find():
+        status = s.get("status", "Active")
+        add_user(
+            uid=s.get("id") or s.get("rollNumber") or str(s.get("_id")),
+            name=s.get("name") or "Student User",
+            email=s.get("email"),
+            role="student",
+            active=status == "Active"
+        )
+
+    # 5. Query system_users (fallback/legacy)
+    async for u in db["system_users"].find():
+        add_user(
+            uid=u.get("id") or str(u.get("_id")),
+            name=u.get("name") or "System User",
+            email=u.get("email"),
+            role=u.get("role") or "student",
+            active=u.get("active", True)
+        )
+
     if not users:
         defaults = [
             {"id": 1, "name": "John", "role": "student", "email": "john@student.mitconnect.edu", "active": True},
             {"id": 2, "name": "Sara", "role": "faculty", "email": "sara@mitconnect.edu", "active": True},
             {"id": 3, "name": "Admin", "role": "admin", "email": "admin@mitconnect.edu", "active": True},
         ]
-        await col.insert_many(defaults)
+        await db["system_users"].insert_many(defaults)
         return defaults
+
     return users
 
 

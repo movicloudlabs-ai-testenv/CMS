@@ -86,14 +86,6 @@ export default function UserManagement() {
               className="pl-9 pr-4 py-2 w-full bg-white border border-slate-200 rounded-lg text-sm text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#276221]/30 focus:border-[#276221] transition-all"
             />
           </div>
-          <button
-            type="button"
-            onClick={openCreate}
-            className="flex items-center gap-2 px-4 py-2 bg-[#276221] text-white rounded-lg text-sm font-semibold hover:bg-[#1e4618] transition-all shadow-sm active:scale-95"
-          >
-            <span className="material-symbols-outlined text-lg">person_add</span>
-            Create User
-          </button>
         </div>
 
         {/* Table */}

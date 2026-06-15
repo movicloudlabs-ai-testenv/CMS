@@ -202,6 +202,139 @@ async def list_attendance_markings(
     return {"success": True, "data": rows}
 
 
+import re
+
+def is_class_assigned_py(class_id: str, class_label: str, assigned_classes: list) -> bool:
+    if not assigned_classes:
+        return False
+        
+    normalized_label = class_label.lower()
+    normalized_id = class_id.lower()
+    
+    dept_codes = {
+        'cse': ['computer science', 'computer science & engineering', 'computer science and engineering'],
+        'ece': ['electronics', 'electronics & communication', 'electronics and communication'],
+        'me': ['mechanical', 'mechanical engineering'],
+        'ce': ['civil', 'civil engineering'],
+        'it': ['information technology'],
+        'eee': ['electrical', 'electrical engineering', 'electrical & electronics', 'electrical and electronics']
+    }
+    
+    for ac in assigned_classes:
+        normalized_ac = ac.strip().lower()
+        if not normalized_ac:
+            continue
+            
+        # 1. Substring match
+        if normalized_ac in normalized_label or normalized_ac in normalized_id:
+            return True
+            
+        # 2. Abbreviation match, e.g. "CSE-A"
+        parts = re.split(r'[-_\s]+', normalized_ac)
+        if len(parts) >= 2:
+            first = parts[0]
+            last = parts[-1]
+            if len(last) == 1 and last.isalpha():
+                # check if student section matches
+                student_sec = normalized_id.split('-')[-1]
+                if student_sec == last:
+                    if first in ['cs', 'cse']:
+                        if 'computer-science' in normalized_id or 'cse' in normalized_id:
+                            return True
+                    for code, names in dept_codes.items():
+                        if first == code:
+                            if any(name.replace(' ', '-') in normalized_id for name in names):
+                                return True
+                                
+        # 3. Year match
+        match_num = re.search(r'\d+', normalized_ac)
+        if match_num:
+            num = match_num.group()
+            year_words = {
+                '1': ['1st', '1', 'first'],
+                '2': ['2nd', '2', 'second'],
+                '3': ['3rd', '3', 'third'],
+                '4': ['4th', '4', 'fourth']
+            }
+            if num in year_words:
+                if any(w in normalized_id for w in year_words[num]):
+                    return True
+                    
+    return False
+
+async def check_faculty_attendance_permission(db, faculty_id: str, class_id: str, date_str: str, hour_str: str, class_label: str = ""):
+    # Find faculty record
+    faculty = await db["faculty"].find_one({"$or": [{"employeeId": faculty_id}, {"id": faculty_id}]})
+    if not faculty:
+        # If not a faculty member, allow (could be admin or system user)
+        return
+        
+    # 1. Verify class assignment
+    assigned_classes = faculty.get("assignedClasses") or faculty.get("classes") or []
+    if isinstance(assigned_classes, str):
+        assigned_classes = [c.strip() for c in assigned_classes.split(",") if c.strip()]
+        
+    if not class_label:
+        marking = await db["academic_attendance_markings"].find_one({"classId": class_id})
+        if marking:
+            class_label = marking.get("classLabel") or ""
+        else:
+            parts = class_id.split("-")
+            class_label = " ".join([p.capitalize() for p in parts])
+            
+    if not is_class_assigned_py(class_id, class_label, assigned_classes):
+        raise HTTPException(status_code=403, detail=f"Class '{class_label}' is not assigned to you.")
+        
+    # 2. Verify subject/hour assignment
+    try:
+        dt = datetime.strptime(date_str, "%Y-%m-%d")
+        weekday = dt.strftime("%a") # e.g. "Mon", "Tue"
+    except Exception:
+        # Allow if date format is invalid
+        return
+        
+    # Find timetable for this class
+    timetable = await db["academic_timetables"].find_one({"classId": class_id})
+    if not timetable:
+        # Allow if no timetable defined
+        return
+        
+    hour_map = {f"Hour {i}": i-1 for i in range(1, 9)}
+    hour_idx = hour_map.get(hour_str)
+    if hour_idx is None or hour_idx < 0:
+        return
+        
+    weekday_map = {"Mon": 0, "Tue": 1, "Wed": 2, "Thu": 3, "Fri": 4}
+    day_idx = weekday_map.get(weekday)
+    if day_idx is None:
+        return
+        
+    slots = timetable.get("slots") or []
+    if len(slots) > hour_idx:
+        day_slots = slots[hour_idx]
+        if len(day_slots) > day_idx:
+            slot_entry = day_slots[day_idx]
+            if slot_entry:
+                instructor = slot_entry.get("instructor", "")
+                subject_name = slot_entry.get("name", "")
+                subject_code = slot_entry.get("code", "")
+                
+                faculty_name = faculty.get("name") or faculty.get("fullName") or ""
+                faculty_courses = faculty.get("courses") or []
+                if isinstance(faculty_courses, str):
+                    faculty_courses = [c.strip() for c in faculty_courses.split(",") if c.strip()]
+                    
+                # Check match:
+                if instructor and (faculty_id.lower() in instructor.lower() or faculty_name.lower() in instructor.lower()):
+                    return
+                if subject_name and any(c.lower() in subject_name.lower() for c in faculty_courses):
+                    return
+                if subject_code and any(c.lower() in subject_code.lower() for c in faculty_courses):
+                    return
+                
+                # If scheduled but not for this faculty, raise 403
+                raise HTTPException(status_code=403, detail=f"This hour is scheduled for {subject_name or subject_code} with {instructor or 'another instructor'}. You are not assigned to this hour.")
+
 @router.put("/markings")
 async def upsert_attendance_marking(payload: AttendanceMarkRecord):
     data = payload.model_dump()
@@ -220,6 +353,18 @@ async def upsert_attendance_marking(payload: AttendanceMarkRecord):
         if error.status_code == 503:
             return {"success": True, "data": upsert_dev_attendance_marking(data)}
         raise
+
+    # Faculty assignment validation
+    marked_by = data.get("markedBy", "")
+    if marked_by:
+        await check_faculty_attendance_permission(
+            db,
+            faculty_id=marked_by,
+            class_id=data["classId"],
+            date_str=data["date"],
+            hour_str=data["hour"],
+            class_label=data.get("classLabel", "")
+        )
 
     updated = await db["academic_attendance_markings"].find_one_and_update(
         query,

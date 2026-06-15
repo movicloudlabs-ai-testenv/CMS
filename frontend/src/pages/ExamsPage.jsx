@@ -4,6 +4,7 @@ import Layout from '../components/Layout'
 import KpiCard from '../components/KpiCard'
 import KpiGrid from '../components/KpiGrid'
 import { getUserSession } from '../auth/sessionController'
+import { buildApiUrl } from '../api/apiBase'
 import Modal from '../components/Modal'
 import MarksEntryModal from '../components/exam/MarksEntryModal'
 import HallTicket from '../components/exam/HallTicket'
@@ -132,6 +133,30 @@ export default function ExamsPage({ noLayout = false }) {
   const fetchExams = async () => {
     try {
       const examList = await listExams()
+      
+      if (isFaculty && session?.userId) {
+        const profileRes = await fetch(buildApiUrl(`/faculty/${encodeURIComponent(session.userId)}`))
+        if (profileRes.ok) {
+          const profile = await profileRes.json()
+          const courses = profile?.courses || []
+          const rawCourses = Array.isArray(courses)
+            ? courses
+            : (typeof courses === 'string' ? courses.split(',').map(s => s.trim()).filter(Boolean) : [])
+            
+          const filtered = examList.filter(exam => {
+            return rawCourses.some(fc => {
+              const fcNorm = fc.toLowerCase()
+              return (exam.code && exam.code.toLowerCase().includes(fcNorm)) ||
+                     (exam.name && exam.name.toLowerCase().includes(fcNorm)) ||
+                     fcNorm.includes(exam.code.toLowerCase()) ||
+                     (exam.name && fcNorm.includes(exam.name.toLowerCase()))
+            })
+          })
+          setExams(filtered)
+          return
+        }
+      }
+
       if (!isStudent || !session?.userId) {
         setExams(examList)
         return

@@ -287,6 +287,69 @@ function normalizeAttendanceRecord(r) {
   }
 }
 
+function isClassAssigned(classId, classLabel, assignedClasses) {
+  if (!assignedClasses || assignedClasses.length === 0) return false;
+  
+  const normalizedLabel = classLabel.toLowerCase();
+  const normalizedId = classId.toLowerCase();
+  
+  const deptCodes = {
+    'cse': ['computer science', 'computer science & engineering', 'computer science and engineering'],
+    'ece': ['electronics', 'electronics & communication', 'electronics and communication'],
+    'me': ['mechanical', 'mechanical engineering'],
+    'ce': ['civil', 'civil engineering'],
+    'it': ['information technology'],
+    'eee': ['electrical', 'electrical engineering', 'electrical & electronics', 'electrical and electronics']
+  };
+  
+  return assignedClasses.some(ac => {
+    const normalizedAc = ac.trim().toLowerCase();
+    if (!normalizedAc) return false;
+    
+    // 1. Direct substring match
+    if (normalizedLabel.includes(normalizedAc) || normalizedId.includes(normalizedAc)) {
+      return true;
+    }
+    
+    // 2. Abbreviation match, e.g. "CSE-A"
+    const parts = normalizedAc.split(/[-_\s]+/);
+    if (parts.length >= 2) {
+      const first = parts[0];
+      const last = parts[parts.length - 1];
+      if (last.length === 1 && /[a-z]/.test(last)) {
+        const studentSec = normalizedId.split('-').pop();
+        if (studentSec === last) {
+          if (first === 'cs' || first === 'cse') {
+            return normalizedId.includes('computer-science') || normalizedId.includes('cse');
+          }
+          for (const [code, names] of Object.entries(deptCodes)) {
+            if (first === code) {
+              return names.some(name => normalizedId.includes(name.replace(/\s+/g, '-')));
+            }
+          }
+        }
+      }
+    }
+    
+    // 3. Year match
+    const matchNum = normalizedAc.match(/\d+/);
+    if (matchNum) {
+      const num = matchNum[0];
+      const yearWords = {
+        '1': ['1st', '1', 'first'],
+        '2': ['2nd', '2', 'second'],
+        '3': ['3rd', '3', 'third'],
+        '4': ['4th', '4', 'fourth']
+      };
+      if (yearWords[num]) {
+        return yearWords[num].some(w => normalizedId.includes(w));
+      }
+    }
+    
+    return false;
+  });
+}
+
 function AttendanceTable({ data, type, isAdmin }) {
   return (
     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
@@ -422,9 +485,10 @@ export default function AttendancePage({ noLayout = false }) {
   const [odProofFileName, setOdProofFileName] = useState('')
   const [odNotice, setOdNotice] = useState('')
   const [odEditingRequestId, setOdEditingRequestId] = useState('')
-  const [facultyOdRequests, setFacultyOdRequests] = useState([])
   const [facultyOdNotice, setFacultyOdNotice] = useState('')
   const [viewingProofUrl, setViewingProofUrl] = useState('')
+  const [facultyCourses, setFacultyCourses] = useState([])
+  const [classTimetable, setClassTimetable] = useState(null)
 
   useEffect(() => {
     async function fetchAttendance() {
@@ -453,6 +517,24 @@ export default function AttendancePage({ noLayout = false }) {
 
     async function fetchClassStudents() {
       try {
+        let rawAssigned = []
+        if (isFaculty) {
+          const profileRes = await fetch(buildApiUrl(`/faculty/${sessionUserId}`))
+          if (profileRes.ok) {
+            const profile = await profileRes.json()
+            const assigned = profile?.assignedClasses || profile?.classes || []
+            rawAssigned = Array.isArray(assigned) 
+              ? assigned 
+              : (typeof assigned === 'string' ? assigned.split(',').map(s => s.trim()).filter(Boolean) : [])
+            
+            const courses = profile?.courses || []
+            const rawCourses = Array.isArray(courses)
+              ? courses
+              : (typeof courses === 'string' ? courses.split(',').map(s => s.trim()).filter(Boolean) : [])
+            setFacultyCourses(rawCourses)
+          }
+        }
+
         const res = await fetch(buildApiUrl('/students'))
         const json = await res.json().catch(() => null)
         const students = Array.isArray(json)
@@ -477,6 +559,12 @@ export default function AttendancePage({ noLayout = false }) {
             ...item,
             students: [...item.students].sort((a, b) => String(a.rollNumber).localeCompare(String(b.rollNumber))),
           }))
+          .filter((item) => {
+            if (isFaculty) {
+              return isClassAssigned(item.id, item.label, rawAssigned)
+            }
+            return true;
+          })
           .sort((a, b) => a.label.localeCompare(b.label))
 
         const nextOptions = groupedList.map(({ id, label }) => ({ id, label }))
@@ -659,6 +747,73 @@ export default function AttendancePage({ noLayout = false }) {
       cancelled = true
     }
   }, [isFaculty, staffViewTab, classStudentsMap, selectedClassId, attendanceDate, attendanceHour])
+
+  useEffect(() => {
+    if (!selectedClassId) {
+      setClassTimetable(null)
+      return
+    }
+    let cancelled = false
+    async function fetchTimetable() {
+      try {
+        const res = await fetch(buildApiUrl(`/academics/timetable/${selectedClassId}`))
+        if (res.ok) {
+          const json = await res.json()
+          if (!cancelled) setClassTimetable(json?.data || null)
+        } else {
+          if (!cancelled) setClassTimetable(null)
+        }
+      } catch (err) {
+        console.error('Failed to fetch timetable for class:', err)
+        if (!cancelled) setClassTimetable(null)
+      }
+    }
+    fetchTimetable()
+    return () => { cancelled = true }
+  }, [selectedClassId])
+
+  const hourSubjectAndInstructor = useMemo(() => {
+    if (!classTimetable || !attendanceDate || !attendanceHour) return null
+    const dayCode = weekdayCodeFromDate(attendanceDate)
+    const dayIndex = WEEK_DAYS.indexOf(dayCode)
+    const slotIndex = STAFF_MARK_HOURS.indexOf(attendanceHour)
+    if (dayIndex === -1 || slotIndex === -1) return null
+    
+    const slot = classTimetable?.slots?.[slotIndex]?.[dayIndex]
+    if (!slot || (!slot.code && !slot.name && !slot.label)) return null
+    return {
+      code: slot.code || '',
+      name: slot.name || slot.label || '',
+      instructor: slot.instructor || ''
+    }
+  }, [classTimetable, attendanceDate, attendanceHour])
+
+  const isFacultyAssignedToHour = useMemo(() => {
+    if (!isFaculty) return true
+    if (!hourSubjectAndInstructor) return true
+    
+    const { code, name, instructor } = hourSubjectAndInstructor
+    const facultyName = session?.name || ''
+    
+    if (instructor && (
+      instructor.toLowerCase().includes(sessionUserId.toLowerCase()) ||
+      instructor.toLowerCase().includes(facultyName.toLowerCase())
+    )) {
+      return true
+    }
+    
+    if (facultyCourses && facultyCourses.length > 0) {
+      return facultyCourses.some(fc => {
+        const fcNorm = fc.toLowerCase()
+        return (code && code.toLowerCase().includes(fcNorm)) || 
+               (name && name.toLowerCase().includes(fcNorm)) ||
+               fcNorm.includes(code.toLowerCase()) ||
+               fcNorm.includes(name.toLowerCase())
+      })
+    }
+    
+    return true
+  }, [isFaculty, hourSubjectAndInstructor, facultyCourses, sessionUserId, session])
 
   // Scope records: non-admin sees only their own row
   const scopedStudents = isAdmin
@@ -1677,6 +1832,18 @@ export default function AttendancePage({ noLayout = false }) {
 
       {showStaffMarkingView ? (
         <>
+          {!isFacultyAssignedToHour && hourSubjectAndInstructor && (
+            <div className="flex items-start gap-3 p-4 bg-rose-50 border border-rose-200 rounded-xl mb-4 animate-fadeIn">
+              <span className="material-symbols-outlined text-rose-500 mt-0.5">error</span>
+              <div>
+                <p className="text-sm font-semibold text-rose-700">Access Denied: Unassigned Subject/Hour</p>
+                <p className="text-xs text-rose-600 mt-0.5">
+                  This hour is scheduled for <strong>{hourSubjectAndInstructor.code} - {hourSubjectAndInstructor.name}</strong> with instructor <strong>{hourSubjectAndInstructor.instructor}</strong>. You are only allowed to mark attendance for your assigned courses.
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm mb-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
@@ -1731,7 +1898,8 @@ export default function AttendancePage({ noLayout = false }) {
                 </span>
                 <button
                   onClick={saveMarkedAttendance}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#276221] text-white rounded-lg text-sm font-semibold hover:bg-[#276221]/90 transition-all"
+                  disabled={!isFacultyAssignedToHour}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#276221] text-white rounded-lg text-sm font-semibold hover:bg-[#276221]/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <span className="material-symbols-outlined text-base">save</span>
                   Save

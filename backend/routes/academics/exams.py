@@ -241,6 +241,115 @@ async def list_marks(exam_id: Optional[str] = None, student_id: Optional[str] = 
     return {"success": True, "data": rows}
 
 
+import re
+
+def is_class_assigned_py(class_id: str, class_label: str, assigned_classes: list) -> bool:
+    if not assigned_classes:
+        return False
+        
+    normalized_label = class_label.lower()
+    normalized_id = class_id.lower()
+    
+    dept_codes = {
+        'cse': ['computer science', 'computer science & engineering', 'computer science and engineering'],
+        'ece': ['electronics', 'electronics & communication', 'electronics and communication'],
+        'me': ['mechanical', 'mechanical engineering'],
+        'ce': ['civil', 'civil engineering'],
+        'it': ['information technology'],
+        'eee': ['electrical', 'electrical engineering', 'electrical & electronics', 'electrical and electronics']
+    }
+    
+    for ac in assigned_classes:
+        normalized_ac = ac.strip().lower()
+        if not normalized_ac:
+            continue
+            
+        # 1. Substring match
+        if normalized_ac in normalized_label or normalized_ac in normalized_id:
+            return True
+            
+        # 2. Abbreviation match, e.g. "CSE-A"
+        parts = re.split(r'[-_\s]+', normalized_ac)
+        if len(parts) >= 2:
+            first = parts[0]
+            last = parts[-1]
+            if len(last) == 1 and last.isalpha():
+                # check if student section matches
+                student_sec = normalized_id.split('-')[-1]
+                if student_sec == last:
+                    if first in ['cs', 'cse']:
+                        if 'computer-science' in normalized_id or 'cse' in normalized_id:
+                            return True
+                    for code, names in dept_codes.items():
+                        if first == code:
+                            if any(name.replace(' ', '-') in normalized_id for name in names):
+                                return True
+                                
+        # 3. Year match
+        match_num = re.search(r'\d+', normalized_ac)
+        if match_num:
+            num = match_num.group()
+            year_words = {
+                '1': ['1st', '1', 'first'],
+                '2': ['2nd', '2', 'second'],
+                '3': ['3rd', '3', 'third'],
+                '4': ['4th', '4', 'fourth']
+            }
+            if num in year_words:
+                if any(w in normalized_id for w in year_words[num]):
+                    return True
+                    
+    return False
+
+async def validate_faculty_exam_permission(db, entered_by: str, exam_id: str, student_id: str):
+    if not entered_by:
+        return
+        
+    faculty = await db["faculty"].find_one({"$or": [{"employeeId": entered_by}, {"id": entered_by}]})
+    if not faculty:
+        # Not a faculty member, allow (could be admin or system)
+        return
+        
+    # 1. Check subject/course assignment
+    exam = await db["exams"].find_one(_id_query(exam_id))
+    if exam:
+        exam_code = exam.get("code", "")
+        exam_name = exam.get("name", "")
+        
+        faculty_courses = faculty.get("courses") or []
+        if isinstance(faculty_courses, str):
+            faculty_courses = [c.strip() for c in faculty_courses.split(",") if c.strip()]
+            
+        course_match = False
+        for fc in faculty_courses:
+            fc_norm = fc.lower()
+            if (exam_code and fc_norm in exam_code.lower()) or \
+               (exam_name and fc_norm in exam_name.lower()) or \
+               (exam_code and exam_code.lower() in fc_norm) or \
+               (exam_name and exam_name.lower() in fc_norm):
+                course_match = True
+                break
+        if not course_match:
+            raise HTTPException(status_code=403, detail="You are not assigned to this exam's subject.")
+            
+    # 2. Check student class assignment
+    student = await db["students"].find_one({"$or": [{"id": student_id}, {"rollNumber": student_id}, {"student_id": student_id}]})
+    if student:
+        student_dept = student.get("department", "General")
+        student_year = student.get("year", "Year")
+        student_sec = student.get("section", "A")
+        student_class_label = f"{student_dept} - {student_year} - Sec {student_sec}"
+        
+        student_class_id = f"{student_dept}__{student_year}__{student_sec}"
+        student_class_id = re.sub(r'[^a-z0-9]+', '-', student_class_id.lower()).strip('-')
+        
+        assigned_classes = faculty.get("assignedClasses") or faculty.get("classes") or []
+        if isinstance(assigned_classes, str):
+            assigned_classes = [c.strip() for c in assigned_classes.split(",") if c.strip()]
+            
+        if not is_class_assigned_py(student_class_id, student_class_label, assigned_classes):
+            raise HTTPException(status_code=403, detail=f"Student {student_id} is in class '{student_class_label}', which is not assigned to you.")
+
 @router.put("/marks")
 async def upsert_mark(payload: dict):
     exam_id = payload.get("examId")
@@ -274,6 +383,11 @@ async def upsert_mark(payload: dict):
             return {"success": True, "data": created}
         raise
 
+    # Validate faculty assignment permission
+    entered_by = data.get("enteredBy", "")
+    if entered_by:
+        await validate_faculty_exam_permission(db, entered_by, exam_id, student_id)
+
     updated = await db["exam_marks"].find_one_and_update(
         {"examId": exam_id, "studentId": student_id},
         {"$set": data, "$setOnInsert": {"id": _new_id("mark"), "enteredAt": _now_iso()}},
@@ -284,7 +398,7 @@ async def upsert_mark(payload: dict):
 
 
 @router.get("/internal-marks")
-async def list_internal_marks(exam_id: Optional[str] = None, student_id: Optional[str] = None):
+async def list_internal_marks(exam_id: Optional[str] = None, student_id: Optional[str] = None, entered_by: Optional[str] = None):
     try:
         db = get_db()
     except HTTPException as error:
@@ -305,6 +419,41 @@ async def list_internal_marks(exam_id: Optional[str] = None, student_id: Optiona
     rows = []
     async for row in db["exam_internal_marks"].find(query).sort("updatedAt", -1):
         rows.append(serialize_doc(row))
+
+    faculty = None
+    if entered_by:
+        faculty = await db["faculty"].find_one({"$or": [{"employeeId": entered_by}, {"id": entered_by}]})
+        
+    if faculty:
+        assigned_classes = faculty.get("assignedClasses") or faculty.get("classes") or []
+        if isinstance(assigned_classes, str):
+            assigned_classes = [c.strip() for c in assigned_classes.split(",") if c.strip()]
+            
+        # Get all students to map classId/classLabel
+        students_cursor = db["students"].find()
+        student_class_map = {}
+        async for s in students_cursor:
+            student_dept = s.get("department", "General")
+            student_year = s.get("year", "Year")
+            student_sec = s.get("section", "A")
+            s_class_label = f"{student_dept} - {student_year} - Sec {student_sec}"
+            
+            s_class_id = f"{student_dept}__{student_year}__{student_sec}"
+            s_class_id = re.sub(r'[^a-z0-9]+', '-', s_class_id.lower()).strip('-')
+            
+            student_class_map[s.get("id") or s.get("rollNumber") or str(s["_id"])] = (s_class_id, s_class_label)
+            
+        filtered_rows = []
+        for row in rows:
+            sid = row.get("studentId")
+            if sid in student_class_map:
+                c_id, c_label = student_class_map[sid]
+                if is_class_assigned_py(c_id, c_label, assigned_classes):
+                    filtered_rows.append(row)
+            else:
+                pass
+        return {"success": True, "data": filtered_rows}
+
     return {"success": True, "data": rows}
 
 
@@ -339,6 +488,11 @@ async def upsert_internal_mark(payload: dict):
             items.append(created)
             return {"success": True, "data": created}
         raise
+
+    # Validate faculty assignment permission
+    entered_by = data.get("enteredBy", "")
+    if entered_by:
+        await validate_faculty_exam_permission(db, entered_by, exam_id, student_id)
 
     updated = await db["exam_internal_marks"].find_one_and_update(
         {"examId": exam_id, "studentId": student_id},

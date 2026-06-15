@@ -51,12 +51,12 @@ export const roleMenuGroups = {
       items: ['Dashboard'],
     },
     {
-      title: 'Academics',
-      items: ['Exams', 'Timetable', 'Attendance', 'Placement'],
-    },
-    {
       title: 'Administration',
       items: ['Fees', 'Invoices'],
+    },
+    {
+      title: 'Academics',
+      items: ['Exams', 'Timetable', 'Attendance', 'Placement'],
     },
     {
       title: 'Intelligence',

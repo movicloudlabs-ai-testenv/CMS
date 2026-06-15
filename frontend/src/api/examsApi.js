@@ -107,8 +107,8 @@ export async function upsertMark(payload) {
   return json.data
 }
 
-export async function listInternalMarks({ examId, studentId } = {}) {
-  const query = buildQuery({ exam_id: examId, student_id: studentId })
+export async function listInternalMarks({ examId, studentId, entered_by } = {}) {
+  const query = buildQuery({ exam_id: examId, student_id: studentId, entered_by })
   const res = await fetch(`${API_BASE}/exams/internal-marks${query}`)
   const json = await parseResponse(res, 'Failed to fetch internal marks')
   return Array.isArray(json.data) ? json.data : []
