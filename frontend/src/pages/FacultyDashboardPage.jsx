@@ -296,6 +296,7 @@ export default function FacultyDashboardPage() {
   const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
   const [isMarksModalOpen, setIsMarksModalOpen] = useState(false);
   const [freshUserData, setFreshUserData] = useState(null);
+  const [upcomingExams, setUpcomingExams] = useState([]);
   const [dataLoading, setDataLoading] = useState(true);
 
   const session = getUserSession();
@@ -374,7 +375,22 @@ export default function FacultyDashboardPage() {
       }
     }
 
+    async function fetchFacultyExams() {
+      try {
+        const res = await fetch(`${API_BASE}/exams?role=faculty&userId=${encodeURIComponent(sessionUserId)}`);
+        if (res.ok) {
+          const result = await res.json();
+          if (result.success && result.data) {
+            setUpcomingExams(result.data.filter(e => e.status === 'Upcoming'));
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch faculty exams:', err);
+      }
+    }
+
     fetchFacultyData();
+    fetchFacultyExams();
     window.addEventListener('pageshow', enforceSessionOnPageRestore);
     return () => window.removeEventListener('pageshow', enforceSessionOnPageRestore);
   }, [location.search, navigate, sessionRole, sessionUserId]);
@@ -623,6 +639,49 @@ export default function FacultyDashboardPage() {
                       </div>
                     );
                   })}
+                </div>
+              )}
+            </div>
+
+            {/* Upcoming Exams */}
+            <div style={{ background:'white', borderRadius:'16px', padding:'24px', boxShadow:'0 4px 20px rgba(0,0,0,0.06)', border:'1px solid #f1f5f9' }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'20px' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
+                  <div style={{ width:'36px', height:'36px', background:'#dc2626', borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    <span className="material-symbols-outlined" style={{ fontSize:'18px', color:'white' }}>assignment</span>
+                  </div>
+                  <h4 style={{ fontSize:'15px', fontWeight:'700', color:'#1f2937', margin:0 }}>Upcoming Exams</h4>
+                </div>
+                <span style={{ fontSize:'11px', fontWeight:'700', background:'#fef2f2', color:'#dc2626', border:'1px solid #fee2e2', borderRadius:'100px', padding:'3px 10px' }}>
+                  {upcomingExams.length} Scheduled
+                </span>
+              </div>
+
+              {dataLoading ? (
+                <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
+                  {[1,2].map(i=><div key={i} style={{ height:'50px', background:'#f9fafb', borderRadius:'10px' }}/>)}
+                </div>
+              ) : upcomingExams.length === 0 ? (
+                <div style={{ textAlign:'center', padding:'24px', color:'#9ca3af' }}>
+                  <span className="material-symbols-outlined" style={{ fontSize:'36px', display:'block', marginBottom:'8px', opacity:0.3 }}>event_busy</span>
+                  <p style={{ fontSize:'13px' }}>No upcoming exams scheduled</p>
+                </div>
+              ) : (
+                <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
+                  {upcomingExams.map((exam, idx) => (
+                    <div key={idx} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 16px', background:'#f9fafb', borderRadius:'10px', border:'1px solid #f1f5f9', flexWrap:'wrap', gap:'10px' }}>
+                      <div>
+                        <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
+                          <span style={{ fontSize:'13px', fontWeight:'700', color:'#1f2937' }}>{exam.code}: {exam.name}</span>
+                          <span style={{ fontSize:'10px', fontWeight:'700', background:'#e2e8f0', color:'#475569', padding:'2px 6px', borderRadius:'4px' }}>{exam.room}</span>
+                        </div>
+                        <div style={{ fontSize:'11px', color:'#6b7280', marginTop:'2px' }}>Type: {exam.type}</div>
+                      </div>
+                      <span style={{ fontSize:'11px', fontWeight:'600', color:'#dc2626', background:'#fef2f2', border:'1px solid #fee2e2', padding:'3px 10px', borderRadius:'100px', whiteSpace:'nowrap' }}>
+                        {exam.date} @ {exam.time}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

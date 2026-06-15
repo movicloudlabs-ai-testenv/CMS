@@ -132,31 +132,8 @@ export default function ExamsPage({ noLayout = false }) {
 
   const fetchExams = async () => {
     try {
-      const examList = await listExams()
+      const examList = await listExams({ role: session?.role, userId: session?.userId })
       
-      if (isFaculty && session?.userId) {
-        const profileRes = await fetch(buildApiUrl(`/faculty/${encodeURIComponent(session.userId)}`))
-        if (profileRes.ok) {
-          const profile = await profileRes.json()
-          const courses = profile?.courses || []
-          const rawCourses = Array.isArray(courses)
-            ? courses
-            : (typeof courses === 'string' ? courses.split(',').map(s => s.trim()).filter(Boolean) : [])
-            
-          const filtered = examList.filter(exam => {
-            return rawCourses.some(fc => {
-              const fcNorm = fc.toLowerCase()
-              return (exam.code && exam.code.toLowerCase().includes(fcNorm)) ||
-                     (exam.name && exam.name.toLowerCase().includes(fcNorm)) ||
-                     fcNorm.includes(exam.code.toLowerCase()) ||
-                     (exam.name && fcNorm.includes(exam.name.toLowerCase()))
-            })
-          })
-          setExams(filtered)
-          return
-        }
-      }
-
       if (!isStudent || !session?.userId) {
         setExams(examList)
         return
@@ -359,22 +336,13 @@ export default function ExamsPage({ noLayout = false }) {
             </button>
           )}
           {isAdmin && (
-            <>
-              <button 
-                onClick={() => setShowScheduleWizard(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-emerald-100 text-emerald-700 rounded-lg text-sm font-semibold hover:bg-emerald-200 transition-all"
-              >
-                <span className="material-symbols-outlined text-lg">edit_calendar</span>
-                Create Schedule
-              </button>
-              <button 
-                onClick={() => setShowTimetableApprovalModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg text-sm font-semibold hover:bg-green-200 transition-all"
-              >
-                <span className="material-symbols-outlined text-lg">verified_user</span>
-                Approve Schedules
-              </button>
-            </>
+            <button 
+              onClick={() => setShowScheduleWizard(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-100 text-emerald-700 rounded-lg text-sm font-semibold hover:bg-emerald-200 transition-all"
+            >
+              <span className="material-symbols-outlined text-lg">edit_calendar</span>
+              Create Schedule
+            </button>
           )}
         </div>
       </div>
@@ -794,14 +762,7 @@ export default function ExamsPage({ noLayout = false }) {
         />
       )}
 
-      {showTimetableApprovalModal && (
-        <TimetableApprovalModal
-          onClose={() => setShowTimetableApprovalModal(false)}
-          onApprove={() => {
-            setShowTimetableApprovalModal(false);
-          }}
-        />
-      )}
+
 
       {showNotificationPanel && (
         <NotificationPanel

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { listRegistrations, listMarks, upsertMark, calculateGrade } from '../../api/examsApi';
+import { listEnrolledStudents, listMarks, upsertMark, calculateGrade } from '../../api/examsApi';
 
 export default function MarksEntryModal({ isOpen, onClose, exam, currentUserId }) {
   const [students, setStudents] = useState([]);
@@ -15,8 +15,8 @@ export default function MarksEntryModal({ isOpen, onClose, exam, currentUserId }
   const loadStudentsAndMarks = async () => {
     try {
       const examId = exam._id || exam.id;
-      const [registrations, existingMarks] = await Promise.all([
-        listRegistrations({ examId }),
+      const [enrolled, existingMarks] = await Promise.all([
+        listEnrolledStudents(examId),
         listMarks({ examId }),
       ]);
 
@@ -25,7 +25,7 @@ export default function MarksEntryModal({ isOpen, onClose, exam, currentUserId }
         marksMap[m.studentId] = { marks: m.marks, grade: m.grade };
       });
 
-      setStudents(registrations);
+      setStudents(enrolled);
       setMarksData(marksMap);
     } catch (err) {
       console.error('Failed to load marks entry data:', err);

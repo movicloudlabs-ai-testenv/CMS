@@ -45,17 +45,401 @@ def _dev_get(key: str, item_id: str):
 
 
 @router.get("")
-async def list_exams():
+async def list_exams(role: Optional[str] = None, userId: Optional[str] = None):
     try:
         db = get_db()
+        use_db = True
     except HTTPException as error:
         if error.status_code == 503:
-            return {"success": True, "data": list_items("exams")}
-        raise
+            use_db = False
+        else:
+            raise
+
     exams = []
-    async for exam in db["exams"].find().sort("date", 1):
-        exams.append(serialize_doc(exam))
+    if use_db:
+        async for exam in db["exams"].find().sort("date", 1):
+            exams.append(serialize_doc(exam))
+    else:
+        exams = list_items("exams")
+
+    # Filter based on role and userId
+    if not role or not userId:
+        return {"success": True, "data": exams}
+
+    filtered_exams = []
+    norm_code = lambda c: str(c or '').replace('-', '').replace(' ', '').upper()
+    if role == "student":
+        student = None
+        if use_db:
+            student = await db["students"].find_one({"$or": [{"id": userId}, {"rollNumber": userId}]})
+        else:
+            from backend.routes.students import _seed_dev_students
+            _seed_dev_students()
+            student = next((s for s in list_items("students") if s.get("id") == userId or s.get("rollNumber") == userId), None)
+        
+        if student:
+            enrolled_codes = {norm_code(s.get("code")) for s in student.get("subjects", []) if s.get("code")}
+            for exam in exams:
+                is_class_match = (
+                    str(student.get("department", "")).lower() == str(exam.get("department", "")).lower() and
+                    str(student.get("semester", "")) == str(exam.get("semester", "")) and
+                    str(student.get("year", "")).lower() == str(exam.get("year", "")).lower()
+                )
+                if norm_code(exam.get("code")) in enrolled_codes or is_class_match:
+                    filtered_exams.append(exam)
+        return {"success": True, "data": filtered_exams}
+
+    elif role == "faculty":
+        faculty = None
+        if use_db:
+            faculty = await db["faculty"].find_one({"$or": [{"employeeId": userId}, {"id": userId}]})
+        else:
+            faculty = next((f for f in list_items("faculty") if f.get("employeeId") == userId or f.get("id") == userId), None)
+            
+        if faculty:
+            courses = faculty.get("courses") or []
+            if isinstance(courses, str):
+                courses = [c.strip() for c in courses.split(",") if c.strip()]
+            courses_set = {c.lower() for c in courses}
+            
+            faculty_id = faculty.get("employeeId") or faculty.get("id") or str(faculty.get("_id", ""))
+            faculty_name = faculty.get("name") or faculty.get("fullName") or ""
+            
+            for exam in exams:
+                ex_code = exam.get("code", "").lower()
+                ex_name = exam.get("name", "").lower()
+                match = False
+                for c in courses_set:
+                    if c in ex_code or c in ex_name or ex_code in c or ex_name in c:
+                        match = True
+                        break
+                
+                is_invigilator = (
+                    str(exam.get("invigilatorEmployeeId", "")).lower() == str(faculty_id).lower() or
+                    str(exam.get("invigilatorName", "")).lower() == str(faculty_name).lower()
+                )
+                if match or is_invigilator:
+                    filtered_exams.append(exam)
+        return {"success": True, "data": filtered_exams}
+
     return {"success": True, "data": exams}
+
+
+def _get_time_range(time_str: str, duration_mins: int):
+    try:
+        hours, minutes = map(int, time_str.split(":"))
+        start_min = hours * 60 + minutes
+        end_min = start_min + duration_mins
+        return start_min, end_min
+    except Exception:
+        return 0, 0
+
+
+@router.post("/schedule-preview")
+async def schedule_preview(payload: dict):
+    try:
+        db = get_db()
+        use_db = True
+    except HTTPException as error:
+        if error.status_code == 503:
+            use_db = False
+        else:
+            raise
+
+    default_facilities = [
+        {"name": "Hall A", "status": "Available", "capacity": 100},
+        {"name": "Hall B", "status": "Available", "capacity": 80},
+        {"name": "Lab 1", "status": "Available", "capacity": 40},
+        {"name": "Lab 2", "status": "Available", "capacity": 40},
+        {"name": "Room 101", "status": "Available", "capacity": 60},
+    ]
+    facilities = []
+    if use_db:
+        async for f in db["academic_facilities"].find({"status": {"$ne": "Maintenance"}}):
+            facilities.append(serialize_doc(f))
+    else:
+        facilities = [f for f in list_items("facilities") if f.get("status") != "Maintenance"]
+    if not facilities:
+        facilities = default_facilities
+
+    default_faculties = [
+        {"employeeId": "FAC001", "name": "Dr. Rajesh Kumar"},
+        {"employeeId": "FAC002", "name": "Prof. Anjali Sharma"},
+        {"employeeId": "FAC003", "name": "Dr. Priya Verma"},
+        {"employeeId": "FAC005", "name": "Dr. Meera Patel"},
+        {"employeeId": "FAC006", "name": "Prof. Sanjay Gupta"},
+    ]
+    faculties = []
+    if use_db:
+        async for fac in db["faculty"].find():
+            faculties.append(serialize_doc(fac))
+    else:
+        faculties = list_items("faculty")
+    if not faculties:
+        faculties = default_faculties
+
+    existing_exams = []
+    existing_invigilators = []
+    if use_db:
+        async for ex in db["exams"].find():
+            existing_exams.append(serialize_doc(ex))
+        async for inv in db["exam_invigilators"].find():
+            existing_invigilators.append(serialize_doc(inv))
+    else:
+        existing_exams = list_items("exams")
+        existing_invigilators = list_items("exam_invigilators")
+
+    room_busy = {}
+    faculty_busy = {}
+
+    for ex in existing_exams:
+        ex_room = ex.get("room")
+        ex_date = ex.get("date")
+        ex_time = ex.get("time")
+        ex_dur = int(ex.get("duration") or 120)
+        if ex_room and ex_date and ex_time:
+            s_min, e_min = _get_time_range(ex_time, ex_dur)
+            room_busy.setdefault(ex_room, []).append((ex_date, s_min, e_min))
+            
+            ex_inv_id = ex.get("invigilatorId") or ex.get("invigilatorEmployeeId")
+            if ex_inv_id:
+                faculty_busy.setdefault(ex_inv_id, []).append((ex_date, s_min, e_min))
+
+    for inv in existing_invigilators:
+        ex_id = inv.get("examId")
+        fac_id = inv.get("facultyId")
+        ex = next((e for e in existing_exams if str(e.get("id")) == str(ex_id) or str(e.get("_id")) == str(ex_id)), None)
+        if ex and fac_id:
+            ex_date = ex.get("date")
+            ex_time = ex.get("time")
+            ex_dur = int(ex.get("duration") or 120)
+            s_min, e_min = _get_time_range(ex_time, ex_dur)
+            faculty_busy.setdefault(fac_id, []).append((ex_date, s_min, e_min))
+
+    batch_duration = int(payload.get("duration") or 120)
+    new_exams = payload.get("exams", [])
+    allocated_exams = []
+    local_room_busy = {}
+    local_faculty_busy = {}
+
+    for new_ex in new_exams:
+        ex_code = new_ex.get("code")
+        ex_name = new_ex.get("name")
+        ex_date = new_ex.get("date")
+        ex_time = new_ex.get("time")
+        
+        start_min, end_min = _get_time_range(ex_time, batch_duration)
+        
+        assigned_room = None
+        for r in facilities:
+            r_name = r.get("name")
+            busy = False
+            for b_date, b_start, b_end in room_busy.get(r_name, []):
+                if b_date == ex_date and start_min < b_end and b_start < end_min:
+                    busy = True
+                    break
+            if not busy:
+                for b_date, b_start, b_end in local_room_busy.get(r_name, []):
+                    if b_date == ex_date and start_min < b_end and b_start < end_min:
+                        busy = True
+                        break
+            if not busy:
+                assigned_room = r_name
+                break
+        if not assigned_room:
+            assigned_room = facilities[0].get("name")
+            
+        local_room_busy.setdefault(assigned_room, []).append((ex_date, start_min, end_min))
+
+        assigned_faculty = None
+        for f in faculties:
+            f_id = f.get("employeeId") or f.get("id") or str(f.get("_id"))
+            f_name = f.get("name")
+            busy = False
+            for b_date, b_start, b_end in faculty_busy.get(f_id, []):
+                if b_date == ex_date and start_min < b_end and b_start < end_min:
+                    busy = True
+                    break
+            if not busy:
+                for b_date, b_start, b_end in local_faculty_busy.get(f_id, []):
+                    if b_date == ex_date and start_min < b_end and b_start < end_min:
+                        busy = True
+                        break
+            if not busy:
+                assigned_faculty = {"employeeId": f_id, "name": f_name}
+                break
+        if not assigned_faculty:
+            f_fallback = faculties[0]
+            assigned_faculty = {
+                "employeeId": f_fallback.get("employeeId") or f_fallback.get("id") or str(f_fallback.get("_id")),
+                "name": f_fallback.get("name")
+            }
+            
+        local_faculty_busy.setdefault(assigned_faculty["employeeId"], []).append((ex_date, start_min, end_min))
+        
+        allocated_exams.append({
+            "code": ex_code,
+            "name": ex_name,
+            "date": ex_date,
+            "time": ex_time,
+            "room": assigned_room,
+            "invigilatorEmployeeId": assigned_faculty["employeeId"],
+            "invigilatorName": assigned_faculty["name"]
+        })
+
+    return {"success": True, "data": allocated_exams}
+
+
+@router.post("/schedule-bulk")
+async def schedule_bulk(payload: dict):
+    try:
+        db = get_db()
+        use_db = True
+    except HTTPException as error:
+        if error.status_code == 503:
+            use_db = False
+        else:
+            raise
+
+    dept = payload.get("dept")
+    semester = payload.get("semester")
+    year = payload.get("year")
+    exam_type = payload.get("type")
+    duration = payload.get("duration")
+    max_marks = payload.get("maxMarks")
+    exams_list = payload.get("exams", [])
+
+    created_exams = []
+    
+    for ex in exams_list:
+        exam_id = _new_id("exam")
+        exam_doc = {
+            "id": exam_id,
+            "code": ex.get("code"),
+            "name": ex.get("name"),
+            "date": ex.get("date"),
+            "time": ex.get("time"),
+            "room": ex.get("room"),
+            "type": exam_type,
+            "status": "Upcoming",
+            "duration": duration,
+            "maxMarks": max_marks,
+            "department": dept,
+            "semester": semester,
+            "year": year,
+            "resultsPublished": False,
+            "createdAt": _now_iso(),
+            "updatedAt": _now_iso(),
+        }
+        
+        if use_db:
+            await db["exams"].insert_one(exam_doc)
+            exam_doc = serialize_doc(exam_doc)
+            inv_id = _new_id("inv")
+            inv_doc = {
+                "id": inv_id,
+                "examId": exam_id,
+                "facultyId": ex.get("invigilatorEmployeeId"),
+                "facultyName": ex.get("invigilatorName"),
+                "assignedBy": "Admin",
+                "assignedAt": _now_iso(),
+            }
+            await db["exam_invigilators"].insert_one(inv_doc)
+            
+            code_variants = list(set([ex.get("code"), ex.get("code").replace("-", ""), ex.get("code").replace(" ", "")]))
+            async for student in db["students"].find({"subjects.code": {"$in": code_variants}}):
+                student_id = student.get("id") or student.get("rollNumber") or str(student.get("_id"))
+                await send_notification(
+                    db=db,
+                    receiver_role="student",
+                    event_key="examReminder",
+                    title="New Exam Scheduled",
+                    message=f"A new exam '{ex.get('name')}' ({ex.get('code')}) has been scheduled for {ex.get('date')} at {ex.get('time')} in {ex.get('room')}.",
+                    sender_role="admin",
+                    module="Academic",
+                    priority="High",
+                    related_data={"examId": exam_id},
+                    receiver_user_id=student_id,
+                )
+        else:
+            from backend.dev_store import create_notification
+            DEV_STORE["exams"].append(exam_doc)
+            inv_id = _new_id("inv")
+            inv_doc = {
+                "id": inv_id,
+                "examId": exam_id,
+                "facultyId": ex.get("invigilatorEmployeeId"),
+                "facultyName": ex.get("invigilatorName"),
+                "assignedBy": "Admin",
+                "assignedAt": _now_iso(),
+            }
+            DEV_STORE.setdefault("exam_invigilators", []).append(inv_doc)
+            
+            norm_code = lambda c: str(c or '').replace('-', '').replace(' ', '').upper()
+            students = [s for s in list_items("students") if any(norm_code(sub.get("code")) == norm_code(ex.get("code")) for sub in s.get("subjects", []))]
+            for s in students:
+                student_id = s.get("id") or s.get("rollNumber") or str(s.get("_id"))
+                create_notification({
+                    "title": "New Exam Scheduled",
+                    "message": f"A new exam '{ex.get('name')}' ({ex.get('code')}) has been scheduled for {ex.get('date')} at {ex.get('time')} in {ex.get('room')}.",
+                    "senderRole": "admin",
+                    "receiverRole": "student",
+                    "receiverUserId": student_id,
+                    "module": "Academic",
+                    "priority": "High",
+                    "createdAt": _now_iso(),
+                    "relatedData": {"examId": exam_id}
+                })
+        created_exams.append(exam_doc)
+
+    return {"success": True, "data": created_exams}
+
+
+@router.get("/{exam_id}/enrolled-students")
+async def get_enrolled_students(exam_id: str):
+    try:
+        db = get_db()
+        use_db = True
+    except HTTPException as error:
+        if error.status_code == 503:
+            use_db = False
+        else:
+            raise
+
+    norm_code = lambda c: str(c or '').replace('-', '').replace(' ', '').upper()
+    if use_db:
+        exam = await db["exams"].find_one(_id_query(exam_id))
+        if not exam:
+            raise HTTPException(status_code=404, detail="Exam not found")
+        code = exam.get("code")
+        code_variants = list(set([code, code.replace("-", ""), code.replace(" ", "")]))
+        
+        students = []
+        async for s in db["students"].find({"subjects.code": {"$in": code_variants}}):
+            students.append(serialize_doc(s))
+    else:
+        from backend.dev_store import list_items
+        from backend.routes.students import _seed_dev_students
+        _seed_dev_students()
+        exams = list_items("exams")
+        exam = next((e for e in exams if str(e.get("id")) == str(exam_id) or str(e.get("_id")) == str(exam_id)), None)
+        if not exam:
+            raise HTTPException(status_code=404, detail="Exam not found")
+        code = exam.get("code")
+        
+        students = [s for s in list_items("students") if any(norm_code(sub.get("code")) == norm_code(code) for sub in s.get("subjects", []))]
+
+    mapped_students = []
+    for s in students:
+        sid = s.get("id") or s.get("rollNumber") or str(s.get("_id"))
+        sname = s.get("name") or s.get("fullName") or sid
+        mapped_students.append({
+            "id": sid,
+            "studentId": sid,
+            "studentName": sname
+        })
+
+    return {"success": True, "data": mapped_students}
 
 
 @router.post("")

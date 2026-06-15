@@ -113,19 +113,25 @@ async def get_dashboard_summary():
             # 4. Today's Classes Count
             try:
                 today_day = datetime.now(timezone.utc).strftime("%A")
-                cursor = db["academic_timetables"].find({})
+                weekday_map = {"Monday": 0, "Tuesday": 1, "Wednesday": 2, "Thursday": 3, "Friday": 4,
+                               "Mon": 0, "Tue": 1, "Wed": 2, "Thu": 3, "Fri": 4}
+                day_idx = weekday_map.get(today_day)
                 count = 0
-                async for timetable in cursor:
-                    for slot in timetable.get("slots", []):
-                        if slot.get("day") == today_day:
-                            count += 1
+                if day_idx is not None:
+                    async for timetable in db["academic_timetables"].find({}):
+                        slots = timetable.get("slots", [])
+                        for slot_row in slots:
+                            if slot_row and len(slot_row) > day_idx:
+                                slot = slot_row[day_idx]
+                                if slot and (slot.get("subject") or slot.get("code")):
+                                    count += 1
                 todays_classes_count = count
             except Exception:
                 pass
 
             # 5. Upcoming Exams Count
             try:
-                upcoming_exams_count = await db["exams"].count_documents({"status": {"$in": ["Scheduled", "Active"]}})
+                upcoming_exams_count = await db["exams"].count_documents({"status": {"$in": ["Scheduled", "Active", "Upcoming"]}})
             except Exception:
                 pass
 
@@ -166,17 +172,24 @@ async def get_dashboard_summary():
 
             try:
                 today_day = datetime.now(timezone.utc).strftime("%A")
+                weekday_map = {"Monday": 0, "Tuesday": 1, "Wednesday": 2, "Thursday": 3, "Friday": 4,
+                               "Mon": 0, "Tue": 1, "Wed": 2, "Thu": 3, "Fri": 4}
+                day_idx = weekday_map.get(today_day)
                 count = 0
-                for timetable in list_timetables():
-                    for slot in timetable.get("slots", []):
-                        if slot.get("day") == today_day:
-                            count += 1
+                if day_idx is not None:
+                    for timetable in list_timetables():
+                        slots = timetable.get("slots", [])
+                        for slot_row in slots:
+                            if slot_row and len(slot_row) > day_idx:
+                                slot = slot_row[day_idx]
+                                if slot and (slot.get("subject") or slot.get("code")):
+                                    count += 1
                 todays_classes_count = count
             except Exception:
                 todays_classes_count = 0
 
             try:
-                upcoming_exams_count = len([e for e in list_items("exams") if e.get("status") in ["Scheduled", "Active"]])
+                upcoming_exams_count = len([e for e in list_items("exams") if e.get("status") in ["Scheduled", "Active", "Upcoming"]])
             except KeyError:
                 upcoming_exams_count = 0
 
@@ -220,45 +233,66 @@ async def get_admin_dashboard_widgets():
         use_db = False
 
     today_day = datetime.now(timezone.utc).strftime("%A")
+    weekday_map = {"Monday": 0, "Tuesday": 1, "Wednesday": 2, "Thursday": 3, "Friday": 4,
+                   "Mon": 0, "Tue": 1, "Wed": 2, "Thu": 3, "Fri": 4}
+    day_idx = weekday_map.get(today_day)
+    
+    HOUR_SLOT_TIMINGS = {
+        0: "09:00 AM - 09:50 AM",
+        1: "09:50 AM - 10:40 AM",
+        2: "10:55 AM - 11:45 AM",
+        3: "11:45 AM - 12:35 PM",
+        4: "01:20 PM - 02:10 PM",
+        5: "02:10 PM - 03:00 PM",
+        6: "03:10 PM - 04:00 PM",
+        7: "04:00 PM - 04:50 PM",
+    }
     
     # 1. Today's Classes
     today_classes = []
-    if use_db:
-        try:
-            async for tt in db["academic_timetables"].find({}):
+    if day_idx is not None:
+        if use_db:
+            try:
+                async for tt in db["academic_timetables"].find({}):
+                    class_id = tt.get("classId", "N/A")
+                    slots = tt.get("slots", [])
+                    for hour_idx, slot_row in enumerate(slots):
+                        if slot_row and len(slot_row) > day_idx:
+                            slot = slot_row[day_idx]
+                            if slot and (slot.get("code") or slot.get("subject")):
+                                today_classes.append({
+                                    "code": slot.get("code") or slot.get("subject") or "N/A",
+                                    "name": slot.get("subject") or slot.get("name") or "Class",
+                                    "time": slot.get("time") or HOUR_SLOT_TIMINGS.get(hour_idx, "N/A"),
+                                    "room": slot.get("room") or "N/A",
+                                    "faculty": slot.get("instructor") or slot.get("faculty") or "N/A",
+                                    "classId": class_id
+                                })
+            except Exception:
+                pass
+        else:
+            from backend.dev_store import list_timetables
+            for tt in list_timetables():
                 class_id = tt.get("classId", "N/A")
-                for slot in tt.get("slots", []):
-                    if slot.get("day") == today_day:
-                        today_classes.append({
-                            "code": slot.get("code", slot.get("subject", "N/A")),
-                            "name": slot.get("subject", slot.get("name", "Class")),
-                            "time": slot.get("time", "N/A"),
-                            "room": slot.get("room", "N/A"),
-                            "faculty": slot.get("faculty", "N/A"),
-                            "classId": class_id
-                        })
-        except Exception:
-            pass
-    else:
-        from backend.dev_store import list_timetables
-        for tt in list_timetables():
-            class_id = tt.get("classId", "N/A")
-            for slot in tt.get("slots", []):
-                if slot.get("day") == today_day:
-                    today_classes.append({
-                        "code": slot.get("code", slot.get("subject", "N/A")),
-                        "name": slot.get("subject", slot.get("name", "Class")),
-                        "time": slot.get("time", "N/A"),
-                        "room": slot.get("room", "N/A"),
-                        "faculty": slot.get("faculty", "N/A"),
-                        "classId": class_id
-                    })
+                slots = tt.get("slots", [])
+                for hour_idx, slot_row in enumerate(slots):
+                    if slot_row and len(slot_row) > day_idx:
+                        slot = slot_row[day_idx]
+                        if slot and (slot.get("code") or slot.get("subject")):
+                            today_classes.append({
+                                "code": slot.get("code") or slot.get("subject") or "N/A",
+                                "name": slot.get("subject") or slot.get("name") or "Class",
+                                "time": slot.get("time") or HOUR_SLOT_TIMINGS.get(hour_idx, "N/A"),
+                                "room": slot.get("room") or "N/A",
+                                "faculty": slot.get("instructor") or slot.get("faculty") or "N/A",
+                                "classId": class_id
+                            })
 
     # 2. Upcoming Exams
     upcoming_exams = []
     if use_db:
         try:
-            async for exam in db["exams"].find({"status": {"$in": ["Scheduled", "Active"]}}).sort("date", 1).limit(5):
+            async for exam in db["exams"].find({"status": {"$in": ["Scheduled", "Active", "Upcoming"]}}).sort("date", 1).limit(5):
                 upcoming_exams.append(serialize_doc(exam))
         except Exception:
             pass
@@ -266,7 +300,7 @@ async def get_admin_dashboard_widgets():
         from backend.dev_store import list_items
         try:
             exams = list_items("exams")
-            upcoming_exams = [e for e in exams if e.get("status") in ["Scheduled", "Active"]][:5]
+            upcoming_exams = [e for e in exams if e.get("status") in ["Scheduled", "Active", "Upcoming"]][:5]
         except KeyError:
             upcoming_exams = []
 
@@ -305,6 +339,20 @@ async def get_student_dashboard_widgets(student_id: str):
         use_db = False
 
     today_day = datetime.now(timezone.utc).strftime("%A")
+    weekday_map = {"Monday": 0, "Tuesday": 1, "Wednesday": 2, "Thursday": 3, "Friday": 4,
+                   "Mon": 0, "Tue": 1, "Wed": 2, "Thu": 3, "Fri": 4}
+    day_idx = weekday_map.get(today_day)
+    
+    HOUR_SLOT_TIMINGS = {
+        0: "09:00 AM - 09:50 AM",
+        1: "09:50 AM - 10:40 AM",
+        2: "10:55 AM - 11:45 AM",
+        3: "11:45 AM - 12:35 PM",
+        4: "01:20 PM - 02:10 PM",
+        5: "02:10 PM - 03:00 PM",
+        6: "03:10 PM - 04:00 PM",
+        7: "04:00 PM - 04:50 PM",
+    }
     
     # 1. Fetch Student Details
     student = None
@@ -315,6 +363,8 @@ async def get_student_dashboard_widgets(student_id: str):
             pass
     else:
         from backend.dev_store import list_items
+        from backend.routes.students import _seed_dev_students
+        _seed_dev_students()
         try:
             students = list_items("students")
             student = next((s for s in students if s.get("id") == student_id or s.get("rollNumber") == student_id), None)
@@ -343,33 +393,43 @@ async def get_student_dashboard_widgets(student_id: str):
         except Exception:
             all_timetables = []
 
-    enrolled_codes = {c.get("code") for c in enrolled_courses if c.get("code")}
-    for tt in all_timetables:
-        class_id = tt.get("classId", "N/A")
-        is_student_class = section.lower() in class_id.lower() or student_id.lower() in class_id.lower()
-        for slot in tt.get("slots", []):
-            if slot.get("day") == today_day:
-                sub_code = slot.get("code", slot.get("subject"))
-                if is_student_class or (sub_code and sub_code in enrolled_codes):
-                    today_classes.append({
-                        "code": sub_code or "N/A",
-                        "name": slot.get("subject", slot.get("name", "Class")),
-                        "time": slot.get("time", "N/A"),
-                        "room": slot.get("room", "N/A"),
-                        "faculty": slot.get("faculty", "N/A"),
-                        "classId": class_id
-                    })
+    norm_code = lambda c: str(c or '').replace('-', '').replace(' ', '').upper()
+    enrolled_codes = {norm_code(c.get("code")) for c in enrolled_courses if c.get("code")}
+    if day_idx is not None:
+        for tt in all_timetables:
+            class_id = tt.get("classId", "N/A")
+            is_student_class = section.lower() in class_id.lower() or student_id.lower() in class_id.lower()
+            slots = tt.get("slots", [])
+            for hour_idx, slot_row in enumerate(slots):
+                if slot_row and len(slot_row) > day_idx:
+                    slot = slot_row[day_idx]
+                    if slot and (slot.get("code") or slot.get("subject")):
+                        sub_code = slot.get("code") or slot.get("subject")
+                        if is_student_class or (sub_code and sub_code in enrolled_codes):
+                            today_classes.append({
+                                "code": sub_code or "N/A",
+                                "name": slot.get("subject") or slot.get("name") or "Class",
+                                "time": slot.get("time") or HOUR_SLOT_TIMINGS.get(hour_idx, "N/A"),
+                                "room": slot.get("room") or "N/A",
+                                "faculty": slot.get("instructor") or slot.get("faculty") or "N/A",
+                                "classId": class_id
+                            })
 
     # 3. Upcoming Assessments
     upcoming_tasks = []
     if use_db:
         try:
-            async for exam in db["exams"].find({"status": {"$in": ["Scheduled", "Active"]}}).sort("date", 1):
-                sub = exam.get("subject")
-                if not enrolled_codes or sub in enrolled_codes or exam.get("course") in enrolled_codes:
+            async for exam in db["exams"].find({"status": {"$in": ["Scheduled", "Active", "Upcoming"]}}).sort("date", 1):
+                exam_code = exam.get("code")
+                is_class_match = (
+                    str(student.get("department", "")).lower() == str(exam.get("department", "")).lower() and
+                    str(student.get("semester", "")) == str(exam.get("semester", "")) and
+                    str(student.get("year", "")).lower() == str(exam.get("year", "")).lower()
+                )
+                if not enrolled_codes or norm_code(exam_code) in enrolled_codes or is_class_match:
                     upcoming_tasks.append({
                         "title": exam.get("name", "Exam"),
-                        "course": sub or exam.get("course", "N/A"),
+                        "course": exam_code or "N/A",
                         "date": exam.get("date", "—"),
                         "status": exam.get("status", "Upcoming")
                     })
@@ -380,12 +440,17 @@ async def get_student_dashboard_widgets(student_id: str):
         try:
             exams = list_items("exams")
             for exam in exams:
-                if exam.get("status") in ["Scheduled", "Active"]:
-                    sub = exam.get("subject")
-                    if not enrolled_codes or sub in enrolled_codes or exam.get("course") in enrolled_codes:
+                if exam.get("status") in ["Scheduled", "Active", "Upcoming"]:
+                    exam_code = exam.get("code")
+                    is_class_match = (
+                        str(student.get("department", "")).lower() == str(exam.get("department", "")).lower() and
+                        str(student.get("semester", "")) == str(exam.get("semester", "")) and
+                        str(student.get("year", "")).lower() == str(exam.get("year", "")).lower()
+                    )
+                    if not enrolled_codes or norm_code(exam_code) in enrolled_codes or is_class_match:
                         upcoming_tasks.append({
                             "title": exam.get("name", "Exam"),
-                            "course": sub or exam.get("course", "N/A"),
+                            "course": exam_code or "N/A",
                             "date": exam.get("date", "—"),
                             "status": exam.get("status", "Upcoming")
                         })
