@@ -17,15 +17,27 @@ export default function StudentsPage() {
   const [departmentFilter, setDepartmentFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
+  const [newAdmissionsCount, setNewAdmissionsCount] = useState(0)
   const itemsPerPage = 3
 
   const fetchStudents = async () =>{
     try {
       setLoading(true)
-      const res = await fetch(buildApiUrl('/students'))
-      if (!res.ok) throw new Error('Failed to fetch students')
-      const data = await res.json()
-      setStudentsList(data)
+      const [studentsRes, admissionsRes] = await Promise.all([
+        fetch(buildApiUrl('/students')),
+        fetch(buildApiUrl('/admissions/students'))
+      ])
+      
+      if (!studentsRes.ok) throw new Error('Failed to fetch students')
+      const studentsData = await studentsRes.json()
+      setStudentsList(studentsData)
+
+      if (admissionsRes.ok) {
+        const admissionsData = await admissionsRes.json()
+        const pendingCount = admissionsData.filter(a => (a.status || '').toLowerCase() === 'pending').length
+        setNewAdmissionsCount(pendingCount)
+      }
+      
       setError(null)
     } catch (err) {
       console.error('Error fetching students:', err)
@@ -168,7 +180,7 @@ export default function StudentsPage() {
   const statsData = [
     { value: loading ? '...' : stats.total, label: 'Total Students', icon: 'group' },
     { value: loading ? '...' : stats.active, label: 'Active Today', icon: 'bolt' },
-    { value: '45', label: 'New Admissions', icon: 'person_add' },
+    { value: loading ? '...' : newAdmissionsCount, label: 'New Admissions', icon: 'person_add' },
     { value: filtered.length, label: 'Filtered Results', icon: 'search' },
   ]
 
