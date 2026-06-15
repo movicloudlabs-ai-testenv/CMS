@@ -1,20 +1,12 @@
 import { useNavigate } from 'react-router-dom';
 
-const ROLE_META = {
-  admin:   { title: 'System Settings',  subtitle: 'Portal configuration & control', color: 'from-[#276221] to-[#1e4618]' },
-  finance: { title: 'Finance Settings', subtitle: 'Billing & financial controls',    color: 'from-[#1a4f8a] to-[#0e3060]' },
-  faculty: { title: 'My Settings',      subtitle: 'Account & preferences',           color: 'from-[#276221] to-[#1e4618]' },
-  student: { title: 'My Settings',      subtitle: 'Account & preferences',           color: 'from-[#276221] to-[#1e4618]' },
-};
-
 /**
  * Unified two-column settings shell used by all roles.
- * Left: full-height branded sidebar with tab navigation
+ * Left: sidebar with tab navigation
  * Right: active panel content
  */
 export default function SettingsShell({ tabs, activeTab, onSelect, children, role }) {
   const navigate = useNavigate();
-  const meta = ROLE_META[role] || ROLE_META.student;
 
   return (
     <div className="flex flex-col md:flex-row gap-0 w-full min-h-[calc(100vh-80px)] md:h-[calc(100vh-80px)] md:overflow-hidden">
@@ -23,18 +15,6 @@ export default function SettingsShell({ tabs, activeTab, onSelect, children, rol
       <aside className="w-full md:w-72 flex-shrink-0 md:border-r border-slate-200 bg-white md:h-full md:overflow-y-auto">
         <div className="flex flex-col h-full">
 
-          {/* Branded Header */}
-          <div className={`bg-gradient-to-br ${meta.color} px-6 py-7 text-white`}>
-            <div className="flex items-center gap-3 mb-1">
-              <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
-                <span className="material-symbols-outlined text-[18px] text-white">settings</span>
-              </div>
-              <div>
-                <p className="text-[13px] font-bold leading-tight">{meta.title}</p>
-                <p className="text-[11px] text-white/70 mt-0.5">{meta.subtitle}</p>
-              </div>
-            </div>
-          </div>
 
           {/* Nav Items */}
           <nav className="px-3 py-4 flex flex-col gap-0.5 flex-1">
