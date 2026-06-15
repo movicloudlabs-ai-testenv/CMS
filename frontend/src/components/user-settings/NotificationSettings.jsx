@@ -58,6 +58,13 @@ const KEY_META = {
   // placementAlerts is shared with faculty (same key)
 };
 
+const ROLE_KEYS = {
+  student: ['odStatusUpdate', 'feeReminder', 'internalMarks'],
+  faculty: ['salaryCredit', 'odRequests', 'placementAlerts'],
+  finance: ['feePayments'],
+  admin: ['feePayments', 'placementAlerts'],
+};
+
 const GROUP_ORDER = ['Academic', 'Financial'];
 
 // ─── Toggle Switch ─────────────────────────────────────────────────────────────
@@ -185,9 +192,14 @@ export default function NotificationSettings({ role, userId }) {
     userSettingsApi.getNotifications(role, userId)
       .then(data => {
         if (!mounted) return;
-        setForm(data);
-        setBaseline(data);
-        setSectionData('notifications', data);
+        const roleKeys = ROLE_KEYS[role] || [];
+        const fullData = {};
+        roleKeys.forEach(k => {
+          fullData[k] = (data && data[k] !== undefined) ? data[k] : true;
+        });
+        setForm(fullData);
+        setBaseline(fullData);
+        setSectionData('notifications', fullData);
       })
       .catch(e => { if (mounted) setError(e.message); })
       .finally(() => { if (mounted) setLoading(false); });

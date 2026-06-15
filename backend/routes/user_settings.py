@@ -280,10 +280,9 @@ def _student_defaults() -> dict:
             "address": "",
         },
         "notifications": {
-            "email": True,
-            "sms": False,
-            "examReminder": True,
+            "odStatusUpdate": True,
             "feeReminder": True,
+            "internalMarks": True,
         },
         "appearance": {
             "theme": "dark",
@@ -313,7 +312,6 @@ def _student_defaults() -> dict:
 
 def _faculty_defaults() -> dict:
     return {
-        **_student_defaults(),
         "profile": {
             "name": "",
             "email": "",
@@ -322,10 +320,9 @@ def _faculty_defaults() -> dict:
             "bio": "",
         },
         "notifications": {
-            "assignmentAlerts": True,
-            "studentMessages": True,
-            "email": True,
-            "sms": False,
+            "salaryCredit": True,
+            "odRequests": True,
+            "placementAlerts": True,
         },
         "appearance": {
             "theme": "light",
@@ -333,12 +330,126 @@ def _faculty_defaults() -> dict:
             "accentColor": "teal",
             "layoutDensity": "comfortable",
         },
+        "language": {
+            "language": "English",
+            "region": "India",
+            "timezone": "Asia/Kolkata",
+            "dateFormat": "DD/MM/YYYY",
+        },
+        "privacy": {
+            "profileVisible": True,
+            "searchable": True,
+            "allowDirectMessages": True,
+        },
+        "accessibility": {
+            "highContrast": False,
+            "reduceMotion": False,
+            "textToSpeech": False,
+            "largeClickTargets": False,
+        },
         "teachingPreferences": {
             "preferredMode": "Hybrid",
             "officeHours": "10 AM - 12 PM",
             "autoPublishGrades": False,
         },
     }
+
+
+def _finance_defaults() -> dict:
+    return {
+        "profile": {
+            "name": "",
+            "email": "",
+            "phone": "",
+            "bio": "",
+        },
+        "notifications": {
+            "feePayments": True,
+        },
+        "appearance": {
+            "theme": "light",
+            "fontSize": "medium",
+            "accentColor": "blue",
+            "layoutDensity": "comfortable",
+        },
+        "language": {
+            "language": "English",
+            "region": "India",
+            "timezone": "Asia/Kolkata",
+            "dateFormat": "DD/MM/YYYY",
+        },
+        "privacy": {
+            "profileVisible": True,
+            "searchable": True,
+            "allowDirectMessages": True,
+        },
+        "accessibility": {
+            "highContrast": False,
+            "reduceMotion": False,
+            "textToSpeech": False,
+            "largeClickTargets": False,
+        },
+    }
+
+
+def _admin_defaults() -> dict:
+    return {
+        "profile": {
+            "name": "",
+            "email": "",
+            "phone": "",
+            "bio": "",
+        },
+        "notifications": {
+            "feePayments": True,
+            "placementAlerts": True,
+        },
+        "appearance": {
+            "theme": "light",
+            "fontSize": "medium",
+            "accentColor": "blue",
+            "layoutDensity": "comfortable",
+        },
+        "language": {
+            "language": "English",
+            "region": "India",
+            "timezone": "Asia/Kolkata",
+            "dateFormat": "DD/MM/YYYY",
+        },
+        "privacy": {
+            "profileVisible": True,
+            "searchable": True,
+            "allowDirectMessages": True,
+        },
+        "accessibility": {
+            "highContrast": False,
+            "reduceMotion": False,
+            "textToSpeech": False,
+            "largeClickTargets": False,
+        },
+    }
+
+
+def merge_defaults(role: str, existing_settings: dict) -> dict:
+    if role == "faculty":
+        defaults = _faculty_defaults()
+    elif role == "finance":
+        defaults = _finance_defaults()
+    elif role == "admin":
+        defaults = _admin_defaults()
+    else:
+        defaults = _student_defaults()
+
+    merged = deepcopy(defaults)
+    for section_key, val in existing_settings.items():
+        if section_key == "_id":
+            merged["_id"] = val
+            continue
+        if isinstance(val, dict) and section_key in merged:
+            merged[section_key].update(val)
+        else:
+            merged[section_key] = val
+    return merged
 
 
 def _now_iso() -> str:
@@ -386,11 +497,15 @@ async def _get_or_create_settings(role: str, user_id: str) -> dict:
     doc = await col.find_one({"userId": user_id})
     if doc:
         doc["_id"] = str(doc["_id"])
-        return doc
+        return merge_defaults(role, doc)
 
     # Seed defaults based on role
     if role == "faculty":
         defaults = _faculty_defaults()
+    elif role == "finance":
+        defaults = _finance_defaults()
+    elif role == "admin":
+        defaults = _admin_defaults()
     else:
         defaults = _student_defaults()
 
