@@ -73,12 +73,12 @@ export const roleMenuGroups = {
       items: ['Admission', 'Fees', 'Invoices'],
     },
     {
-      title: 'Intelligence',
-      items: ['Analytics', 'Settings'],
-    },
-    {
       title: 'Academics',
       items: ['Exams', 'Timetable', 'Attendance', 'Placement', 'Facility'],
+    },
+    {
+      title: 'Intelligence',
+      items: ['Analytics', 'Settings'],
     },
   ],
   faculty: [
