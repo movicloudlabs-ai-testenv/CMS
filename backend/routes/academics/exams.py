@@ -44,6 +44,18 @@ def _dev_get(key: str, item_id: str):
     return next((item for item in _dev_list(key) if str(item.get("id")) == str(item_id)), None)
 
 
+def is_department_match(dept1: Optional[str], dept2: Optional[str]) -> bool:
+    d1 = str(dept1 or "").strip().lower()
+    d2 = str(dept2 or "").strip().lower()
+    if not d1 or not d2:
+        return False
+    if d1 == d2:
+        return True
+    clean = lambda d: d.replace("and", "").replace("&", "").replace("engineering", "").replace("eng.", "").replace(" ", "").replace("-", "").strip()
+    c1, c2 = clean(d1), clean(d2)
+    return c1 == c2 or c1 in c2 or c2 in c1 or d1 in d2 or d2 in d1
+
+
 @router.get("")
 async def list_exams(role: Optional[str] = None, userId: Optional[str] = None):
     try:
@@ -81,7 +93,7 @@ async def list_exams(role: Optional[str] = None, userId: Optional[str] = None):
             enrolled_codes = {norm_code(s.get("code")) for s in student.get("subjects", []) if s.get("code")}
             for exam in exams:
                 is_class_match = (
-                    str(student.get("department", "")).lower() == str(exam.get("department", "")).lower() and
+                    is_department_match(student.get("department", ""), exam.get("department", "")) and
                     str(student.get("semester", "")) == str(exam.get("semester", "")) and
                     str(student.get("year", "")).lower() == str(exam.get("year", "")).lower()
                 )
