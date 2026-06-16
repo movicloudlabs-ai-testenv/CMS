@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Layout from '../components/Layout';
-import { PageContainer, StatsSection } from '../components/common';
+import { PageContainer, StatsSection, TableSkeleton } from '../components/common';
 import { API_BASE } from '../api/apiBase';
 
 export default function FinanceInvoicePage() {

@@ -5,7 +5,7 @@ import KpiGrid from '../components/KpiGrid';
 import { getUserSession } from '../auth/sessionController';
 import { jsPDF } from 'jspdf';
 import { listInvoices } from '../api/invoicesApi';
-import { Pagination } from '../components/common';
+import { Pagination, TableSkeleton } from '../components/common';
 
 export default function InvoicePage() {
   const session = getUserSession();

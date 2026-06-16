@@ -4,8 +4,7 @@ import KpiCard from '../components/KpiCard';
 import KpiGrid from '../components/KpiGrid';
 import { getUserSession } from '../auth/sessionController';
 import { jsPDF } from 'jspdf';
-import { PageContainer, StatsSection } from '../components/common';
-import { Pagination } from '../components/common';
+import { PageContainer, StatsSection, Pagination, TableSkeleton } from '../components/common';
 import { listFees, updateFeePayment } from '../api/feesApi';
 import { listInvoices, updateInvoiceStatus, createInvoice } from '../api/invoicesApi';
 

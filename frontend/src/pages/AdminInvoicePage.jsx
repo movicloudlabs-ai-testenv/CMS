@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import Layout from '../components/Layout';
-import { PageContainer, StatsSection, StatusBadge, Pagination } from '../components/common';
+import { PageContainer, StatsSection, StatusBadge, Pagination, TableSkeleton } from '../components/common';
 import KpiCard from '../components/KpiCard';
 import KpiGrid from '../components/KpiGrid';
 import { jsPDF } from 'jspdf';
@@ -316,7 +316,11 @@ export default function AdminInvoicePage() {
               ><option value="all">All Courses</option>{allCourses.map((course) =>(
                   <option key={course} value={course}>{course}
                   </option>))}
-              </select></div></div>{filteredInvoices.length === 0 ? (
+              </select></div></div>
+          
+          {loading ? (
+            <TableSkeleton cols={7} rows={6} />
+          ) : filteredInvoices.length === 0 ? (
             <div className="text-center py-12 text-gray-500"><span className="material-symbols-outlined text-4xl block mb-4 text-gray-300">receipt_long</span><p className="font-medium">No invoices found</p></div>) : (<>
             <div className="overflow-x-auto"><table className="w-full text-sm min-w-[750px]"><thead><tr className="border-b-2 border-gray-200"><th className="text-left py-3 px-4 font-semibold text-gray-700">Invoice ID</th><th className="text-left py-3 px-4 font-semibold text-gray-700">Student Name</th><th className="text-left py-3 px-4 font-semibold text-gray-700">Student ID</th><th className="text-left py-3 px-4 font-semibold text-gray-700">Course</th><th className="text-left py-3 px-4 font-semibold text-gray-700">Amount</th><th className="text-left py-3 px-4 font-semibold text-gray-700">Status</th><th className="text-left py-3 px-4 font-semibold text-gray-700">Actions</th></tr></thead><tbody>{filteredInvoices.slice((currentPage-1)*pageSize, currentPage*pageSize).map((invoice) =>(
                     <tr key={invoice.id} className="border-b border-gray-100 hover:bg-gray-50"><td className="py-3 px-4 text-gray-700 font-mono">{invoice.id}</td><td className="py-3 px-4 text-gray-700">{invoice.studentName}</td><td className="py-3 px-4 text-gray-700">{invoice.studentId}</td><td className="py-3 px-4 text-gray-700">{invoice.course}</td><td className="py-3 px-4 font-semibold text-gray-900">₹{invoice.total?.toLocaleString()}</td><td className="py-3 px-4"><span className={`px-3 py-1 rounded-full text-xs font-semibold ${
