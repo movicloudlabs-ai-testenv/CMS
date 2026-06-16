@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
-import { Pagination } from '../components/common'
+import { Pagination, TableSkeleton } from '../components/common'
 import Layout from '../components/Layout'
 import KpiCard from '../components/KpiCard'
 import KpiGrid from '../components/KpiGrid'
