@@ -186,8 +186,5 @@ export default function LoginPage() {
                   ><span style={{ fontSize: '14px' }}>{roleIcons[demoRole]}</span>{demoRole.charAt(0).toUpperCase() + demoRole.slice(1)}
                   </button>))}
               </div></div><button type="submit" className="btn-login" id="loginBtn" disabled={loading}><LoginArrowIcon />{loading ? 'Signing in…' : 'Sign In'}
-            </button></form><div className="login-divider"><span>Secure Access</span></div><div className="login-links"><a href="#" onClick={(event) =>event.preventDefault()}>Help Center
-            </a><a href="#" onClick={(event) =>event.preventDefault()}>Privacy Policy
-            </a><a href="#" onClick={(event) =>event.preventDefault()}>Terms of Use
-            </a></div></section></div></div>);
+            </button></form></section></div></div>);
 }
