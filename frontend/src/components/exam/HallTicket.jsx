@@ -38,8 +38,18 @@ export default function HallTicket({ exam, studentInfo, subjects = [], onClose }
     doc.text(`Department: ${resolvedDepartment}`, 14, 50);
     doc.text(`Semester: ${resolvedSemester}`, 14, 56);
 
+    let startTableY = 64;
+    if (exam?.room) {
+      doc.text(`Exam Room / Venue: ${exam.room}`, 14, startTableY - 2);
+      startTableY += 6;
+    }
+    if (exam?.seatNumber) {
+      doc.text(`Assigned Seat: ${exam.seatNumber}`, 14, startTableY - 2);
+      startTableY += 6;
+    }
+
     autoTable(doc, {
-      startY: 64,
+      startY: startTableY,
       head: [['S.No', 'Subject Code', 'Subject Name', 'Credits', 'Semester']],
       body: normalizedSubjects.map((subject, index) => [
         index + 1,
@@ -110,6 +120,18 @@ export default function HallTicket({ exam, studentInfo, subjects = [], onClose }
               <p className="text-xs font-semibold text-slate-500 uppercase mb-1">Date of Issue</p>
               <p className="text-sm font-bold text-slate-900">{currentDate}</p>
             </div>
+            {exam?.room && (
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase mb-1">Exam Room / Venue</p>
+                <p className="text-sm font-bold text-slate-900">{exam.room}</p>
+              </div>
+            )}
+            {exam?.seatNumber && (
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase mb-1">Assigned Seat</p>
+                <p className="text-sm font-bold text-[#276221]">{exam.seatNumber}</p>
+              </div>
+            )}
           </div>
 
           {/* Student Information */}

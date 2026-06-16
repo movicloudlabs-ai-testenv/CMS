@@ -26,6 +26,7 @@ import {
   listRegistrations,
   registerExam,
   listMarks,
+  listSeatAssignments,
 } from '../api/examsApi'
 import { getStudentById } from '../data/studentData'
 
@@ -140,9 +141,10 @@ export default function ExamsPage({ noLayout = false }) {
         return
       }
 
-      const [registrations, marks] = await Promise.all([
+      const [registrations, marks, seats] = await Promise.all([
         listRegistrations({ studentId: session.userId }),
         listMarks({ studentId: session.userId }),
+        listSeatAssignments({ studentId: session.userId }),
       ])
 
       setStudentRegistrations(registrations)
@@ -151,15 +153,22 @@ export default function ExamsPage({ noLayout = false }) {
         if (!acc[item.examId]) acc[item.examId] = item
         return acc
       }, {})
+      const seatsByExam = seats.reduce((acc, item) => {
+        if (!acc[item.examId]) acc[item.examId] = item
+        return acc
+      }, {})
 
       const merged = examList.map((exam) => {
         const examId = exam._id || exam.id
         const mark = marksByExam[examId]
+        const seat = seatsByExam[examId]
         return {
           ...exam,
           registered: registeredIds.has(examId) || exam.type !== 'End-Sem',
           marks: mark?.marks,
           grade: mark?.grade,
+          seatNumber: seat?.seatNumber,
+          hallName: seat?.hallName,
         }
       })
       setExams(merged)
@@ -398,7 +407,14 @@ export default function ExamsPage({ noLayout = false }) {
                     <p className="text-sm font-medium text-slate-900">{formatDate(exam.date)}</p>
                     <p className="text-xs text-slate-500">{formatTime(exam.time)}</p>
                   </td>
-                  <td className="px-6 py-4 text-sm text-slate-600">{exam.room}</td>
+                  <td className="px-6 py-4 text-sm text-slate-600">
+                    <div>{exam.room}</div>
+                    {isStudent && exam.seatNumber && (
+                      <div className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded inline-block mt-1">
+                        Seat: {exam.seatNumber}
+                      </div>
+                    )}
+                  </td>
                   <td className="px-6 py-4">
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
                       {exam.type}
