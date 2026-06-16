@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import Layout from '../components/Layout';
-import { PageContainer, StatsSection, Pagination } from '../components/common';
+import { PageContainer, StatsSection, Pagination, TableSkeleton } from '../components/common';
 import { useAdmission } from '../context/AdmissionContext';
 import { getUserSession } from '../auth/sessionController';
 import { listFees, assignFee, deleteFeeAssignment } from '../api/feesApi';
@@ -208,7 +208,12 @@ export default function AdminFeesPage() {
           { value: stats.pendingCount, label: 'Pending Fees', icon: 'schedule' },
           { value: `₹${stats.totalRevenue.toLocaleString()}`, label: 'Total Revenue', icon: 'trending_up' },
         ]} />{/* All Fee Assignments Table */}
-        <div><div className="mb-6"><h2 className="text-lg font-bold text-gray-800">All Fee Assignments</h2></div><div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm overflow-x-auto"><table className="w-full text-left min-w-[800px]"><thead><tr className="bg-slate-50 text-slate-500 text-xs font-semibold uppercase tracking-wider border-b border-slate-200"><th className="px-6 py-4">Student Info</th><th className="px-6 py-4">Student ID</th><th className="px-6 py-4">Course</th><th className="px-6 py-4">Semester</th><th className="px-6 py-4">Amount</th><th className="px-6 py-4">Status</th><th className="px-6 py-4">Assigned Date</th><th className="px-6 py-4 text-center">Actions</th></tr></thead><tbody className="divide-y divide-slate-50">{feeAssignments.length === 0 ? (
+        <div><div className="mb-6"><h2 className="text-lg font-bold text-gray-800">All Fee Assignments</h2></div>
+          
+          {loading ? (
+            <TableSkeleton cols={8} rows={6} />
+          ) : (
+            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm overflow-x-auto"><table className="w-full text-left min-w-[800px]"><thead><tr className="bg-slate-50 text-slate-500 text-xs font-semibold uppercase tracking-wider border-b border-slate-200"><th className="px-6 py-4">Student Info</th><th className="px-6 py-4">Student ID</th><th className="px-6 py-4">Course</th><th className="px-6 py-4">Semester</th><th className="px-6 py-4">Amount</th><th className="px-6 py-4">Status</th><th className="px-6 py-4">Assigned Date</th><th className="px-6 py-4 text-center">Actions</th></tr></thead><tbody className="divide-y divide-slate-50">{feeAssignments.length === 0 ? (
                   <tr><td colSpan={8} className="px-10 py-24 text-center text-slate-400 bg-slate-50/30"><div className="flex flex-col items-center"><span className="material-symbols-outlined text-6xl mb-4 opacity-10 text-slate-900">receipt_long
                         </span><p className="text-base font-bold text-slate-500">No fee assignments yet</p><p className="text-xs font-medium text-slate-400 mt-1">Start by assigning fees to approved students</p></div></td></tr>) : (
                   feeAssignments.slice((currentPage-1)*pageSize, currentPage*pageSize).map((assignment) =>(
@@ -250,7 +255,11 @@ export default function AdminFeesPage() {
                 pageSize={pageSize}
                 onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1); }}
               />
-            </div></div>{/* Students Awaiting Fee Assignment */}
+            </div>
+          )}
+        </div>
+
+        {/* Students Awaiting Fee Assignment */}
         {studentsWithoutFees.length >0 && (
           <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm overflow-x-auto"><div className="px-6 py-4 bg-slate-50 border-b border-slate-200"><h2 className="text-lg font-bold text-slate-900">Students Awaiting Fee Assignment ({studentsWithoutFees.length})
               </h2></div><table className="w-full text-left min-w-[700px]"><thead><tr className="bg-slate-50 text-slate-500 text-xs font-semibold uppercase tracking-wider border-b border-slate-200"><th className="px-6 py-4">Student Info</th><th className="px-6 py-4">Application ID</th><th className="px-6 py-4">Course</th><th className="px-6 py-4">Email</th><th className="px-6 py-4">Status</th><th className="px-6 py-4 text-center">Action</th></tr></thead><tbody className="divide-y divide-slate-50">{studentsWithoutFees.map((student) =>(
