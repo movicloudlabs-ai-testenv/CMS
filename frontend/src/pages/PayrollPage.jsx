@@ -4,6 +4,7 @@ import autoTable from 'jspdf-autotable';
 import Layout from '../components/Layout';
 import KpiCard from '../components/KpiCard';
 import KpiGrid from '../components/KpiGrid';
+import { TableSkeleton } from '../components/common';
 import { API_BASE } from '../api/apiBase';
 
 // Icons
@@ -504,8 +505,9 @@ export default function PayrollPage({ noLayout = false }) {
                             onChange={(e) =>{ setFilterStatus(e.target.value); setCurrentPage(1); }}
                             style={{ height: 40, borderRadius: 8, padding: '0 12px', border: '1px solid #e5e7eb', outline: 'none', background: '#fff', fontSize: 14, minWidth: 160 }}
                         ><option value="All">All Statuses</option><option value="Draft">Draft</option><option value="Paid">Paid</option><option value="Processing">Processing</option></select></div></div><div style={{ overflowX: 'auto' }}><table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}><thead><tr style={{ background: '#f9fafb', color: '#6b7280', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.5px' }}><th style={{ padding: '16px 20px', fontWeight: 600 }}>Faculty Details</th><th style={{ padding: '16px 20px', fontWeight: 600 }}>Pay Period</th><th style={{ padding: '16px 20px', fontWeight: 600 }}>Gross Pay</th><th style={{ padding: '16px 20px', fontWeight: 600 }}>Net Pay</th><th style={{ padding: '16px 20px', fontWeight: 600 }}>Status</th><th style={{ padding: '16px 20px', fontWeight: 600, textAlign: 'center' }}>Actions</th></tr></thead><tbody>{loading ? (
-                                <tr><td colSpan="6" style={{ padding: '32px 20px', textAlign: 'center', color: '#6b7280' }}>Loading data...
-                                    </td></tr>) : error ? (
+                                <tr><td colSpan="6" style={{ padding: '0' }}>
+                                    <TableSkeleton cols={6} rows={8} />
+                                </td></tr>) : error ? (
                                 <tr><td colSpan="6" style={{ padding: '32px 20px', textAlign: 'center', color: '#ef4444' }}>{error} — Make sure the backend server is running on port 5000.
                                     </td></tr>) : paginatedData.length >0 ? (
                                 paginatedData.map(record =>{

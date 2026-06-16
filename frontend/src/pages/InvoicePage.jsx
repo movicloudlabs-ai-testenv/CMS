@@ -260,8 +260,13 @@ export default function InvoicePage() {
                 }`}
               >{status.charAt(0).toUpperCase() + status.slice(1)}
               </button>))}
-          </div></div>{/* Invoice Cards Grid */}
-        <div className="bg-white rounded-lg shadow p-6">{studentInvoices.length === 0 ? (
+          </div></div>
+        
+        {/* Invoice Cards Grid */}
+        {loading ? (
+          <TableSkeleton cols={3} rows={6} />
+        ) : (
+          <div className="bg-white rounded-lg shadow p-6">{studentInvoices.length === 0 ? (
             <div className="text-center py-12"><span className="material-symbols-outlined text-6xl text-gray-300 block mb-4">receipt
               </span><p className="text-gray-500 text-lg">No invoices found</p><p className="text-gray-400 text-sm">Your invoices will appear here once generated</p></div>) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{studentInvoices.slice((currentPage-1)*pageSize, currentPage*pageSize).map((invoice) =>(
@@ -311,7 +316,11 @@ export default function InvoicePage() {
             pageSize={pageSize}
             onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1); }}
           />
-        </div></div>{/* Detail Modal */}
+        </div>
+        )}
+      </div>
+      
+      {/* Detail Modal */}
       {showDetailModal && selectedInvoice && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50"><div className="bg-white rounded-lg p-8 max-w-2xl w-full mx-4 shadow-xl max-h-[90vh] overflow-y-auto"><div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-bold text-gray-800">Invoice Details</h2><button
                 onClick={() =>setShowDetailModal(false)}

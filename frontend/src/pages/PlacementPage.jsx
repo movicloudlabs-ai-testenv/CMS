@@ -388,47 +388,45 @@ export default function PlacementPage({ noLayout = false }) {
       )}
 
       {/* Placement Table */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-        <table className="w-full text-left">
-          <thead>
-            <tr className="bg-slate-50 text-slate-500 text-xs font-semibold uppercase tracking-wider border-b border-slate-200">
-              {showStudentColumn && <th className="px-6 py-4">Student</th>}
-              <th className="px-6 py-4">Company</th>
-              <th className="px-6 py-4">Role</th>
-              <th className="px-6 py-4">Package</th>
-              <th className="px-6 py-4">Date</th>
-              <th className="px-6 py-4">Status</th>
-              {isAdmin && <th className="px-6 py-4">Actions</th>}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {loading && (
-              <tr>
-                <td colSpan={showStudentColumn ? (isAdmin ? 7 : 6) : (isAdmin ? 6 : 5)} className="px-6 py-10 text-center text-slate-400 text-sm">Loading...</td>
+      {loading ? (
+        <TableSkeleton cols={showStudentColumn ? (isAdmin ? 7 : 6) : (isAdmin ? 6 : 5)} rows={8} />
+      ) : (
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="bg-slate-50 text-slate-500 text-xs font-semibold uppercase tracking-wider border-b border-slate-200">
+                {showStudentColumn && <th className="px-6 py-4">Student</th>}
+                <th className="px-6 py-4">Company</th>
+                <th className="px-6 py-4">Role</th>
+                <th className="px-6 py-4">Package</th>
+                <th className="px-6 py-4">Date</th>
+                <th className="px-6 py-4">Status</th>
+                {isAdmin && <th className="px-6 py-4">Actions</th>}
               </tr>
-            )}
-            {!loading && filteredEntries.length === 0 && (
-              <tr>
-                <td colSpan={showStudentColumn ? (isAdmin ? 7 : 6) : (isAdmin ? 6 : 5)}>
-                  <div className="px-6 py-10 flex flex-col items-center justify-center text-center">
-                    {isStudent && (
-                      <>
-                        <span className="material-symbols-outlined text-5xl text-slate-300 mb-3">work_outline</span>
-                        <p className="text-slate-500 font-medium mb-4">No placements yet</p>
-                        {addButton}
-                      </>
-                    )}
-                    {(isAdmin || isFaculty) && (
-                      <>
-                        <p className="text-slate-400 text-sm mb-4">No records found</p>
-                        {canAddPlacement && addButton}
-                      </>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            )}
-            {!loading && filteredEntries.slice((currentPage-1)*pageSize, currentPage*pageSize).map((p, i) => (
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filteredEntries.length === 0 && (
+                <tr>
+                  <td colSpan={showStudentColumn ? (isAdmin ? 7 : 6) : (isAdmin ? 6 : 5)}>
+                    <div className="px-6 py-10 flex flex-col items-center justify-center text-center">
+                      {isStudent && (
+                        <>
+                          <span className="material-symbols-outlined text-5xl text-slate-300 mb-3">work_outline</span>
+                          <p className="text-slate-500 font-medium mb-4">No placements yet</p>
+                          {addButton}
+                        </>
+                      )}
+                      {(isAdmin || isFaculty) && (
+                        <>
+                          <p className="text-slate-400 text-sm mb-4">No records found</p>
+                          {canAddPlacement && addButton}
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              )}
+              {filteredEntries.slice((currentPage-1)*pageSize, currentPage*pageSize).map((p, i) => (
               <tr key={p.id || p._id || i} className="hover:bg-slate-50 transition-colors">
                 {showStudentColumn && <td className="px-6 py-4 text-sm font-semibold text-slate-900">{p.name || p.ownerId || '-'}</td>}
                 <td className="px-6 py-4 text-sm text-slate-600 font-medium">{p.company}</td>
@@ -464,6 +462,7 @@ export default function PlacementPage({ noLayout = false }) {
           onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1); }}
         />
       </div>
+      )}
 
       <Modal
         isOpen={showModal}

@@ -6,6 +6,7 @@ import RequestLeaveModal from '../components/RequestLeaveModal';
 import PerformanceEvaluationModal from '../components/PerformanceEvaluationModal';
 import PayrollIntegrationPanel from '../components/PayrollIntegrationPanel';
 import CareerPathwayTracking from '../components/CareerPathwayTracking';
+import { TableSkeleton } from '../components/common';
 import { 
   ArrowLeft, User, BarChart2,
   Mail, Phone, MapPin, Briefcase, Calendar, Target, DollarSign

@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import Layout from '../components/Layout'
 import KpiCard from '../components/KpiCard'
 import KpiGrid from '../components/KpiGrid'
+import { TableSkeleton } from '../components/common'
 import { getUserSession } from '../auth/sessionController'
 import { buildApiUrl } from '../api/apiBase'
 
@@ -568,7 +569,13 @@ export default function AttendancePage({ noLayout = false }) {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {paginatedRecords.length === 0 ? (
+                    {loading ? (
+                      <tr>
+                        <td colSpan={8} className="p-0">
+                          <TableSkeleton cols={8} rows={6} />
+                        </td>
+                      </tr>
+                    ) : paginatedRecords.length === 0 ? (
                       <tr>
                         <td colSpan={8} className="px-6 py-12 text-center text-slate-400 text-sm">No attendance records found matching filters.</td>
                       </tr>

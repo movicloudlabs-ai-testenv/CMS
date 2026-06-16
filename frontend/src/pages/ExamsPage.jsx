@@ -365,31 +365,27 @@ export default function ExamsPage({ noLayout = false }) {
       </KpiGrid>
 
       {/* Exams Table */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-        <table className="w-full text-left">
-          <thead>
-            <tr className="bg-slate-50 text-slate-500 text-xs font-semibold uppercase tracking-wider border-b border-slate-200">
-              <th className="px-6 py-4">Course</th>
-              <th className="px-6 py-4">Date & Time</th>
-              <th className="px-6 py-4">Room</th>
-              <th className="px-6 py-4">Type</th>
-              <th className="px-6 py-4">Duration</th>
-              <th className="px-6 py-4">Status</th>
-              {isStudent && <th className="px-6 py-4 text-center">Score</th>}
-              {isStudent && <th className="px-6 py-4 text-center">Register</th>}
-              {isStudent && <th className="px-6 py-4 text-center">Revaluation</th>}
-              {!isStudent && <th className="px-6 py-4 text-right">Actions</th>}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {loading ? (
-              <tr>
-                <td colSpan={isStudent ? 9 : 7} className="px-6 py-12 text-center text-slate-500">
-                  <span className="material-symbols-outlined text-5xl mb-2 opacity-20">quiz</span>
-                  <p className="text-sm">Loading exams...</p>
-                </td>
+      {loading ? (
+        <TableSkeleton cols={isStudent ? 9 : 7} rows={8} />
+      ) : (
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="bg-slate-50 text-slate-500 text-xs font-semibold uppercase tracking-wider border-b border-slate-200">
+                <th className="px-6 py-4">Course</th>
+                <th className="px-6 py-4">Date & Time</th>
+                <th className="px-6 py-4">Room</th>
+                <th className="px-6 py-4">Type</th>
+                <th className="px-6 py-4">Duration</th>
+                <th className="px-6 py-4">Status</th>
+                {isStudent && <th className="px-6 py-4 text-center">Score</th>}
+                {isStudent && <th className="px-6 py-4 text-center">Register</th>}
+                {isStudent && <th className="px-6 py-4 text-center">Revaluation</th>}
+                {!isStudent && <th className="px-6 py-4 text-right">Actions</th>}
               </tr>
-            ) : exams.length === 0 ? (
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {exams.length === 0 ? (
               <tr>
                 <td colSpan={isStudent ? 9 : 7} className="px-6 py-12 text-center text-slate-500">
                   <span className="material-symbols-outlined text-5xl mb-2 opacity-20">quiz</span>
@@ -584,7 +580,8 @@ export default function ExamsPage({ noLayout = false }) {
           pageSize={pageSize}
           onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1); }}
         />
-      </div>
+        </div>
+      )}
 
       <Modal
         isOpen={showModal}

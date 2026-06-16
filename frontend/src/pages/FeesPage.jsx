@@ -431,7 +431,10 @@ export default function FeesPage() {
           ]} />)}
 
         {/* Fee Table */}
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm overflow-x-auto"><table className="w-full text-left min-w-[800px]"><thead><tr className="bg-slate-50 text-slate-500 text-xs font-semibold uppercase tracking-wider border-b border-slate-200"><th className="px-6 py-4">Student Info</th><th className="px-6 py-4">Student ID</th><th className="px-6 py-4">Course</th><th className="px-6 py-4">Semester</th><th className="px-6 py-4">Amount</th><th className="px-6 py-4">Status</th><th className="px-6 py-4">Assigned Date</th><th className="px-6 py-4 text-center">Actions</th></tr></thead><tbody className="divide-y divide-slate-50">{studentFees.length === 0 ? (
+        {loading ? (
+          <TableSkeleton cols={8} rows={6} />
+        ) : (
+          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm overflow-x-auto"><table className="w-full text-left min-w-[800px]"><thead><tr className="bg-slate-50 text-slate-500 text-xs font-semibold uppercase tracking-wider border-b border-slate-200"><th className="px-6 py-4">Student Info</th><th className="px-6 py-4">Student ID</th><th className="px-6 py-4">Course</th><th className="px-6 py-4">Semester</th><th className="px-6 py-4">Amount</th><th className="px-6 py-4">Status</th><th className="px-6 py-4">Assigned Date</th><th className="px-6 py-4 text-center">Actions</th></tr></thead><tbody className="divide-y divide-slate-50">{studentFees.length === 0 ? (
                 <tr><td colSpan={8} className="px-10 py-24 text-center text-slate-400 bg-slate-50/30"><div className="flex flex-col items-center"><span className="material-symbols-outlined text-6xl mb-4 opacity-10 text-slate-900">receipt_long
                       </span><p className="text-base font-bold text-slate-500">No fees assigned yet</p><p className="text-xs font-medium text-slate-400 mt-1">{role === 'finance' ? 'No fee assignments to manage' : 'Contact your institution to assign fees'}
                       </p></div></td></tr>) : (
@@ -508,7 +511,11 @@ export default function FeesPage() {
                 pageSize={pageSize}
                 onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1); }}
               />
-            </div></div>{/* Payment Method Modal */}
+            </div>
+        )}
+      </div>
+      
+      {/* Payment Method Modal */}
       {showPaymentModal && selectedFee && !showPaymentForm && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50"><div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 shadow-xl"><h2 className="text-2xl font-bold mb-6">Pay {selectedFee.semester} Fee</h2><div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6"><p className="text-sm text-gray-600 mb-2"><span className="font-semibold">Amount:</span>₹{selectedFee.totalFee.toLocaleString()}
               </p><p className="text-sm text-gray-600"><span className="font-semibold">Course:</span>{selectedFee.course}

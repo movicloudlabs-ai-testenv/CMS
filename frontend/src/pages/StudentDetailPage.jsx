@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import Layout from '../components/Layout'
+import { TableSkeleton } from '../components/common'
 import { buildApiUrl } from '../api/apiBase'
 import KpiCard from '../components/KpiCard'
 import KpiGrid from '../components/KpiGrid'

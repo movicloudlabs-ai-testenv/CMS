@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import AddStudentModal from '../components/AddStudentModal';
+import { TableSkeleton } from '../components/common';
 import { getUserSession, updateUserData } from '../auth/sessionController';
 import { 
   ArrowLeft, User, BarChart2,
@@ -381,7 +382,13 @@ export default function StudentProfilePage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {student.subjects && student.subjects.length > 0 ? (
+                    {loading ? (
+                      <tr>
+                        <td colSpan={4} className="p-0">
+                          <TableSkeleton cols={4} rows={5} />
+                        </td>
+                      </tr>
+                    ) : student.subjects && student.subjects.length > 0 ? (
                       student.subjects.map((subject, i) => (
                         <tr key={i} className="hover:bg-slate-50/50 transition-colors">
                           <td className="px-6 py-4 text-sm font-semibold text-slate-800">{subject.code}</td>
@@ -424,7 +431,13 @@ export default function StudentProfilePage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {student.fees && student.fees.length > 0 ? (
+                    {loading ? (
+                      <tr>
+                        <td colSpan={5} className="p-0">
+                          <TableSkeleton cols={5} rows={4} />
+                        </td>
+                      </tr>
+                    ) : student.fees && student.fees.length > 0 ? (
                       student.fees.map((fee, i) => (
                         <tr key={i} className="hover:bg-slate-50/50 transition-colors">
                           <td className="px-6 py-4 text-sm font-semibold text-slate-800">{fee.type}</td>

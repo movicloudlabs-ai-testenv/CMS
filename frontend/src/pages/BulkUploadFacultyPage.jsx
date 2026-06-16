@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { TableSkeleton } from '../components/common';
 import { buildApiUrl } from '../api/apiBase';
 
 export default function BulkUploadFacultyPage() {
