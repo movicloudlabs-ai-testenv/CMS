@@ -1433,3 +1433,24 @@ a {
     margin-left: 0;
   }
 }
+
+/* Global Table Row Dividers - Thin & Dark */
+table {
+  border-collapse: collapse !important;
+}
+
+table tbody tr {
+  border-bottom: 1px solid #cbd5e1 !important; /* Thin distinct slate-300 border */
+}
+
+/* Override Tailwind's divide classes to ensure they use the correct color */
+tbody.divide-y > :not([hidden]) ~ :not([hidden]),
+.divide-y > :not([hidden]) ~ :not([hidden]) {
+  border-top-width: 1px !important;
+  border-color: #cbd5e1 !important;
+}
+
+table tr {
+  border-color: #cbd5e1 !important;
+}
+

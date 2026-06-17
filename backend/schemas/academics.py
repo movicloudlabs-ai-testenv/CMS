@@ -99,6 +99,22 @@ class AttendanceMarkRecord(BaseModel):
     locked: bool = False
 
 
+class FacultyAttendanceMarkEntry(BaseModel):
+    facultyId: str
+    name: str
+    department: str = ""
+    designation: str = ""
+    status: str = "Present"
+    remarks: str = ""
+
+
+class FacultyAttendanceMarkRecord(BaseModel):
+    date: str
+    markedBy: str = "admin"
+    markedAt: Optional[str] = None
+    entries: List[FacultyAttendanceMarkEntry] = Field(default_factory=list)
+
+
 class OdRequestPayload(BaseModel):
     studentId: str
     fromDate: str

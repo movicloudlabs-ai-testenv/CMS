@@ -19,8 +19,10 @@ from backend.dev_store import delete_od_request as delete_dev_od_request
 from backend.dev_store import update_od_request as update_dev_od_request
 from backend.dev_store import update_od_request_status as update_dev_od_request_status
 from backend.dev_store import upsert_attendance_marking as upsert_dev_attendance_marking
-from backend.schemas.academics import AttendanceRecord, WeeklyAttendancePoint
-from backend.schemas.academics import AttendanceMarkRecord, OdRequestPayload, OdRequestStatusUpdate
+from backend.schemas.academics import (
+    AttendanceRecord, WeeklyAttendancePoint, AttendanceMarkRecord, 
+    OdRequestPayload, OdRequestStatusUpdate, FacultyAttendanceMarkRecord
+)
 from backend.utils.mongo import serialize_doc
 from backend.utils.attendance_utils import compute_student_attendance_stats
 from backend.dev_store import DEV_STORE
@@ -1449,3 +1451,123 @@ async def delete_od_request(request_id: str):
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="OD request not found")
     return {"success": True, "message": "OD request deleted"}
+
+
+@router.get("/faculty/markings")
+async def get_faculty_attendance_markings(date: str):
+    """Get daily attendance marking list for faculty, checking approved leaves if no record exists"""
+    try:
+        db = get_db()
+        use_db = True
+    except HTTPException as error:
+        if error.status_code == 503:
+            use_db = False
+        else:
+            raise
+
+    # 1. Look for existing daily marking record
+    existing = None
+    if use_db:
+        existing = await db["faculty_attendance_markings"].find_one({"date": date})
+    else:
+        from backend.dev_store import DEV_STORE
+        existing = DEV_STORE.setdefault("faculty_attendance_markings", {}).get(date)
+
+    if existing:
+        if use_db:
+            return {"success": True, "data": serialize_doc(existing)}
+        else:
+            return {"success": True, "data": existing}
+
+    # 2. If no marking exists, fetch all faculty
+    faculty_list = []
+    if use_db:
+        async for f in db["faculty"].find({"employment_status": "Active"}):
+            faculty_list.append(serialize_doc(f))
+    else:
+        from backend.dev_store import DEV_STORE
+        faculty_list = DEV_STORE.get("faculty", [])
+
+    # 3. Fetch all approved leave requests that might cover the selected date
+    try:
+        selected_date = datetime.strptime(date, "%Y-%m-%d").date()
+    except Exception:
+        selected_date = datetime.utcnow().date()
+
+    approved_leaves = []
+    if use_db:
+        async for doc in db["faculty_leaves"].find({"status": "Approved"}):
+            approved_leaves.append(serialize_doc(doc))
+    else:
+        from backend.dev_store import DEV_STORE
+        approved_leaves = [l for l in DEV_STORE.setdefault("faculty_leaves", []) if l.get("status") == "Approved"]
+
+    # Map approved leaves by facultyId
+    leaves_by_faculty = {}
+    for leave in approved_leaves:
+        f_id = leave.get("facultyId")
+        try:
+            # Parse dates (strip potential timezone suffix for simple parsing)
+            start_str = leave.get("startDate", "").replace("Z", "")
+            end_str = leave.get("endDate", "").replace("Z", "")
+            start = datetime.fromisoformat(start_str).date()
+            end = datetime.fromisoformat(end_str).date()
+            if start <= selected_date <= end:
+                leaves_by_faculty[f_id] = True
+        except Exception:
+            continue
+
+    # 4. Construct the default list of markings
+    entries = []
+    for f in faculty_list:
+        f_id = f.get("employeeId") or str(f.get("_id"))
+        status = "On Leave" if leaves_by_faculty.get(f_id) else "Present"
+        entries.append({
+            "facultyId": f_id,
+            "name": f.get("name") or f.get("fullName") or "Faculty",
+            "department": f.get("departmentId") or f.get("department") or "General",
+            "designation": f.get("designation") or "Lecturer",
+            "status": status,
+            "remarks": ""
+        })
+
+    # Sort entries by name
+    entries = sorted(entries, key=lambda e: e.get("name", "").lower())
+
+    default_record = {
+        "date": date,
+        "markedBy": "admin",
+        "markedAt": None,
+        "entries": entries
+    }
+
+    return {"success": True, "data": default_record}
+
+
+@router.put("/faculty/markings")
+async def upsert_faculty_attendance_markings(payload: FacultyAttendanceMarkRecord):
+    data = payload.model_dump()
+    date = data["date"]
+    data["markedAt"] = datetime.utcnow().isoformat()
+
+    try:
+        db = get_db()
+        use_db = True
+    except HTTPException as error:
+        if error.status_code == 503:
+            use_db = False
+        else:
+            raise
+
+    if use_db:
+        updated = await db["faculty_attendance_markings"].find_one_and_update(
+            {"date": date},
+            {"$set": data},
+            upsert=True,
+            return_document=ReturnDocument.AFTER
+        )
+        return {"success": True, "data": serialize_doc(updated)}
+    else:
+        from backend.dev_store import DEV_STORE
+        DEV_STORE.setdefault("faculty_attendance_markings", {})[date] = data
+        return {"success": True, "data": data}

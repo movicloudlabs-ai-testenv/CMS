@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import Layout from '../components/Layout'
 import { getUserSession } from '../auth/sessionController'
 import { buildApiUrl } from '../api/apiBase'
+import { settingsApi } from '../api/settingsApi'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
@@ -265,11 +266,29 @@ function EntryModal({ initial, onSave, onClose }) {
 
 // ── New class/timetable creation modal ────────────────────────────────────────
 function NewClassModal({ onSave, onClose }) {
-  const [form, setForm] = useState({ dept: 'Computer Science', semester: 'Semester 4', section: 'Section A' })
+  const [departments, setDepartments] = useState([])
+  const [form, setForm] = useState({ dept: '', semester: 'Semester 4', section: 'Section A' })
+
+  useEffect(() => {
+    const fetchDepts = async () => {
+      try {
+        const data = await settingsApi.getDepartments()
+        setDepartments(data || [])
+        if (data && data.length > 0) {
+          setForm(prev => ({ ...prev, dept: data[0].name }))
+        }
+      } catch (err) {
+        console.error('Failed to load departments:', err)
+      }
+    }
+    fetchDepts()
+  }, [])
+
   function set(k, v) { setForm(prev => ({ ...prev, [k]: v })) }
 
   function handleSave() {
-    const deptCode = form.dept.slice(0, 2).toUpperCase()
+    const deptObj = departments.find(d => d.name === form.dept)
+    const deptCode = deptObj ? deptObj.code : form.dept.slice(0, 2).toUpperCase()
     const semCode  = form.semester.replace('Semester ', 'S')
     const secCode  = form.section.replace('Section ', '')
     const id       = `${deptCode}-${semCode}${secCode}`
@@ -296,10 +315,9 @@ function NewClassModal({ onSave, onClose }) {
           <div>
             <label className={labelCls}>Department</label>
             <select className={inputCls} value={form.dept} onChange={e => set('dept', e.target.value)}>
-              <option>Computer Science</option>
-              <option>Electronics</option>
-              <option>Mathematics</option>
-              <option>Mechanical</option>
+              {departments.map(d => (
+                <option key={d.code} value={d.name}>{d.name}</option>
+              ))}
             </select>
           </div>
           <div>

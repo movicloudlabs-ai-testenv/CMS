@@ -6,6 +6,7 @@ import { API_BASE } from '../api/apiBase';
 import Layout from '../components/Layout';
 import { Bell, Settings, User } from 'lucide-react';
 import SectionAccess from '../components/SectionAccess';
+import NewsletterWidget from '../components/NewsletterWidget';
 
 // Mock modal component for attendance
 function AttendanceModal({ isOpen, onClose, onSubmit }) {
@@ -690,6 +691,9 @@ export default function FacultyDashboardPage() {
 
           {/* Right column */}
           <div style={{ display:'flex', flexDirection:'column', gap:'20px' }}>
+
+            {/* Newsletter Feed */}
+            <NewsletterWidget role={role} userId={sessionUserId} />
 
             {/* Profile Details card */}
             <div style={{ background:'white', borderRadius:'16px', padding:'24px', boxShadow:'0 4px 20px rgba(0,0,0,0.06)', border:'1px solid #f1f5f9' }}>

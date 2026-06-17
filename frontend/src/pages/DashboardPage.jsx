@@ -5,6 +5,7 @@ import { roleMenuGroups } from '../data/roleConfig';
 import { getDashboardSummary } from '../services/dashboardService';
 import { API_BASE } from '../api/apiBase';
 import Layout from '../components/Layout';
+import NewsletterWidget from '../components/NewsletterWidget';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -471,6 +472,44 @@ export default function DashboardPage() {
             {/* ── STUDENT LEFT COLUMN ── */}
             {role === 'student' && (
               <>
+                {/* Today's Timetable */}
+                <div style={{ background:'white', borderRadius:'16px', padding:'24px', boxShadow:'0 4px 20px rgba(0,0,0,0.06)', border:'1px solid #f1f5f9' }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'20px' }}>
+                    <div style={{ width:'36px', height:'36px', background:'#4c1d95', borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                      <span className="material-symbols-outlined" style={{ fontSize:'18px', color:'white' }}>schedule</span>
+                    </div>
+                    <h4 style={{ fontSize:'15px', fontWeight:'700', color:'#1f2937', margin:0 }}>Today's Class Schedule</h4>
+                  </div>
+
+                  {dataLoading ? (
+                    <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
+                      {[1,2].map(i=><div key={i} style={{ height:'50px', background:'#f9fafb', borderRadius:'10px', animation:'pulse 1.5s ease-in-out infinite' }}/>)}
+                    </div>
+                  ) : todayClasses.length === 0 ? (
+                    <div style={{ textAlign:'center', padding:'24px', color:'#9ca3af' }}>
+                      <span className="material-symbols-outlined" style={{ fontSize:'36px', display:'block', marginBottom:'8px', opacity:0.3 }}>event_busy</span>
+                      <p style={{ fontSize:'13px' }}>No classes scheduled today</p>
+                    </div>
+                  ) : (
+                    <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
+                      {todayClasses.map((cls, idx) => (
+                        <div key={idx} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 16px', background:'#f9fafb', borderRadius:'10px', border:'1px solid #f1f5f9', flexWrap:'wrap', gap:'10px' }}>
+                          <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
+                            <div style={{ width:'8px', height:'8px', borderRadius:'50%', background:'#7c3aed', flexShrink:0 }}/>
+                            <div>
+                              <div style={{ fontSize:'13px', fontWeight:'700', color:'#1f2937' }}>{cls.code} - {cls.name}</div>
+                              <div style={{ fontSize:'11px', color:'#6b7280', marginTop:'2px' }}>Room {cls.room} • {cls.faculty}</div>
+                            </div>
+                          </div>
+                          <span style={{ fontSize:'11px', fontWeight:'600', color:'#7c3aed', background:'#faf5ff', border:'1px solid #e9d5ff', padding:'3px 10px', borderRadius:'100px', whiteSpace:'nowrap' }}>
+                            {cls.time}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 {/* Enrolled Courses */}
                 <div style={{ background:'white', borderRadius:'16px', padding:'24px', boxShadow:'0 4px 20px rgba(0,0,0,0.06)', border:'1px solid #f1f5f9' }}>
                   <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'20px' }}>
@@ -526,44 +565,6 @@ export default function DashboardPage() {
                           </div>
                         );
                       })}
-                    </div>
-                  )}
-                </div>
-
-                {/* Today's Timetable */}
-                <div style={{ background:'white', borderRadius:'16px', padding:'24px', boxShadow:'0 4px 20px rgba(0,0,0,0.06)', border:'1px solid #f1f5f9' }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'20px' }}>
-                    <div style={{ width:'36px', height:'36px', background:'#4c1d95', borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                      <span className="material-symbols-outlined" style={{ fontSize:'18px', color:'white' }}>schedule</span>
-                    </div>
-                    <h4 style={{ fontSize:'15px', fontWeight:'700', color:'#1f2937', margin:0 }}>Today's Class Schedule</h4>
-                  </div>
-
-                  {dataLoading ? (
-                    <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
-                      {[1,2].map(i=><div key={i} style={{ height:'50px', background:'#f9fafb', borderRadius:'10px', animation:'pulse 1.5s ease-in-out infinite' }}/>)}
-                    </div>
-                  ) : todayClasses.length === 0 ? (
-                    <div style={{ textAlign:'center', padding:'24px', color:'#9ca3af' }}>
-                      <span className="material-symbols-outlined" style={{ fontSize:'36px', display:'block', marginBottom:'8px', opacity:0.3 }}>event_busy</span>
-                      <p style={{ fontSize:'13px' }}>No classes scheduled today</p>
-                    </div>
-                  ) : (
-                    <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
-                      {todayClasses.map((cls, idx) => (
-                        <div key={idx} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 16px', background:'#f9fafb', borderRadius:'10px', border:'1px solid #f1f5f9', flexWrap:'wrap', gap:'10px' }}>
-                          <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
-                            <div style={{ width:'8px', height:'8px', borderRadius:'50%', background:'#7c3aed', flexShrink:0 }}/>
-                            <div>
-                              <div style={{ fontSize:'13px', fontWeight:'700', color:'#1f2937' }}>{cls.code} - {cls.name}</div>
-                              <div style={{ fontSize:'11px', color:'#6b7280', marginTop:'2px' }}>Room {cls.room} • {cls.faculty}</div>
-                            </div>
-                          </div>
-                          <span style={{ fontSize:'11px', fontWeight:'600', color:'#7c3aed', background:'#faf5ff', border:'1px solid #e9d5ff', padding:'3px 10px', borderRadius:'100px', whiteSpace:'nowrap' }}>
-                            {cls.time}
-                          </span>
-                        </div>
-                      ))}
                     </div>
                   )}
                 </div>
@@ -661,6 +662,9 @@ export default function DashboardPage() {
 
           {/* Right Column */}
           <div style={{ display:'flex', flexDirection:'column', gap:'20px' }}>
+
+            {/* Newsletter Feed */}
+            <NewsletterWidget role={role} userId={sessionUserId} />
 
             {/* Profile Details card */}
             <div style={{ background:'white', borderRadius:'16px', padding:'24px', boxShadow:'0 4px 20px rgba(0,0,0,0.06)', border:'1px solid #f1f5f9' }}>

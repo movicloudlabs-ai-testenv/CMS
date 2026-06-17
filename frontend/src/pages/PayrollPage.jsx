@@ -6,6 +6,7 @@ import KpiCard from '../components/KpiCard';
 import KpiGrid from '../components/KpiGrid';
 import { TableSkeleton } from '../components/common';
 import { API_BASE } from '../api/apiBase';
+import { settingsApi } from '../api/settingsApi';
 
 // Icons
 function ViewIcon() {
@@ -37,6 +38,7 @@ function DeleteIcon() {
 export default function PayrollPage({ noLayout = false }) {
     const [payrollData, setPayrollData] = useState([]);
     const [staffList, setStaffList] = useState([]);
+    const [departments, setDepartments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -66,9 +68,19 @@ export default function PayrollPage({ noLayout = false }) {
         }
     };
 
+    const fetchDepts = async () => {
+        try {
+            const data = await settingsApi.getDepartments();
+            setDepartments(data || []);
+        } catch (err) {
+            console.error('Failed to fetch departments:', err);
+        }
+    };
+
     useEffect(() =>{
         fetchStaff();
         fetchPayroll();
+        fetchDepts();
     }, []);
 
 
@@ -616,7 +628,9 @@ export default function PayrollPage({ noLayout = false }) {
                                             value={step1Department}
                                             onChange={(e) =>setStep1Department(e.target.value)}
                                             style={{ width: 220, height: 40, borderRadius: 6, border: '1px solid #d1d5db', padding: '0 12px', fontSize: 14 }}
-                                        ><option value="">Select Department</option><option value="Computer Science">Computer Science</option><option value="Electrical Engineering">Electrical Engineering</option><option value="Mechanical Engineering">Mechanical Engineering</option><option value="Information Technology">Information Technology</option></select></div><div style={{ border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden', maxHeight: 200, overflowY: 'auto' }}>{availableStaffForWizard.map((faculty, i) =>{
+                                        ><option value="">Select Department</option>{departments.map(d => (
+                                            <option key={d.code} value={d.name}>{d.name}</option>
+                                        ))}</select></div><div style={{ border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden', maxHeight: 200, overflowY: 'auto' }}>{availableStaffForWizard.map((faculty, i) =>{
                                             const isSelected = wizardData.staffId === (faculty.employeeId || faculty.staffId || faculty.id);
                                             return (
                                                 <div

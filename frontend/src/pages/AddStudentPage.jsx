@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { API_BASE } from '../api/apiBase';
+import { settingsApi } from '../api/settingsApi';
 
 export default function AddStudentPage() {
   const navigate = useNavigate();
@@ -68,6 +69,26 @@ export default function AddStudentPage() {
   const [formData, setFormData] = useState(initialData);
   const [avatarPreview, setAvatarPreview] = useState(null);
   const fileInputRef = useRef(null);
+  const [departments, setDepartments] = useState([]);
+
+  // Load departments on mount
+  useEffect(() => {
+    const fetchDepts = async () => {
+      try {
+        const data = await settingsApi.getDepartments();
+        setDepartments(data || []);
+        if (data && data.length > 0) {
+          setFormData(prev => ({
+            ...prev,
+            department: prev.department || data[0].name
+          }));
+        }
+      } catch (err) {
+        console.error('Error fetching departments:', err);
+      }
+    };
+    fetchDepts();
+  }, []);
 
   // Load draft from localStorage on mount
   useEffect(() =>{
@@ -208,6 +229,7 @@ export default function AddStudentPage() {
           accommodation: formData.accommodation,
           roomType: formData.roomType,
           hostelName: formData.hostelName,
+          department: formData.department,
           paymentMethod: formData.paymentMethod,
           feeAmount: parseFloat(formData.feeAmount) || 500,
           paymentStatus: formData.paymentStatus,
@@ -377,10 +399,29 @@ export default function AddStudentPage() {
 
             {/* Step 3: Course */}
             {step === 3 && (
-              <div className="space-y-4 animate-in slide-in-from-right-4 duration-300"><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div className="space-y-1"><label className="text-xs font-semibold text-gray-700">Course Category <span className="text-red-500">*</span></label><select name="courseCategory" value={formData.courseCategory} onChange={handleChange} className={`w-full px-3 py-2 text-sm rounded-lg border ${errors.courseCategory ? 'border-red-400' : 'border-gray-200'} focus:outline-none focus:ring-2 bg-white`}>{['Engineering', 'Arts & Science', 'Commerce', 'Management', 'Diploma'].map(c =><option key={c}>{c}</option>)}
-                    </select>{errors.courseCategory && <p className="text-xs text-red-500 font-medium">{errors.courseCategory}</p>}
-                  </div><div className="space-y-1"><label className="text-xs font-semibold text-gray-700">Course <span className="text-red-500">*</span></label><input name="course" value={formData.course} onChange={handleChange} className={`w-full px-3 py-2 text-sm rounded-lg border ${errors.course ? 'border-red-400' : 'border-gray-200'} focus:outline-none focus:ring-2`} placeholder="e.g. CSE, ECE, Mechanical" />{errors.course && <p className="text-xs text-red-500 font-medium">{errors.course}</p>}
-                  </div></div></div>)}
+              <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-700">Course Category <span className="text-red-500">*</span></label>
+                    <select name="courseCategory" value={formData.courseCategory} onChange={handleChange} className={`w-full px-3 py-2 text-sm rounded-lg border ${errors.courseCategory ? 'border-red-400' : 'border-gray-200'} focus:outline-none focus:ring-2 bg-white`}>
+                      {['Engineering', 'Arts & Science', 'Commerce', 'Management', 'Diploma'].map(c => <option key={c}>{c}</option>)}
+                    </select>
+                    {errors.courseCategory && <p className="text-xs text-red-500 font-medium">{errors.courseCategory}</p>}
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-700">Course <span className="text-red-500">*</span></label>
+                    <input name="course" value={formData.course} onChange={handleChange} className={`w-full px-3 py-2 text-sm rounded-lg border ${errors.course ? 'border-red-400' : 'border-gray-200'} focus:outline-none focus:ring-2`} placeholder="e.g. CSE, ECE, Mechanical" />
+                    {errors.course && <p className="text-xs text-red-500 font-medium">{errors.course}</p>}
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-700">Department <span className="text-red-500">*</span></label>
+                    <select name="department" value={formData.department} onChange={handleChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 bg-white">
+                      {(departments || []).map(d => <option key={d.id || d.code} value={d.name}>{d.name}</option>)}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Step 4: Category/Quota */}
             {step === 4 && (

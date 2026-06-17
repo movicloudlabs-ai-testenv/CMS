@@ -72,6 +72,7 @@ export default function NotificationCenter({ role = 'student' }) {
       await fetch(buildApiUrl(`/notifications/${notificationId}/read`), { method: 'PUT' });
       setNotifications(notifications.map(n =>n.id === notificationId ? { ...n, status: 'read' } : n
       ));
+      window.dispatchEvent(new CustomEvent('cms-notifications-update'));
     } catch (error) {
       console.error('Error marking notification as read:', error);
     }
@@ -81,6 +82,7 @@ export default function NotificationCenter({ role = 'student' }) {
     try {
       await fetch(buildApiUrl(`/notifications/${role}/read-all`), { method: 'PUT' });
       fetchNotifications();
+      window.dispatchEvent(new CustomEvent('cms-notifications-update'));
     } catch (error) {
       console.error('Error marking all notifications as read:', error);
     }
@@ -90,6 +92,7 @@ export default function NotificationCenter({ role = 'student' }) {
     try {
       await fetch(buildApiUrl(`/notifications/${notificationId}`), { method: 'DELETE' });
       setNotifications(notifications.filter(n =>n.id !== notificationId));
+      window.dispatchEvent(new CustomEvent('cms-notifications-update'));
     } catch (error) {
       console.error('Error deleting notification:', error);
     }
@@ -100,6 +103,7 @@ export default function NotificationCenter({ role = 'student' }) {
       try {
         await fetch(buildApiUrl(`/notifications/${role}/clear-all`), { method: 'POST' });
         setNotifications([]);
+        window.dispatchEvent(new CustomEvent('cms-notifications-update'));
       } catch (error) {
         console.error('Error clearing notifications:', error);
       }
@@ -114,6 +118,7 @@ export default function NotificationCenter({ role = 'student' }) {
   const handleNotificationCreated = (newNotification) =>{
     setNotifications([newNotification, ...notifications]);
     setShowCreateForm(false);
+    window.dispatchEvent(new CustomEvent('cms-notifications-update'));
   };
 
   const unreadCount = notifications.filter(n =>n.status === 'unread').length;
@@ -244,6 +249,16 @@ export default function NotificationCenter({ role = 'student' }) {
 }
 
 function NotificationDetailsModal({ notification, onClose }) {
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   return (
     <div className="notification-modal-overlay" onClick={onClose}><div className="notification-modal" onClick={(e) =>e.stopPropagation()}><div className="notification-modal-header"><h2>{notification.title}</h2><button className="notification-modal-close" onClick={onClose}></button></div><div className="notification-modal-body"><div className="notification-modal-section"><h3>Message</h3><p>{notification.message}</p></div><div className="notification-modal-grid"><div className="notification-modal-item"><strong>Category</strong><p>{notification.module}</p></div><div className="notification-modal-item"><strong>Priority</strong><p>{notification.priority}</p></div><div className="notification-modal-item"><strong>From</strong><p className="capitalize">{notification.senderRole}</p></div><div className="notification-modal-item"><strong>Status</strong><p className="capitalize">{notification.status}</p></div></div>{notification.relatedData && Object.keys(notification.relatedData).length >0 && (
             <div className="notification-modal-section"><h3>Additional Information</h3><div className="notification-modal-details">{Object.entries(notification.relatedData).map(([key, value]) =>(

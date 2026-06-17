@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { API_BASE } from '../api/apiBase';
+import { settingsApi } from '../api/settingsApi';
 
 export default function EditFacultyPage() {
   const navigate = useNavigate();
@@ -19,18 +20,19 @@ export default function EditFacultyPage() {
     classes: '',   // comma-separated class/section names
   });
 
-  const DEPARTMENTS = [
-    'Computer Science & Engineering',
-    'Electronics & Communication Engineering',
-    'Mechanical Engineering',
-    'Civil Engineering',
-    'Electrical Engineering',
-    'Information Technology',
-    'Mathematics',
-    'Physics',
-    'Chemistry',
-    'School of Engineering',
-  ];
+  const [departments, setDepartments] = useState([]);
+
+  useEffect(() => {
+    const fetchDepts = async () => {
+      try {
+        const data = await settingsApi.getDepartments();
+        setDepartments(data || []);
+      } catch (err) {
+        console.error('Failed to load departments:', err);
+      }
+    };
+    fetchDepts();
+  }, []);
 
   const CLASSES_OPTIONS = [
     'CSE-A', 'CSE-B', 'CSE-C',
@@ -228,7 +230,7 @@ export default function EditFacultyPage() {
                   <label className="text-xs font-semibold text-gray-700">Department</label>
                   <select name="department" value={formData.department} onChange={handleChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 bg-white">
                     <option value="">Select Department</option>
-                    {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+                    {departments.map(d => <option key={d.code} value={d.name}>{d.name}</option>)}
                   </select>
                 </div>
                 <div className="space-y-1">

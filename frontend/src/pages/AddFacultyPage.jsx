@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useAdmission } from '../context/AdmissionContext';
 import { buildApiUrl } from '../api/apiBase';
+import { settingsApi } from '../api/settingsApi';
 
 export default function AddFacultyPage() {
   const navigate = useNavigate();
@@ -10,6 +11,20 @@ export default function AddFacultyPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [departments, setDepartments] = useState([]);
+
+  useEffect(() => {
+    const fetchDepts = async () => {
+      try {
+        const data = await settingsApi.getDepartments();
+        setDepartments(data || []);
+      } catch (err) {
+        console.error('Failed to load departments:', err);
+      }
+    };
+    fetchDepts();
+  }, []);
+
   const [formData, setFormData] = useState({
     // Step 1: Personal
     fullName: '',
@@ -308,7 +323,7 @@ export default function AddFacultyPage() {
 
             {/* Step 2: Professional */}
             {currentStep === 2 && (
-              <div className="space-y-4 animate-in slide-in-from-right-4 duration-300"><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div className="space-y-1"><label className="text-xs font-semibold text-gray-700">Designation <span className="text-red-500">*</span></label><select name="role" value={formData.role} onChange={handleInputChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 bg-white"><option value="">Select Designation</option><option value="Lecturer">Lecturer</option><option value="Assistant Professor">Assistant Professor</option><option value="Associate Professor">Associate Professor</option><option value="Professor">Professor</option></select></div><div className="space-y-1"><label className="text-xs font-semibold text-gray-700">Department <span className="text-red-500">*</span></label><select name="department" value={formData.department} onChange={handleInputChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 bg-white"><option value="">Select Department</option>{['Computer Science', 'Mechanical Eng.', 'Electrical Eng.', 'Civil Engineering'].map(d =><option key={d}>{d}</option>)}
+              <div className="space-y-4 animate-in slide-in-from-right-4 duration-300"><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div className="space-y-1"><label className="text-xs font-semibold text-gray-700">Designation <span className="text-red-500">*</span></label><select name="role" value={formData.role} onChange={handleInputChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 bg-white"><option value="">Select Designation</option><option value="Lecturer">Lecturer</option><option value="Assistant Professor">Assistant Professor</option><option value="Associate Professor">Associate Professor</option><option value="Professor">Professor</option></select></div><div className="space-y-1"><label className="text-xs font-semibold text-gray-700">Department <span className="text-red-500">*</span></label><select name="department" value={formData.department} onChange={handleInputChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 bg-white"><option value="">Select Department</option>{departments.map(d =><option key={d.code} value={d.name}>{d.name}</option>)}
                     </select></div><div className="space-y-1 md:col-span-2"><label className="text-xs font-semibold text-gray-700">Years of Experience <span className="text-red-500">*</span></label><input type="number" name="yearsOfExperience" value={formData.yearsOfExperience} onChange={handleInputChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2" placeholder="e.g. 5" /></div></div></div>)}
 
             {/* Step 3: Qualification */}

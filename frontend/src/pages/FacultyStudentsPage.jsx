@@ -5,19 +5,29 @@ import KpiCard from '../components/KpiCard';
 import KpiGrid from '../components/KpiGrid';
 import { Users, Search, Filter, BookOpen, Mail, Phone, Plus, X } from 'lucide-react';
 import { API_BASE } from '../api/apiBase';
+import { settingsApi } from '../api/settingsApi';
 
 const API_BASE_URL = API_BASE;
 
 // Add Student Modal Component
-function AddStudentModal({ isOpen, onClose, onAdd }) {
+function AddStudentModal({ isOpen, onClose, onAdd, departments }) {
   const [formData, setFormData] = useState({
     name: '',
     rollNumber: '',
     email: '',
     phone: '',
-    department: 'Computer Science',
+    department: '',
     section: 'A'
   });
+
+  useEffect(() => {
+    if (isOpen && departments && departments.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        department: prev.department || departments[0].name
+      }));
+    }
+  }, [isOpen, departments]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -32,7 +42,7 @@ function AddStudentModal({ isOpen, onClose, onAdd }) {
         rollNumber: '',
         email: '',
         phone: '',
-        department: 'Computer Science',
+        department: departments && departments.length > 0 ? departments[0].name : '',
         section: 'A'
       });
       alert('Student added to class successfully!');
@@ -168,6 +178,33 @@ function AddStudentModal({ isOpen, onClose, onAdd }) {
                 boxSizing: 'border-box'
               }}
             />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>
+              Department
+            </label>
+            <select
+              name="department"
+              value={formData.department}
+              onChange={handleChange}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                fontSize: '14px',
+                outline: 'none',
+                cursor: 'pointer',
+                boxSizing: 'border-box'
+              }}
+            >
+              {(departments || []).map((dept) => (
+                <option key={dept.id || dept.code} value={dept.name}>
+                  {dept.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>
@@ -393,6 +430,19 @@ export default function FacultyStudentsPage() {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const navigate = useNavigate();
+  const [departments, setDepartments] = useState([]);
+
+  useEffect(() => {
+    const fetchDepts = async () => {
+      try {
+        const data = await settingsApi.getDepartments();
+        setDepartments(data || []);
+      } catch (err) {
+        console.error('Error fetching departments:', err);
+      }
+    };
+    fetchDepts();
+  }, []);
 
   useEffect(() => {
     fetchStudents();
@@ -567,10 +617,11 @@ export default function FacultyStudentsPage() {
                 }}
               >
                 <option value="">All Departments</option>
-                <option value="Computer Science">Computer Science</option>
-                <option value="Electrical Engineering">Electrical Engineering</option>
-                <option value="Mechanical Engineering">Mechanical Engineering</option>
-                <option value="Civil Engineering">Civil Engineering</option>
+                {(departments || []).map((dept) => (
+                  <option key={dept.id || dept.code} value={dept.name}>
+                    {dept.name}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -736,6 +787,7 @@ export default function FacultyStudentsPage() {
           isOpen={isAddStudentOpen}
           onClose={() => setIsAddStudentOpen(false)}
           onAdd={handleAddStudent}
+          departments={departments}
         />
 
         <StudentDetailsModal

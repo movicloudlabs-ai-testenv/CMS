@@ -102,6 +102,41 @@ DEV_STORE = {
     "students": [],
     "od_requests": [],
     "invoices": [],
+    "newsletters": [
+        {
+            "id": "news_001",
+            "title": "Placement Drive: TechCorp Recruitment 2026",
+            "summary": "TechCorp is visiting campus for a mega placement drive for CS, IT and ECE graduates. registrations close this Friday.",
+            "content": "### Mega Placement Drive by TechCorp\n\nWe are pleased to announce that TechCorp, a global software leader, is visiting our campus for a placement drive.\n\n- **Role**: Associate Software Engineer\n- **Eligibility**: final year B.Tech/M.Tech (CS, IT, ECE) with CGPA >= 7.5\n- **Salary Package**: ₹12,00,000 per annum\n- **Selection Process**: Online Coding Test followed by Technical & HR Interviews\n- **Date**: May 15, 2026\n- **Registration Deadline**: April 24, 2026, EOD\n\nEligible students must register via the Placement Portal and upload their updated resumes immediately. Contact the Placement Cell for any queries.",
+            "category": "Placement",
+            "author": "Campus Placement Cell",
+            "targetRoles": ["ALL"],
+            "publishedAt": "2026-04-18T09:00:00Z"
+        },
+        {
+            "id": "news_002",
+            "title": "Annual Cultural Fest 'MILANGE 2026' Announced",
+            "summary": "Get ready for the biggest event of the year! Milange 2026 will be held from May 5th to May 7th. Registrations for events are open.",
+            "content": "### MILANGE 2026: The Cultural Extravaganza\n\nThe Department of Student Affairs is thrilled to announce the dates for **Milange 2026**, our annual cultural festival. Join us for three days of music, dance, coding battles, drama, and culinary arts!\n\n- **Dates**: May 5th to May 7th, 2026\n- **Highlights**: Rock Show, Hack-a-thon, Street Play, and Fashion Show\n- **Chief Guest**: Renowned Director Vikram Sen\n- **Event Registrations**: Open from April 20th onwards on the Student Portal\n\nLet us come together to celebrate talent, creativity, and college spirit! Volunteers can register at the Student Council desk in Room 302.",
+            "category": "Event",
+            "author": "Student Council Office",
+            "targetRoles": ["student", "faculty"],
+            "publishedAt": "2026-04-17T14:30:00Z"
+        },
+        {
+            "id": "news_003",
+            "title": "New Research Grants & Facility Expansion",
+            "summary": "The administration has received new grants to expand our robotics lab facilities and support research projects.",
+            "content": "### Expansion of Campus Research Infrastructure\n\nWe are proud to share that MIT Connect has been awarded a research grant of ₹50,00,000 by the National Research Council. \n\nThis grant will be directed towards:\n1. **Advanced Robotics Lab Expansion**: Purchasing high-performance compute units and edge AI devices.\n2. **Faculty-led Research Fellowships**: Financial support for ongoing research projects in sustainable engineering.\n\nFaculty members interested in applying for project funding can submit their proposals to the Dean of Research by April 30, 2026.",
+            "category": "Academic",
+            "author": "Office of the Dean",
+            "targetRoles": ["faculty", "admin"],
+            "publishedAt": "2026-04-16T11:00:00Z"
+        }
+    ],
+    "faculty_leaves": [],
+    "faculty_leave_balance": {},
+    "faculty_attendance_markings": {},
 }
 
 
@@ -433,3 +468,25 @@ def clear_notifications(role: str):
         if item.get("receiverRole") not in {role, "ALL"}
     ]
     return before - len(DEV_STORE["notifications"])
+
+
+def list_newsletters(role: str):
+    if "newsletters" not in DEV_STORE:
+        DEV_STORE["newsletters"] = []
+    items = [
+        item for item in DEV_STORE["newsletters"]
+        if "ALL" in item.get("targetRoles", []) or role in item.get("targetRoles", [])
+    ]
+    return sorted(items, key=lambda x: x.get("publishedAt", ""), reverse=True)
+
+
+def create_newsletter(data: dict):
+    if "newsletters" not in DEV_STORE:
+        DEV_STORE["newsletters"] = []
+    item = {
+        "id": _make_id("news"),
+        "publishedAt": datetime.utcnow().isoformat() + "Z",
+        **deepcopy(data)
+    }
+    DEV_STORE["newsletters"].append(item)
+    return deepcopy(item)

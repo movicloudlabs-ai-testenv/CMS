@@ -71,6 +71,82 @@ export default function ExamsPage({ noLayout = false }) {
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(3)
   
+  const [activeExamsTab, setActiveExamsTab] = useState('schedules')
+  const [studentsList, setStudentsList] = useState([])
+  const [selectedStudentId, setSelectedStudentId] = useState(isStudent ? (session?.userId || '') : '')
+  const [studentDetails, setStudentDetails] = useState(null)
+  const [yearFilter, setYearFilter] = useState('All')
+  const [semesterFilter, setSemesterFilter] = useState('All')
+  const [loadingStudent, setLoadingStudent] = useState(false)
+
+  // Fetch list of students for Admin/Faculty
+  useEffect(() => {
+    if ((isAdmin || isFaculty) && activeExamsTab === 'marks' && studentsList.length === 0) {
+      const fetchStudents = async () => {
+        try {
+          const res = await fetch(buildApiUrl('/students'));
+          if (res.ok) {
+            const data = await res.json();
+            setStudentsList(data || []);
+            if (data.length > 0 && !selectedStudentId) {
+              setSelectedStudentId(data[0].rollNumber || data[0].id);
+            }
+          }
+        } catch (err) {
+          console.error("Failed to fetch student list:", err);
+        }
+      };
+      fetchStudents();
+    }
+  }, [activeExamsTab, isAdmin, isFaculty, studentsList.length]);
+
+  // Fetch selected student details
+  useEffect(() => {
+    if (selectedStudentId) {
+      const fetchDetails = async () => {
+        setLoadingStudent(true);
+        try {
+          const res = await fetch(buildApiUrl(`/students/${selectedStudentId}`));
+          if (res.ok) {
+            const data = await res.json();
+            setStudentDetails(data);
+          }
+        } catch (err) {
+          console.error("Failed to fetch student details:", err);
+        } finally {
+          setLoadingStudent(false);
+        }
+      };
+      fetchDetails();
+    }
+  }, [selectedStudentId]);
+
+  // Filtered subjects list
+  const filteredSubjects = useMemo(() => {
+    if (!studentDetails?.subjects) return [];
+    return studentDetails.subjects.filter(sub => {
+      const matchesYear = yearFilter === 'All' || sub.year === yearFilter;
+      const matchesSem = semesterFilter === 'All' || sub.semester?.toString() === semesterFilter;
+      return matchesYear && matchesSem;
+    });
+  }, [studentDetails, yearFilter, semesterFilter]);
+
+  // Dynamic statistics for marks tab
+  const marksStats = useMemo(() => {
+    if (!studentDetails?.subjects) return { gpa: '0.00', cgpa: '0.00', coursesCount: 0, passedCredits: 0 };
+    const allPassed = studentDetails.subjects.filter(s => s.grade && s.grade !== 'Pending' && s.grade !== 'F');
+    const allObtained = allPassed.reduce((s, sub) => s + (sub.total || 0), 0);
+    const allMax = allPassed.length * 100;
+    const cgpa = allMax > 0 ? ((allObtained / allMax) * 10).toFixed(2) : '0.00';
+
+    const activePassed = filteredSubjects.filter(s => s.grade && s.grade !== 'Pending' && s.grade !== 'F');
+    const activeObtained = activePassed.reduce((s, sub) => s + (sub.total || 0), 0);
+    const activeMax = activePassed.length * 100;
+    const gpa = activeMax > 0 ? ((activeObtained / activeMax) * 10).toFixed(2) : '0.00';
+
+    return { gpa, cgpa, coursesCount: filteredSubjects.length, passedCredits: activePassed.length * 4 };
+  }, [studentDetails, filteredSubjects]);
+  
   // Handle exam registration
   const handleRegister = async (examId) => {
     if (!session?.userId) {
@@ -334,252 +410,399 @@ export default function ExamsPage({ noLayout = false }) {
 
   const inner = (
     <>
-      <div className="flex flex-col gap-4 mb-6">
-        <div className="flex flex-wrap items-center gap-2">
-          {isStudent && (
-            <button 
-              onClick={handleOpenAllHallTickets}
-              className="flex items-center gap-2 px-4 py-2 bg-[#276221] text-white rounded-lg text-sm font-semibold hover:bg-[#1e4618] transition-all shadow-sm active:scale-95"
-            >
-              <span className="material-symbols-outlined text-lg">badge</span>
-              Download Hall Tickets
-            </button>
+      {/* Tab Selectors */}
+      <div className="flex border-b border-slate-200 mb-6">
+        <button
+          onClick={() => { setActiveExamsTab('schedules'); setCurrentPage(1); }}
+          className={`pb-3 text-sm font-semibold transition-all relative px-4 ${
+            activeExamsTab === 'schedules' ? 'text-[#276221]' : 'text-slate-400 hover:text-slate-600'
+          }`}
+        >
+          Exam Schedules
+          {activeExamsTab === 'schedules' && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#276221] rounded-t-full" />
           )}
-          {isAdmin && (
-            <button 
-              onClick={() => setShowScheduleWizard(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-emerald-100 text-emerald-700 rounded-lg text-sm font-semibold hover:bg-emerald-200 transition-all"
-            >
-              <span className="material-symbols-outlined text-lg">edit_calendar</span>
-              Create Schedule
-            </button>
+        </button>
+        <button
+          onClick={() => { setActiveExamsTab('marks'); }}
+          className={`pb-3 text-sm font-semibold transition-all relative px-4 ${
+            activeExamsTab === 'marks' ? 'text-[#276221]' : 'text-slate-400 hover:text-slate-600'
+          }`}
+        >
+          Academic Marks & History
+          {activeExamsTab === 'marks' && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#276221] rounded-t-full" />
           )}
-        </div>
+        </button>
       </div>
-      
-      {/* Stats Cards */}
-      <KpiGrid className="lg:grid-cols-3">
-        <KpiCard icon="event_upcoming" label="Upcoming Exams" value={stats.upcoming} colorScheme="blue" />
-        <KpiCard icon="check_circle" label="Completed" value={stats.completed} colorScheme="emerald" />
-        <KpiCard icon="pending" label="Results Pending" value={stats.pending} colorScheme="orange" />
-      </KpiGrid>
 
-      {/* Exams Table */}
-      {loading ? (
-        <TableSkeleton cols={isStudent ? 9 : 7} rows={8} />
-      ) : (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="bg-slate-50 text-slate-500 text-xs font-semibold uppercase tracking-wider border-b border-slate-200">
-                <th className="px-6 py-4">Course</th>
-                <th className="px-6 py-4">Date & Time</th>
-                <th className="px-6 py-4">Room</th>
-                <th className="px-6 py-4">Type</th>
-                <th className="px-6 py-4">Duration</th>
-                <th className="px-6 py-4">Status</th>
-                {isStudent && <th className="px-6 py-4 text-center">Score</th>}
-                {isStudent && <th className="px-6 py-4 text-center">Register</th>}
-                {isStudent && <th className="px-6 py-4 text-center">Revaluation</th>}
-                {!isStudent && <th className="px-6 py-4 text-right">Actions</th>}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {exams.length === 0 ? (
-              <tr>
-                <td colSpan={isStudent ? 9 : 7} className="px-6 py-12 text-center text-slate-500">
-                  <span className="material-symbols-outlined text-5xl mb-2 opacity-20">quiz</span>
-                  <p className="text-sm">{isStudent ? 'No exams scheduled yet.' : 'No exams scheduled yet. Click "Schedule Exam" to add one.'}</p>
-                </td>
-              </tr>
-            ) : (
-              exams.slice((currentPage-1)*pageSize, currentPage*pageSize).map((exam) => (
-                <tr key={exam._id || exam.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-6 py-4">
-                    <p className="text-xs font-bold text-[#276221] uppercase">{exam.code}</p>
-                    <p className="text-sm font-semibold text-slate-900">{exam.name}</p>
-                  </td>
-                  <td className="px-6 py-4">
-                    <p className="text-sm font-medium text-slate-900">{formatDate(exam.date)}</p>
-                    <p className="text-xs text-slate-500">{formatTime(exam.time)}</p>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-slate-600">
-                    <div>{exam.room}</div>
-                    {isStudent && exam.seatNumber && (
-                      <div className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded inline-block mt-1">
-                        Seat: {exam.seatNumber}
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
-                      {exam.type}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-slate-600">
-                    {parseDurationToMinutes(exam.duration) || exam.duration} min
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      exam.status === 'Completed' ? 'bg-emerald-50 text-emerald-600' : 
-                      exam.status === 'Upcoming' ? 'bg-green-50 text-[#276221]' : 'bg-slate-100 text-slate-600'
-                    }`}>
-                      {exam.status}
-                    </span>
-                  </td>
-                  {/* Student Columns */}
-                  {isStudent && (
-                    <>
-                      <td className="px-6 py-4 text-center">
-                        {exam.resultsPublished && exam.marks !== undefined ? (
-                          <div>
-                            <p className="text-lg font-bold text-slate-900">{exam.marks}/{exam.maxMarks}</p>
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${
-                              exam.grade === 'A+' || exam.grade === 'A' ? 'bg-emerald-100 text-emerald-700' :
-                              exam.grade === 'B+' || exam.grade === 'B' ? 'bg-green-100 text-green-700' :
-                              'bg-slate-100 text-slate-700'
-                            }`}>
-                              Grade: {exam.grade}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-slate-400">—</span>
-                        )}
+      {activeExamsTab === 'schedules' ? (
+        <>
+          <div className="flex flex-col gap-4 mb-6">
+            <div className="flex flex-wrap items-center gap-2">
+              {isStudent && (
+                <button 
+                  onClick={handleOpenAllHallTickets}
+                  className="flex items-center gap-2 px-4 py-2 bg-[#276221] text-white rounded-lg text-sm font-semibold hover:bg-[#1e4618] transition-all shadow-sm active:scale-95"
+                >
+                  <span className="material-symbols-outlined text-lg">badge</span>
+                  Download Hall Tickets
+                </button>
+              )}
+              {isAdmin && (
+                <button 
+                  onClick={() => setShowScheduleWizard(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-emerald-100 text-emerald-700 rounded-lg text-sm font-semibold hover:bg-emerald-200 transition-all"
+                >
+                  <span className="material-symbols-outlined text-lg">edit_calendar</span>
+                  Create Schedule
+                </button>
+              )}
+            </div>
+          </div>
+          
+          {/* Stats Cards */}
+          <KpiGrid className="lg:grid-cols-3">
+            <KpiCard icon="event_upcoming" label="Upcoming Exams" value={stats.upcoming} colorScheme="blue" />
+            <KpiCard icon="check_circle" label="Completed" value={stats.completed} colorScheme="emerald" />
+            <KpiCard icon="pending" label="Results Pending" value={stats.pending} colorScheme="orange" />
+          </KpiGrid>
+
+          {/* Exams Table */}
+          {loading ? (
+            <TableSkeleton cols={isStudent ? 9 : 7} rows={8} />
+          ) : (
+            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-500 text-xs font-semibold uppercase tracking-wider border-b border-slate-200">
+                    <th className="px-6 py-4">Course</th>
+                    <th className="px-6 py-4">Date & Time</th>
+                    <th className="px-6 py-4">Room</th>
+                    <th className="px-6 py-4">Type</th>
+                    <th className="px-6 py-4">Duration</th>
+                    <th className="px-6 py-4">Status</th>
+                    {isStudent && <th className="px-6 py-4 text-center">Score</th>}
+                    {isStudent && <th className="px-6 py-4 text-center">Register</th>}
+                    {isStudent && <th className="px-6 py-4 text-center">Revaluation</th>}
+                    {!isStudent && <th className="px-6 py-4 text-right">Actions</th>}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {exams.length === 0 ? (
+                    <tr>
+                      <td colSpan={isStudent ? 9 : 7} className="px-6 py-12 text-center text-slate-500">
+                        <span className="material-symbols-outlined text-5xl mb-2 opacity-20">quiz</span>
+                        <p className="text-sm">{isStudent ? 'No exams scheduled yet.' : 'No exams scheduled yet. Click "Schedule Exam" to add one.'}</p>
                       </td>
-                      <td className="px-6 py-4 text-center">
-                        {exam.status === 'Upcoming' && !exam.registered ? (
-                          <button
-                            onClick={() => handleRegister(exam._id || exam.id)}
-                            className="px-3 py-1.5 bg-[#276221] text-white rounded-lg text-xs font-semibold hover:bg-[#1e4618] transition-all"
-                          >
-                            Register
-                          </button>
-                        ) : exam.registered ? (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
-                            <span className="material-symbols-outlined text-sm mr-1">check_circle</span>
-                            Registered
+                    </tr>
+                  ) : (
+                    exams.slice((currentPage-1)*pageSize, currentPage*pageSize).map((exam) => (
+                      <tr key={exam._id || exam.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-6 py-4">
+                          <p className="text-xs font-bold text-[#276221] uppercase">{exam.code}</p>
+                          <p className="text-sm font-semibold text-slate-900">{exam.name}</p>
+                        </td>
+                        <td className="px-6 py-4">
+                          <p className="text-sm font-medium text-slate-900">{formatDate(exam.date)}</p>
+                          <p className="text-xs text-slate-500">{formatTime(exam.time)}</p>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-slate-600">
+                          <div>{exam.room}</div>
+                          {isStudent && exam.seatNumber && (
+                            <div className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded inline-block mt-1">
+                              Seat: {exam.seatNumber}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+                            {exam.type}
                           </span>
-                        ) : (
-                          <span className="text-xs text-slate-400">—</span>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-slate-600">
+                          {parseDurationToMinutes(exam.duration) || exam.duration} min
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            exam.status === 'Completed' ? 'bg-emerald-50 text-emerald-600' : 
+                            exam.status === 'Upcoming' ? 'bg-green-50 text-[#276221]' : 'bg-slate-100 text-slate-600'
+                          }`}>
+                            {exam.status}
+                          </span>
+                        </td>
+                        {isStudent && (
+                          <>
+                            <td className="px-6 py-4 text-center">
+                              {exam.resultsPublished && exam.marks !== undefined ? (
+                                <div>
+                                  <p className="text-lg font-bold text-slate-900">{exam.marks}/{exam.maxMarks}</p>
+                                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${
+                                    exam.grade === 'A+' || exam.grade === 'A' ? 'bg-emerald-100 text-emerald-700' :
+                                    exam.grade === 'B+' || exam.grade === 'B' ? 'bg-green-100 text-green-700' :
+                                    'bg-slate-100 text-slate-700'
+                                  }`}>
+                                    Grade: {exam.grade}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-xs text-slate-400">—</span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                              {exam.status === 'Upcoming' && !exam.registered ? (
+                                <button
+                                  onClick={() => handleRegister(exam._id || exam.id)}
+                                  className="px-3 py-1.5 bg-[#276221] text-white rounded-lg text-xs font-semibold hover:bg-[#1e4618] transition-all"
+                                >
+                                  Register
+                                </button>
+                              ) : exam.registered ? (
+                                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
+                                  <span className="material-symbols-outlined text-sm mr-1">check_circle</span>
+                                  Registered
+                                </span>
+                              ) : (
+                                <span className="text-xs text-slate-400">—</span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                              {exam.status === 'Completed' && exam.resultsPublished ? (
+                                <button
+                                  onClick={() => handleOpenRevaluation(exam)}
+                                  className="px-3 py-1.5 bg-orange-500 text-white rounded-lg text-xs font-semibold hover:bg-orange-600 transition-all"
+                                  title="Apply for Revaluation"
+                                >
+                                  Apply
+                                </button>
+                              ) : (
+                                <span className="text-xs text-slate-400">—</span>
+                              )}
+                            </td>
+                          </>
                         )}
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        {exam.status === 'Completed' && exam.resultsPublished ? (
-                          <button
-                            onClick={() => handleOpenRevaluation(exam)}
-                            className="px-3 py-1.5 bg-orange-500 text-white rounded-lg text-xs font-semibold hover:bg-orange-600 transition-all"
-                            title="Apply for Revaluation"
-                          >
-                            Apply
-                          </button>
-                        ) : (
-                          <span className="text-xs text-slate-400">—</span>
+                        {!isStudent && (
+                          <td className="px-6 py-4">
+                            <div className="flex items-center justify-end gap-2">
+                              {isFaculty && (
+                                <>
+                                  <button
+                                    onClick={() => handleOpenInternalMarks(exam)}
+                                    className="p-1.5 text-slate-400 hover:text-[#276221] hover:bg-[#276221]/10 rounded-lg transition-colors"
+                                    title="Internal Marks"
+                                  >
+                                    <span className="material-symbols-outlined text-lg">assignment</span>
+                                  </button>
+                                  <button
+                                    onClick={() => handleOpenMarksEntry(exam)}
+                                    className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                                    title="Enter Marks"
+                                  >
+                                    <span className="material-symbols-outlined text-lg">edit_note</span>
+                                  </button>
+                                  <button
+                                    onClick={() => handleOpenAttendance(exam)}
+                                    className="p-1.5 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                                    title="Mark Attendance"
+                                  >
+                                    <span className="material-symbols-outlined text-lg">fact_check</span>
+                                  </button>
+                                  <button
+                                    onClick={() => handleOpenExamReport(exam)}
+                                    className="p-1.5 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
+                                    title="View Report"
+                                  >
+                                    <span className="material-symbols-outlined text-lg">assessment</span>
+                                  </button>
+                                  <button
+                                    onClick={() => openEditModal(exam)}
+                                    className="p-1.5 text-slate-400 hover:text-[#276221] hover:bg-[#276221]/10 rounded-lg transition-colors"
+                                    title="Edit"
+                                  >
+                                    <span className="material-symbols-outlined text-lg">edit</span>
+                                  </button>
+                                </>
+                              )}
+                              {isAdmin && (
+                                <>
+                                  <button
+                                    onClick={() => handleOpenSeatAssignment(exam)}
+                                    className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                    title="Seat Assignment"
+                                  >
+                                    <span className="material-symbols-outlined text-lg">event_seat</span>
+                                  </button>
+                                  <button
+                                    onClick={() => handleOpenInvigilatorAssign(exam)}
+                                    className="p-1.5 text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors"
+                                    title="Assign Invigilators"
+                                  >
+                                    <span className="material-symbols-outlined text-lg">person_add</span>
+                                  </button>
+                                  <button
+                                    onClick={() => handleOpenExamReport(exam)}
+                                    className="p-1.5 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
+                                    title="View Report"
+                                  >
+                                    <span className="material-symbols-outlined text-lg">assessment</span>
+                                  </button>
+                                  <button
+                                    onClick={() => openEditModal(exam)}
+                                    className="p-1.5 text-slate-400 hover:text-[#276221] hover:bg-[#276221]/10 rounded-lg transition-colors"
+                                    title="Edit"
+                                  >
+                                    <span className="material-symbols-outlined text-lg">edit</span>
+                                  </button>
+                                  <button
+                                    onClick={() => handleDelete(exam._id || exam.id)}
+                                    className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                    title="Delete"
+                                  >
+                                    <span className="material-symbols-outlined text-lg">delete</span>
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </td>
                         )}
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+              <Pagination
+                currentPage={currentPage}
+                totalPages={Math.max(1, Math.ceil(exams.length / pageSize))}
+                onPageChange={setCurrentPage}
+                totalItems={exams.length}
+                pageSize={pageSize}
+                onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1); }}
+              />
+            </div>
+          )}
+        </>
+      ) : (
+        /* Academic Marks Tab Content */
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <KpiCard icon="military_tech" label="Overall CGPA" value={marksStats.cgpa} colorScheme="emerald" />
+            <KpiCard icon="analytics" label="Semester GPA" value={marksStats.gpa} colorScheme="blue" />
+            <KpiCard icon="menu_book" label="Total Subjects" value={marksStats.coursesCount} colorScheme="orange" />
+            <KpiCard icon="verified" label="Passed Credits" value={`${marksStats.passedCredits} Credits`} colorScheme="purple" />
+          </div>
+
+          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+            <div className="px-8 py-6 border-b border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div>
+                <h3 className="text-sm font-semibold text-slate-800 uppercase tracking-wider">Subject Performance Outcomes</h3>
+                <p className="text-[10px] text-slate-400 font-medium uppercase mt-1">Official Academic Record Card</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Student Selector (Admin / Faculty only) */}
+                {(isAdmin || isFaculty) && (
+                  <select
+                    value={selectedStudentId}
+                    onChange={(e) => setSelectedStudentId(e.target.value)}
+                    className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-500 uppercase tracking-wider outline-none cursor-pointer"
+                  >
+                    <option value="">Select Student</option>
+                    {studentsList.map(st => (
+                      <option key={st.rollNumber || st.id} value={st.rollNumber || st.id}>
+                        {st.name} ({st.rollNumber || st.id})
+                      </option>
+                    ))}
+                  </select>
+                )}
+
+                <select 
+                  value={yearFilter}
+                  onChange={(e) => { setYearFilter(e.target.value); setSemesterFilter('All'); }}
+                  className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-500 uppercase tracking-wider outline-none cursor-pointer"
+                >
+                  <option value="All">All Years</option>
+                  <option value="1st Year">1st Year</option>
+                  <option value="2nd Year">2nd Year</option>
+                  <option value="3rd Year">3rd Year</option>
+                  <option value="4th Year">4th Year</option>
+                </select>
+
+                <select 
+                  value={semesterFilter}
+                  onChange={(e) => setSemesterFilter(e.target.value)}
+                  className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-500 uppercase tracking-wider outline-none cursor-pointer"
+                >
+                  <option value="All">All Semesters</option>
+                  {(() => {
+                    let sems = [1, 2, 3, 4, 5, 6, 7, 8];
+                    if (yearFilter === '1st Year') sems = [1, 2];
+                    else if (yearFilter === '2nd Year') sems = [3, 4];
+                    else if (yearFilter === '3rd Year') sems = [5, 6];
+                    else if (yearFilter === '4th Year') sems = [7, 8];
+                    return sems.map(s => (
+                      <option key={s} value={s.toString()}>Semester {s}</option>
+                    ));
+                  })()}
+                </select>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-500 text-xs font-semibold uppercase tracking-wider border-b border-slate-200">
+                    <th className="px-6 py-4">Subject Code</th>
+                    <th className="px-6 py-4">Subject Name</th>
+                    <th className="px-6 py-4">Year</th>
+                    <th className="px-6 py-4">Semester</th>
+                    <th className="px-6 py-4">Grade</th>
+                    <th className="px-6 py-4">Score</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {loadingStudent ? (
+                    <tr>
+                      <td colSpan={6} className="p-0">
+                        <TableSkeleton cols={6} rows={5} />
                       </td>
-                    </>
+                    </tr>
+                  ) : !selectedStudentId ? (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
+                        <span className="material-symbols-outlined text-5xl mb-2 opacity-20">person</span>
+                        <p className="text-sm">Please select a student to see their marks.</p>
+                      </td>
+                    </tr>
+                  ) : filteredSubjects.length > 0 ? (
+                    filteredSubjects.map((sub, i) => (
+                      <tr key={i} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-6 py-4 text-sm font-semibold text-slate-800">{sub.code}</td>
+                        <td className="px-6 py-4 text-sm text-slate-600">{sub.name}</td>
+                        <td className="px-6 py-4 text-sm text-slate-500">{sub.year || '—'}</td>
+                        <td className="px-6 py-4 text-sm text-slate-500">{sub.semester ? `Semester ${sub.semester}` : '—'}</td>
+                        <td className="px-6 py-4">
+                          <span className={`px-2.5 py-1 rounded text-xs font-bold ${
+                            sub.grade === 'A+' || sub.grade === 'A' ? 'bg-emerald-50 text-emerald-700' :
+                            sub.grade === 'B+' || sub.grade === 'B' ? 'bg-green-50 text-green-700' :
+                            sub.grade === 'F' ? 'bg-red-50 text-red-700' : 'bg-slate-50 text-slate-700'
+                          }`}>
+                            {sub.grade || '—'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm font-medium text-slate-700">{sub.total !== undefined ? sub.total : '—'}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
+                        <span className="material-symbols-outlined text-5xl mb-2 opacity-20">menu_book</span>
+                        <p className="text-sm">No subjects recorded for this selection.</p>
+                      </td>
+                    </tr>
                   )}
-                  {/* Faculty/Admin Actions */}
-                  {!isStudent && (
-                  <td className="px-6 py-4">
-                    <div className="flex items-center justify-end gap-2">
-                      
-                      {/* Faculty Actions */}
-                      {isFaculty && (
-                        <>
-                          <button
-                            onClick={() => handleOpenInternalMarks(exam)}
-                            className="p-1.5 text-slate-400 hover:text-[#276221] hover:bg-[#276221]/10 rounded-lg transition-colors"
-                            title="Internal Marks"
-                          >
-                            <span className="material-symbols-outlined text-lg">assignment</span>
-                          </button>
-                          <button
-                            onClick={() => handleOpenMarksEntry(exam)}
-                            className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                            title="Enter Marks"
-                          >
-                            <span className="material-symbols-outlined text-lg">edit_note</span>
-                          </button>
-                          <button
-                            onClick={() => handleOpenAttendance(exam)}
-                            className="p-1.5 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-                            title="Mark Attendance"
-                          >
-                            <span className="material-symbols-outlined text-lg">fact_check</span>
-                          </button>
-                          <button
-                            onClick={() => handleOpenExamReport(exam)}
-                            className="p-1.5 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
-                            title="View Report"
-                          >
-                            <span className="material-symbols-outlined text-lg">assessment</span>
-                          </button>
-                          <button
-                            onClick={() => openEditModal(exam)}
-                            className="p-1.5 text-slate-400 hover:text-[#276221] hover:bg-[#276221]/10 rounded-lg transition-colors"
-                            title="Edit"
-                          >
-                            <span className="material-symbols-outlined text-lg">edit</span>
-                          </button>
-                        </>
-                      )}
-                      
-                      {/* Admin Actions */}
-                      {isAdmin && (
-                        <>
-                          <button
-                            onClick={() => handleOpenSeatAssignment(exam)}
-                            className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                            title="Seat Assignment"
-                          >
-                            <span className="material-symbols-outlined text-lg">event_seat</span>
-                          </button>
-                          <button
-                            onClick={() => handleOpenInvigilatorAssign(exam)}
-                            className="p-1.5 text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors"
-                            title="Assign Invigilators"
-                          >
-                            <span className="material-symbols-outlined text-lg">person_add</span>
-                          </button>
-                          <button
-                            onClick={() => handleOpenExamReport(exam)}
-                            className="p-1.5 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
-                            title="View Report"
-                          >
-                            <span className="material-symbols-outlined text-lg">assessment</span>
-                          </button>
-                          <button
-                            onClick={() => openEditModal(exam)}
-                            className="p-1.5 text-slate-400 hover:text-[#276221] hover:bg-[#276221]/10 rounded-lg transition-colors"
-                            title="Edit"
-                          >
-                            <span className="material-symbols-outlined text-lg">edit</span>
-                          </button>
-                          <button
-                            onClick={() => handleDelete(exam._id || exam.id)}
-                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Delete"
-                          >
-                            <span className="material-symbols-outlined text-lg">delete</span>
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </td>
-                  )}
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-        <Pagination
-          currentPage={currentPage}
-          totalPages={Math.max(1, Math.ceil(exams.length / pageSize))}
-          onPageChange={setCurrentPage}
-          totalItems={exams.length}
-          pageSize={pageSize}
-          onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1); }}
-        />
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       )}
 

@@ -5,6 +5,7 @@ import KpiGrid from '../components/KpiGrid'
 import { TableSkeleton } from '../components/common'
 import { getUserSession } from '../auth/sessionController'
 import { buildApiUrl } from '../api/apiBase'
+import { settingsApi } from '../api/settingsApi'
 
 // List of all 8 college hours
 const HOURS_LIST = ['Hour 1', 'Hour 2', 'Hour 3', 'Hour 4', 'Hour 5', 'Hour 6', 'Hour 7', 'Hour 8']
@@ -21,15 +22,28 @@ export default function AttendancePage({ noLayout = false }) {
 
   // --- Global States ---
   const [loading, setLoading] = useState(false)
+  const [departments, setDepartments] = useState([])
   const [toast, setToast] = useState(null) // { message, type: 'success' | 'error' }
 
   // --- Show Toast Helper ---
   const showToast = (message, type = 'success') => {
-    setToast({ message, type })
+    let finalMessage = message
+    if (message && typeof message === 'object') {
+      if (Array.isArray(message)) {
+        finalMessage = message.map(err => {
+          const locStr = err.loc ? err.loc.join('.') : ''
+          return `${locStr ? locStr + ': ' : ''}${err.msg || JSON.stringify(err)}`
+        }).join(', ')
+      } else {
+        finalMessage = message.detail || message.message || JSON.stringify(message)
+      }
+    }
+    setToast({ message: finalMessage || 'An error occurred', type })
     setTimeout(() => setToast(null), 4000)
   }
 
   // --- Admin States ---
+  const [adminTab, setAdminTab] = useState('students') // 'students' | 'faculty'
   const [adminOverview, setAdminOverview] = useState({
     totalStudents: 0,
     totalSessions: 0,
@@ -49,6 +63,12 @@ export default function AttendancePage({ noLayout = false }) {
   })
   const [adminSelectedRecord, setAdminSelectedRecord] = useState(null) // For detailed log & history modal
   const [adminRecordHistory, setAdminRecordHistory] = useState([])
+  
+  // Admin Faculty Marking States
+  const [adminFacultyDate, setAdminFacultyDate] = useState(new Date().toISOString().split('T')[0])
+  const [adminFacultySearch, setAdminFacultySearch] = useState('')
+  const [adminFacultyDept, setAdminFacultyDept] = useState('')
+  const [adminFacultyMarking, setAdminFacultyMarking] = useState(null)
 
   // --- Faculty States ---
   const [facultySubjects, setFacultySubjects] = useState([])
@@ -59,7 +79,12 @@ export default function AttendancePage({ noLayout = false }) {
   const [attendanceStatuses, setAttendanceStatuses] = useState({}) // { studentId: 'Present' | 'Absent' | 'Leave' | 'On Duty' }
   const [attendanceRemarks, setAttendanceRemarks] = useState({}) // { studentId: remarks }
   const [facultyMarkingsHistory, setFacultyMarkingsHistory] = useState([])
-  const [facultyTab, setFacultyTab] = useState('mark') // 'mark' | 'history'
+  const [facultyTab, setFacultyTab] = useState('mark') // 'mark' | 'history' | 'leaves'
+
+  // Faculty Leave States
+  const [leaveBalance, setLeaveBalance] = useState(null)
+  const [leaveHistory, setLeaveHistory] = useState([])
+  const [leaveForm, setLeaveForm] = useState({ leave_type: 'Casual', start_date: '', end_date: '', reason: '' })
 
   // --- Student States ---
   const [studentSummary, setStudentSummary] = useState({
@@ -87,6 +112,19 @@ export default function AttendancePage({ noLayout = false }) {
   // ---------------------------------------------------------------------------
   // --- Effects & API Requests ---
   // ---------------------------------------------------------------------------
+
+  // Fetch departments on mount
+  useEffect(() => {
+    const fetchDepts = async () => {
+      try {
+        const data = await settingsApi.getDepartments()
+        setDepartments(data || [])
+      } catch (err) {
+        console.error('Failed to fetch departments:', err)
+      }
+    }
+    fetchDepts()
+  }, [])
 
   // Load Admin Data
   useEffect(() => {
@@ -117,6 +155,146 @@ export default function AttendancePage({ noLayout = false }) {
       setLoading(false)
     }
   }
+
+  const fetchFacultyMarkings = async (date) => {
+    setLoading(true)
+    try {
+      const res = await fetch(buildApiUrl(`/academics/attendance/faculty/markings?date=${date}`))
+      const json = await res.json()
+      if (json.success) {
+        setAdminFacultyMarking(json.data)
+      }
+    } catch (err) {
+      console.error('Failed to load faculty markings:', err)
+      showToast('Failed to load faculty attendance', 'error')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSaveFacultyAttendance = async () => {
+    if (!adminFacultyMarking) return
+    setLoading(true)
+    try {
+      const res = await fetch(buildApiUrl('/academics/attendance/faculty/markings'), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(adminFacultyMarking)
+      })
+      const json = await res.json()
+      if (res.ok && json.success) {
+        showToast('Faculty attendance saved successfully!')
+        fetchFacultyMarkings(adminFacultyDate)
+      } else {
+        showToast(json.detail || 'Failed to save faculty attendance', 'error')
+      }
+    } catch (err) {
+      showToast('Network error saving faculty attendance', 'error')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const updateFacultyStatus = (facId, newStatus) => {
+    setAdminFacultyMarking(prev => {
+      if (!prev) return prev
+      const updatedEntries = prev.entries.map(e => {
+        if (e.facultyId === facId) {
+          return { ...e, status: newStatus }
+        }
+        return e
+      })
+      return { ...prev, entries: updatedEntries }
+    })
+  }
+
+  const updateFacultyRemarks = (facId, text) => {
+    setAdminFacultyMarking(prev => {
+      if (!prev) return prev
+      const updatedEntries = prev.entries.map(e => {
+        if (e.facultyId === facId) {
+          return { ...e, remarks: text }
+        }
+        return e
+      })
+      return { ...prev, entries: updatedEntries }
+    })
+  }
+
+  const fetchLeaveBalance = async () => {
+    try {
+      const res = await fetch(buildApiUrl(`/faculty/${userId}/leave-balance?academic_year=2025-26`))
+      const json = await res.json()
+      if (res.ok) {
+        setLeaveBalance(json)
+      }
+    } catch (err) {
+      console.error('Failed to fetch leave balance:', err)
+    }
+  }
+
+  const fetchLeaveHistory = async () => {
+    try {
+      const res = await fetch(buildApiUrl(`/faculty/${userId}/leaves`))
+      const json = await res.json()
+      if (res.ok) {
+        setLeaveHistory(json)
+      }
+    } catch (err) {
+      console.error('Failed to fetch leave history:', err)
+    }
+  }
+
+  const handleSubmitLeave = async (e) => {
+    e.preventDefault()
+    if (!leaveForm.start_date || !leaveForm.end_date) {
+      showToast('Please select start and end dates', 'error')
+      return
+    }
+    if (new Date(leaveForm.end_date) < new Date(leaveForm.start_date)) {
+      showToast('End date must be on or after start date', 'error')
+      return
+    }
+    setLoading(true)
+    try {
+      const res = await fetch(buildApiUrl(`/faculty/${userId}/leaves`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...leaveForm,
+          facultyId: userId
+        })
+      })
+      const json = await res.json()
+      if (res.ok) {
+        showToast('Leave request submitted successfully!')
+        setLeaveForm({ leave_type: 'Casual', start_date: '', end_date: '', reason: '' })
+        fetchLeaveBalance()
+        fetchLeaveHistory()
+      } else {
+        showToast(json.detail || 'Failed to submit leave request', 'error')
+      }
+    } catch (err) {
+      showToast('Error submitting leave request', 'error')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Load Admin Faculty Markings
+  useEffect(() => {
+    if (isAdmin && adminTab === 'faculty') {
+      fetchFacultyMarkings(adminFacultyDate)
+    }
+  }, [isAdmin, adminTab, adminFacultyDate])
+
+  // Load Faculty Leaves
+  useEffect(() => {
+    if (isFaculty && facultyTab === 'leaves') {
+      fetchLeaveBalance()
+      fetchLeaveHistory()
+    }
+  }, [isFaculty, facultyTab])
 
   // Load Faculty Subjects on Mount
   useEffect(() => {
@@ -425,9 +603,33 @@ export default function AttendancePage({ noLayout = false }) {
         {/* ========================================================================= */}
         {isAdmin && (
           <div className="space-y-6">
-            {/* KPI Cards Header */}
-            <KpiGrid className="lg:grid-cols-4">
-              <KpiCard icon="group" label="Total Students" value={adminOverview.totalStudents} colorScheme="blue" />
+            {/* Admin Tabs */}
+            <div className="flex items-center gap-2 border-b border-slate-200 pb-px">
+              <button
+                type="button"
+                onClick={() => setAdminTab('students')}
+                className={`px-4 py-2 text-sm font-bold border-b-2 transition-all cursor-pointer ${
+                  adminTab === 'students' ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                Student Attendance
+              </button>
+              <button
+                type="button"
+                onClick={() => setAdminTab('faculty')}
+                className={`px-4 py-2 text-sm font-bold border-b-2 transition-all cursor-pointer ${
+                  adminTab === 'faculty' ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                Faculty Attendance
+              </button>
+            </div>
+
+            {adminTab === 'students' && (
+              <div className="space-y-6">
+                {/* KPI Cards Header */}
+                <KpiGrid className="lg:grid-cols-4">
+                  <KpiCard icon="group" label="Total Students" value={adminOverview.totalStudents} colorScheme="blue" />
               <KpiCard icon="fact_check" label="Total Sessions" value={adminOverview.totalSessions} colorScheme="emerald" />
               <KpiCard icon="analytics" label="Average Attendance %" value={`${adminOverview.averageAttendance}%`} colorScheme="indigo" />
               <KpiCard icon="warning" label="Below Threshold (75%)" value={adminOverview.belowThresholdCount} colorScheme="orange" />
@@ -448,10 +650,9 @@ export default function AttendancePage({ noLayout = false }) {
                     onChange={(e) => setAdminFilters({ ...adminFilters, department: e.target.value })}
                   >
                     <option value="">All Departments</option>
-                    <option value="Computer Science">Computer Science</option>
-                    <option value="Mechanical">Mechanical</option>
-                    <option value="Electrical">Electrical</option>
-                    <option value="Civil">Civil</option>
+                    {departments.map(d => (
+                      <option key={d.code} value={d.name}>{d.name}</option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -661,9 +862,175 @@ export default function AttendancePage({ noLayout = false }) {
                 </div>
               )}
             </div>
+          </div>
+        )}
 
-            {/* Detailed Record Modal (Admin View) */}
-            {adminSelectedRecord && (
+          {adminTab === 'faculty' && (
+            <div className="space-y-6">
+              {/* Date Picker & Search controls */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                  <span className="material-symbols-outlined text-slate-500 text-lg">calendar_today</span>
+                  <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Faculty Attendance Management</h3>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 mb-1">Attendance Date</label>
+                    <input
+                      type="date"
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none text-sm bg-slate-50 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-600"
+                      value={adminFacultyDate}
+                      onChange={(e) => setAdminFacultyDate(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 mb-1">Department</label>
+                    <select
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none text-sm bg-slate-50 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-600"
+                      value={adminFacultyDept}
+                      onChange={(e) => setAdminFacultyDept(e.target.value)}
+                    >
+                      <option value="">All Departments</option>
+                      {departments.map(d => (
+                        <option key={d.code} value={d.name}>{d.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 mb-1">Search Faculty</label>
+                    <input
+                      type="text"
+                      placeholder="Search by name or ID..."
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none text-sm bg-slate-50 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-600"
+                      value={adminFacultySearch}
+                      onChange={(e) => setAdminFacultySearch(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Faculty Markings Table */}
+              <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                <div className="px-5 py-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-4 bg-slate-50">
+                  <h4 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Faculty List & Marking</h4>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!adminFacultyMarking) return
+                        const updated = adminFacultyMarking.entries.map(e => ({ ...e, status: 'Present' }))
+                        setAdminFacultyMarking({ ...adminFacultyMarking, entries: updated })
+                      }}
+                      className="px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg text-xs font-bold transition-all border border-emerald-200"
+                    >
+                      Mark All Present
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!adminFacultyMarking) return
+                        const updated = adminFacultyMarking.entries.map(e => ({ ...e, status: 'Absent' }))
+                        setAdminFacultyMarking({ ...adminFacultyMarking, entries: updated })
+                      }}
+                      className="px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-lg text-xs font-bold transition-all border border-rose-200"
+                    >
+                      Mark All Absent
+                    </button>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="bg-slate-50 text-slate-500 text-xs font-semibold uppercase tracking-wider border-b border-slate-200">
+                        <th className="px-6 py-4">Faculty Member</th>
+                        <th className="px-6 py-4">Department & Designation</th>
+                        <th className="px-6 py-4 text-center">Attendance Status</th>
+                        <th className="px-6 py-4 text-right">Remarks</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {!adminFacultyMarking || !adminFacultyMarking.entries || adminFacultyMarking.entries.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="px-6 py-10 text-center text-slate-400 text-sm">No faculty members found.</td>
+                        </tr>
+                      ) : (
+                        adminFacultyMarking.entries
+                          .filter(e => {
+                            const deptMatch = !adminFacultyDept || e.department === adminFacultyDept
+                            const searchLower = adminFacultySearch.toLowerCase()
+                            const nameMatch = !adminFacultySearch || 
+                              e.name.toLowerCase().includes(searchLower) || 
+                              e.facultyId.toLowerCase().includes(searchLower)
+                            return deptMatch && nameMatch
+                          })
+                          .map(e => (
+                            <tr key={e.facultyId} className="hover:bg-slate-50 transition-colors">
+                              <td className="px-6 py-4">
+                                <div className="text-sm font-semibold text-slate-900">{e.name}</div>
+                                <div className="text-xs font-mono text-slate-500">{e.facultyId}</div>
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className="text-sm text-slate-800">{e.department}</div>
+                                <div className="text-xs text-slate-500">{e.designation}</div>
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className="flex items-center justify-center gap-1.5">
+                                  {['Present', 'Absent', 'On Leave'].map(status => {
+                                    const isSelected = e.status === status
+                                    return (
+                                      <button
+                                        key={status}
+                                        type="button"
+                                        onClick={() => updateFacultyStatus(e.facultyId, status)}
+                                        className={`px-3 py-1 rounded-full text-xs font-bold border transition-all cursor-pointer ${
+                                          isSelected ? (
+                                            status === 'Present' ? 'bg-emerald-500 text-white border-emerald-500' :
+                                            status === 'Absent' ? 'bg-rose-500 text-white border-rose-500' :
+                                            'bg-amber-500 text-white border-amber-500'
+                                          ) : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                                        }`}
+                                      >
+                                        {status}
+                                      </button>
+                                    )
+                                  })}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 text-right">
+                                <input
+                                  type="text"
+                                  placeholder="Add remarks..."
+                                  className="px-3 py-1 border border-slate-200 rounded-lg outline-none text-xs w-48 bg-slate-50 focus:bg-white focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500/10 text-slate-700"
+                                  value={e.remarks || ''}
+                                  onChange={(eVal) => updateFacultyRemarks(e.facultyId, eVal.target.value)}
+                                />
+                              </td>
+                            </tr>
+                          ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {adminFacultyMarking && adminFacultyMarking.entries && adminFacultyMarking.entries.length > 0 && (
+                  <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex items-center justify-end">
+                    <button
+                      type="button"
+                      onClick={handleSaveFacultyAttendance}
+                      className="flex items-center gap-1.5 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold transition-all shadow-md shadow-emerald-600/10"
+                    >
+                      <span className="material-symbols-outlined text-base">save</span>
+                      Submit Faculty Attendance
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Detailed Record Modal (Admin View) */}
+          {adminSelectedRecord && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
                 <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden animate-zoom-in">
                   <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
@@ -785,6 +1152,7 @@ export default function AttendancePage({ noLayout = false }) {
             {/* Faculty Tabs */}
             <div className="flex items-center gap-2 border-b border-slate-200 pb-px">
               <button
+                type="button"
                 onClick={() => setFacultyTab('mark')}
                 className={`px-4 py-2 text-sm font-bold border-b-2 transition-all cursor-pointer ${
                   facultyTab === 'mark' ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-slate-500 hover:text-slate-700'
@@ -793,12 +1161,22 @@ export default function AttendancePage({ noLayout = false }) {
                 Mark Attendance
               </button>
               <button
+                type="button"
                 onClick={() => setFacultyTab('history')}
                 className={`px-4 py-2 text-sm font-bold border-b-2 transition-all cursor-pointer ${
                   facultyTab === 'history' ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-slate-500 hover:text-slate-700'
                 }`}
               >
                 Attendance History
+              </button>
+              <button
+                type="button"
+                onClick={() => setFacultyTab('leaves')}
+                className={`px-4 py-2 text-sm font-bold border-b-2 transition-all cursor-pointer ${
+                  facultyTab === 'leaves' ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                My Leaves & Applications
               </button>
             </div>
 
@@ -1047,6 +1425,171 @@ export default function AttendancePage({ noLayout = false }) {
                 </div>
               </div>
             )}
+
+            {facultyTab === 'leaves' && (
+              <div className="space-y-6">
+                {/* Leave Balance Grid */}
+                {leaveBalance && (
+                  <KpiGrid className="lg:grid-cols-4">
+                    <KpiCard
+                      icon="date_range"
+                      label="Casual Leave"
+                      value={`${(leaveBalance.casual_leave || 15) - (leaveBalance.used_casual || leaveBalance.casual_used || 0)} Remaining`}
+                      colorScheme="emerald"
+                      subtitle={`Total Days: ${leaveBalance.casual_leave || 15}`}
+                    />
+                    <KpiCard
+                      icon="medical_services"
+                      label="Sick Leave"
+                      value={`${(leaveBalance.sick_leave || 10) - (leaveBalance.used_sick || leaveBalance.sick_used || 0)} Remaining`}
+                      colorScheme="rose"
+                      subtitle={`Total Days: ${leaveBalance.sick_leave || 10}`}
+                    />
+                    <KpiCard
+                      icon="school"
+                      label="Academic Leave"
+                      value={`${(leaveBalance.academic_leave || 5) - (leaveBalance.used_academic || leaveBalance.academic_used || 0)} Remaining`}
+                      colorScheme="blue"
+                      subtitle={`Total Days: ${leaveBalance.academic_leave || 5}`}
+                    />
+                    <KpiCard
+                      icon="work_off"
+                      label="Maternity Leave"
+                      value={`${(leaveBalance.maternity_leave || 90) - (leaveBalance.used_maternity || leaveBalance.maternity_used || 0)} Remaining`}
+                      colorScheme="indigo"
+                      subtitle={`Total Days: ${leaveBalance.maternity_leave || 90}`}
+                    />
+                  </KpiGrid>
+                )}
+
+                {/* Leave Apply Form */}
+                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                  <div className="flex items-center gap-2 border-b border-slate-100 pb-3 mb-4">
+                    <span className="material-symbols-outlined text-slate-500 text-lg font-bold">add_circle</span>
+                    <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Apply for Leave</h3>
+                  </div>
+
+                  <form onSubmit={handleSubmitLeave} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-500 mb-1">Leave Type</label>
+                        <select
+                          className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none text-sm bg-slate-50 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-600"
+                          value={leaveForm.leave_type}
+                          onChange={(e) => setLeaveForm({ ...leaveForm, leave_type: e.target.value })}
+                          required
+                        >
+                          <option value="Casual">Casual Leave</option>
+                          <option value="Sick">Sick Leave</option>
+                          <option value="Academic">Academic Leave</option>
+                          <option value="Maternity">Maternity Leave</option>
+                          <option value="Sabbatical">Sabbatical</option>
+                        </select>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-500 mb-1">Start Date</label>
+                          <input
+                            type="date"
+                            className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none text-sm bg-slate-50 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-600"
+                            value={leaveForm.start_date}
+                            onChange={(e) => setLeaveForm({ ...leaveForm, start_date: e.target.value })}
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-500 mb-1">End Date</label>
+                          <input
+                            type="date"
+                            className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none text-sm bg-slate-50 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-600"
+                            value={leaveForm.end_date}
+                            onChange={(e) => setLeaveForm({ ...leaveForm, end_date: e.target.value })}
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col justify-between space-y-4">
+                      <div className="flex-1 flex flex-col">
+                        <label className="block text-xs font-semibold text-slate-500 mb-1">Reason</label>
+                        <textarea
+                          placeholder="Please describe the reason for your leave request..."
+                          rows="3"
+                          className="flex-1 w-full px-3 py-2 border border-slate-200 rounded-xl outline-none text-sm bg-slate-50 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-600 resize-none text-slate-700"
+                          value={leaveForm.reason}
+                          onChange={(e) => setLeaveForm({ ...leaveForm, reason: e.target.value })}
+                          required
+                        />
+                      </div>
+                      <div className="flex justify-end pt-2">
+                        <button
+                          type="submit"
+                          className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold transition-all shadow-md shadow-emerald-600/10 active:scale-95 cursor-pointer"
+                        >
+                          Submit Leave Request
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+                </div>
+
+                {/* Leave History Table */}
+                <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                  <div className="px-5 py-4 border-b border-slate-200 bg-slate-50">
+                    <h4 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Leave Applications History</h4>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                      <thead>
+                        <tr className="bg-slate-50 text-slate-500 text-xs font-semibold uppercase tracking-wider border-b border-slate-200">
+                          <th className="px-6 py-4">Applied On</th>
+                          <th className="px-6 py-4">Leave Type</th>
+                          <th className="px-6 py-4">Duration</th>
+                          <th className="px-6 py-4 text-center">Days</th>
+                          <th className="px-6 py-4">Reason</th>
+                          <th className="px-6 py-4 text-right">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200">
+                        {leaveHistory.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="px-6 py-10 text-center text-slate-400 text-sm">No leave requests found.</td>
+                          </tr>
+                        ) : (
+                          leaveHistory.map((l) => (
+                            <tr key={l.id || l._id} className="hover:bg-slate-50 transition-colors">
+                              <td className="px-6 py-4 text-sm text-slate-600">
+                                {l.appliedOn ? new Date(l.appliedOn).toLocaleDateString() : '—'}
+                              </td>
+                              <td className="px-6 py-4 text-sm font-semibold text-slate-900">{l.leaveType || l.leave_type}</td>
+                              <td className="px-6 py-4 text-sm text-slate-700">
+                                {l.startDate || l.start_date} to {l.endDate || l.end_date}
+                              </td>
+                              <td className="px-6 py-4 text-center text-sm font-bold text-slate-800">{l.noOfDays || l.no_of_days}</td>
+                              <td className="px-6 py-4 text-sm text-slate-600 max-w-xs truncate" title={l.reason}>
+                                {l.reason}
+                              </td>
+                              <td className="px-6 py-4 text-right">
+                                <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${
+                                  l.status === 'Approved' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                                  l.status === 'Rejected' ? 'bg-rose-50 text-rose-700 border border-rose-200' :
+                                  'bg-amber-50 text-amber-700 border border-amber-200'
+                                }`}>
+                                  <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
+                                  {l.status}
+                                </span>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -1220,10 +1763,9 @@ export default function AttendancePage({ noLayout = false }) {
                     onChange={(e) => setFinanceFilters({ ...financeFilters, department: e.target.value })}
                   >
                     <option value="">All Departments</option>
-                    <option value="Computer Science">Computer Science</option>
-                    <option value="Mechanical">Mechanical</option>
-                    <option value="Electrical">Electrical</option>
-                    <option value="Civil">Civil</option>
+                    {departments.map(d => (
+                      <option key={d.code} value={d.name}>{d.name}</option>
+                    ))}
                   </select>
                 </div>
                 <div>

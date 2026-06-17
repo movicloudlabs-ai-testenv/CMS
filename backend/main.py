@@ -44,6 +44,7 @@ from backend.routes.administration.fees import router as fees_router
 from backend.routes.administration.invoices import router as invoices_router
 from backend.routes.user_settings import router as user_settings_router
 from backend.routes.auth import router as auth_router
+from backend.routes.newsletters import router as newsletters_router
 PORT = int(os.getenv("PORT", 5000))
 
 app = FastAPI(title="CMS API", lifespan=lifespan)
@@ -89,13 +90,20 @@ if DIST_ASSETS_DIR.exists():
 class SafeStaticFiles(StaticFiles):
     async def get_response(self, path: str, scope):
         try:
-            return await super().get_response(path, scope)
-        except HTTPException as ex:
-            if ex.status_code == 404:
+            response = await super().get_response(path, scope)
+            if response.status_code == 404:
+                default_logo = Path(self.directory) / "logo.jpeg"
+                if default_logo.exists():
+                    return FileResponse(str(default_logo))
+            return response
+        except Exception as ex:
+            if getattr(ex, "status_code", None) == 404:
                 default_logo = Path(self.directory) / "logo.jpeg"
                 if default_logo.exists():
                     return FileResponse(str(default_logo))
             raise ex
+
+
 
 uploads_dir = BASE_DIR / "backend" / "static" / "uploads"
 uploads_dir.mkdir(parents=True, exist_ok=True)
@@ -256,6 +264,7 @@ app.include_router(fees_router)
 app.include_router(invoices_router)
 app.include_router(user_settings_router)
 app.include_router(auth_router)
+app.include_router(newsletters_router)
 
 @app.get("/{full_path:path}")
 async def serve_react_app(full_path: str):

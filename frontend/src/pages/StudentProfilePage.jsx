@@ -26,6 +26,8 @@ export default function StudentProfilePage() {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [yearFilter, setYearFilter] = useState('All');
+  const [semesterFilter, setSemesterFilter] = useState('All');
 
   useEffect(() => {
     if (id && id !== 'undefined') {
@@ -366,53 +368,156 @@ export default function StudentProfilePage() {
             </div>
           )}
 
-          {activeTab === 'academics' && (
-            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-              <div className="px-8 py-6 border-b border-slate-100">
-                <h3 className="text-sm font-semibold text-slate-800 uppercase tracking-wider">Subject Performance</h3>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left">
-                  <thead className="bg-slate-50 text-slate-500 text-[10px] font-semibold uppercase tracking-wider border-b border-slate-200">
-                    <tr>
-                      <th className="px-6 py-4">Subject Code</th>
-                      <th className="px-6 py-4">Subject Name</th>
-                      <th className="px-6 py-4">Grade</th>
-                      <th className="px-6 py-4">Score</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {loading ? (
-                      <tr>
-                        <td colSpan={4} className="p-0">
-                          <TableSkeleton cols={4} rows={5} />
-                        </td>
-                      </tr>
-                    ) : student.subjects && student.subjects.length > 0 ? (
-                      student.subjects.map((subject, i) => (
-                        <tr key={i} className="hover:bg-slate-50/50 transition-colors">
-                          <td className="px-6 py-4 text-sm font-semibold text-slate-800">{subject.code}</td>
-                          <td className="px-6 py-4 text-sm text-slate-600">{subject.name}</td>
-                          <td className="px-6 py-4">
-                            <span className="px-2 py-1 bg-green-50 text-green-700 rounded text-xs font-bold">
-                              {subject.grade}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-sm font-medium text-slate-700">{subject.total}</td>
+          {activeTab === 'academics' && (() => {
+            const filteredSubjects = (student.subjects || []).filter(sub => {
+              const matchesYear = yearFilter === 'All' || sub.year === yearFilter;
+              const matchesSem = semesterFilter === 'All' || sub.semester?.toString() === semesterFilter;
+              return matchesYear && matchesSem;
+            });
+
+            // Calculate GPA/CGPA
+            const activePassed = filteredSubjects.filter(s => s.grade && s.grade !== 'Pending' && s.grade !== 'F');
+            const activeTotalObtained = activePassed.reduce((acc, s) => acc + (s.total || 0), 0);
+            const activeTotalMax = activePassed.length * 100;
+            const dynamicGPA = activeTotalMax > 0 ? ((activeTotalObtained / activeTotalMax) * 10).toFixed(2) : '0.00';
+
+            const allPassed = (student.subjects || []).filter(s => s.grade && s.grade !== 'Pending' && s.grade !== 'F');
+            const allTotalObtained = allPassed.reduce((acc, s) => acc + (s.total || 0), 0);
+            const allTotalMax = allPassed.length * 100;
+            const globalCGPA = allTotalMax > 0 ? ((allTotalObtained / allTotalMax) * 10).toFixed(2) : '0.00';
+
+            return (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-lg bg-green-50 text-[#276221] flex items-center justify-center">
+                      <span className="material-symbols-outlined text-[20px]">military_tech</span>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Overall CGPA</p>
+                      <p className="text-xl font-bold text-slate-900 mt-0.5">{globalCGPA}</p>
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-lg bg-green-50 text-[#276221] flex items-center justify-center">
+                      <span className="material-symbols-outlined text-[20px]">analytics</span>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Filtered GPA</p>
+                      <p className="text-xl font-bold text-slate-900 mt-0.5">{dynamicGPA}</p>
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-lg bg-green-50 text-[#276221] flex items-center justify-center">
+                      <span className="material-symbols-outlined text-[20px]">menu_book</span>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Courses</p>
+                      <p className="text-xl font-bold text-slate-900 mt-0.5">{filteredSubjects.length}</p>
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-lg bg-green-50 text-[#276221] flex items-center justify-center">
+                      <span className="material-symbols-outlined text-[20px]">verified</span>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Passed Credits</p>
+                      <p className="text-xl font-bold text-slate-900 mt-0.5">{activePassed.length * 4} Credits</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                  <div className="px-8 py-6 border-b border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div>
+                      <h3 className="text-sm font-semibold text-slate-800 uppercase tracking-wider">Subject Performance</h3>
+                      <p className="text-[10px] text-slate-400 font-medium uppercase mt-1">Academic history and marks</p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <select 
+                        value={yearFilter}
+                        onChange={(e) => { setYearFilter(e.target.value); setSemesterFilter('All'); }}
+                        className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-500 uppercase tracking-wider outline-none cursor-pointer"
+                      >
+                        <option value="All">All Years</option>
+                        <option value="1st Year">1st Year</option>
+                        <option value="2nd Year">2nd Year</option>
+                        <option value="3rd Year">3rd Year</option>
+                        <option value="4th Year">4th Year</option>
+                      </select>
+
+                      <select 
+                        value={semesterFilter}
+                        onChange={(e) => setSemesterFilter(e.target.value)}
+                        className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-500 uppercase tracking-wider outline-none cursor-pointer"
+                      >
+                        <option value="All">All Semesters</option>
+                        {(() => {
+                          let sems = [1, 2, 3, 4, 5, 6, 7, 8];
+                          if (yearFilter === '1st Year') sems = [1, 2];
+                          else if (yearFilter === '2nd Year') sems = [3, 4];
+                          else if (yearFilter === '3rd Year') sems = [5, 6];
+                          else if (yearFilter === '4th Year') sems = [7, 8];
+                          
+                          return sems.map(s => (
+                            <option key={s} value={s.toString()}>Semester {s}</option>
+                          ));
+                        })()}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                      <thead className="bg-slate-50 text-slate-500 text-[10px] font-semibold uppercase tracking-wider border-b border-slate-200">
+                        <tr>
+                          <th className="px-6 py-4">Subject Code</th>
+                          <th className="px-6 py-4">Subject Name</th>
+                          <th className="px-6 py-4">Year</th>
+                          <th className="px-6 py-4">Semester</th>
+                          <th className="px-6 py-4">Grade</th>
+                          <th className="px-6 py-4">Score</th>
                         </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={4} className="px-6 py-8 text-center text-slate-500">
-                          No subjects recorded yet
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {loading ? (
+                          <tr>
+                            <td colSpan={6} className="p-0">
+                              <TableSkeleton cols={6} rows={5} />
+                            </td>
+                          </tr>
+                        ) : filteredSubjects.length > 0 ? (
+                          filteredSubjects.map((subject, i) => (
+                            <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                              <td className="px-6 py-4 text-sm font-semibold text-slate-800">{subject.code}</td>
+                              <td className="px-6 py-4 text-sm text-slate-600">{subject.name}</td>
+                              <td className="px-6 py-4 text-sm text-slate-500">{subject.year || '—'}</td>
+                              <td className="px-6 py-4 text-sm text-slate-500">{subject.semester ? `Semester ${subject.semester}` : '—'}</td>
+                              <td className="px-6 py-4">
+                                <span className={`px-2 py-1 rounded text-xs font-bold ${
+                                  subject.grade === 'A+' || subject.grade === 'A' ? 'bg-emerald-50 text-emerald-700' :
+                                  subject.grade === 'B+' || subject.grade === 'B' ? 'bg-green-50 text-green-700' :
+                                  subject.grade === 'F' ? 'bg-red-50 text-red-700' : 'bg-slate-50 text-slate-700'
+                                }`}>
+                                  {subject.grade || '—'}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 text-sm font-medium text-slate-700">{subject.total !== undefined ? subject.total : '—'}</td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
+                              No subjects found matching the selection
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {activeTab === 'fees' && (
             <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">

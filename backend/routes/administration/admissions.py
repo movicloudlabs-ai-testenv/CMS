@@ -118,6 +118,7 @@ def _normalize_from_flat_payload(payload: dict[str, Any]) -> dict[str, Any]:
         "marksPercentage": _to_float(payload.get("marksPercentage")),
         "courseCategory": payload.get("courseCategory") or "",
         "course": payload.get("course") or "",
+        "department": payload.get("department") or "",
         "quota": payload.get("quota") or "",
         "accommodation": payload.get("accommodation") or "",
         "roomType": payload.get("roomType") or "",
@@ -197,6 +198,7 @@ def _normalize_from_nested_payload(payload: dict[str, Any]) -> dict[str, Any]:
             "yearOfPassing": academic.get("year_of_passing") or 0,
             "marksPercentage": academic.get("marks_percentage") or 0,
             "courseCategory": course.get("category") or "",
+            "department": payload.get("department") or "",
             "payment_status": payment_status,
             "paymentStatus": payment_status,
             "password": payload.get("password") or admission.get("password") or "",
@@ -373,7 +375,7 @@ async def _create_student_from_admission(admission: dict[str, Any]) -> bool:
         
         # Determine department and semester from admission
         course_info = admission.get("course_info") or {}
-        department = course_info.get("category") or admission.get("courseCategory") or "General"
+        department = admission.get("department") or course_info.get("category") or admission.get("courseCategory") or "General"
         
         # Build student data with comprehensive field mappings
         student_data = {
@@ -493,7 +495,7 @@ async def _create_faculty_from_admission(admission: dict[str, Any]) -> bool:
         
         # Determine department from admission
         course_info = admission.get("course_info") or {}
-        department = course_info.get("category") or admission.get("courseCategory") or "General"
+        department = admission.get("department") or course_info.get("category") or admission.get("courseCategory") or "General"
         
         faculty_data = {
             "employee_id": faculty_id,

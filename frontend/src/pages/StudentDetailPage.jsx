@@ -344,14 +344,17 @@ function AddAcademicRecordModal({ isOpen, onClose, onSave, studentId }) {
 
 function AcademicsTab({ student, onRefresh }) {
   const [semesterFilter, setSemesterFilter] = useState('All')
+  const [yearFilter, setYearFilter] = useState('All')
   const [currentPage, setCurrentPage] = useState(1)
   const [isAddRecordModalOpen, setIsAddRecordModalOpen] = useState(false)
   const itemsPerPage = 8
 
   const allSubjects = student.subjects || []
-  const filteredSubjects = semesterFilter === 'All' 
-    ? allSubjects 
-    : allSubjects.filter(s => s.semester?.toString() === semesterFilter)
+  const filteredSubjects = allSubjects.filter(s => {
+    const matchesYear = yearFilter === 'All' || s.year === yearFilter
+    const matchesSem = semesterFilter === 'All' || s.semester?.toString() === semesterFilter
+    return matchesYear && matchesSem
+  })
 
   const totalPages = Math.ceil(filteredSubjects.length / itemsPerPage)
   const currentSubjects = filteredSubjects.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
@@ -410,14 +413,32 @@ function AcademicsTab({ student, onRefresh }) {
                 Download Transcript
               </button>
               <select 
+                value={yearFilter}
+                onChange={(e) => {setYearFilter(e.target.value); setSemesterFilter('All'); setCurrentPage(1);}}
+                className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold text-slate-500 uppercase tracking-wider outline-none cursor-pointer"
+              >
+                <option value="All">All Years</option>
+                <option value="1st Year">1st Year</option>
+                <option value="2nd Year">2nd Year</option>
+                <option value="3rd Year">3rd Year</option>
+                <option value="4th Year">4th Year</option>
+              </select>
+              <select 
                 value={semesterFilter}
                 onChange={(e) => {setSemesterFilter(e.target.value); setCurrentPage(1);}}
                 className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold text-slate-500 uppercase tracking-wider outline-none cursor-pointer"
               >
                 <option value="All">All Semesters</option>
-                {[1, 2, 3, 4, 5, 6, 7, 8].map(s => (
-                  <option key={s} value={s.toString()}>Semester {s}</option>
-                ))}
+                {(() => {
+                  let sems = [1, 2, 3, 4, 5, 6, 7, 8];
+                  if (yearFilter === '1st Year') sems = [1, 2];
+                  else if (yearFilter === '2nd Year') sems = [3, 4];
+                  else if (yearFilter === '3rd Year') sems = [5, 6];
+                  else if (yearFilter === '4th Year') sems = [7, 8];
+                  return sems.map(s => (
+                    <option key={s} value={s.toString()}>Semester {s}</option>
+                  ));
+                })()}
               </select>
             </div>
           </div>

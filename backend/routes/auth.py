@@ -66,11 +66,19 @@ async def _find_student(db, user_id: str, password: str) -> dict | None:
                 "guardianPhone": "+91 90123 45000",
                 "avatar": "https://ui-avatars.com/api/?name=John+Anderson&background=2563eb&color=fff&size=128",
                 "subjects": [
-                    {"code": "CS301", "name": "Data Structures", "grade": "A", "total": 86},
-                    {"code": "CS302", "name": "Operating Systems", "grade": "A", "total": 82},
-                    {"code": "CS303", "name": "Database Systems", "grade": "A", "total": 86},
-                    {"code": "CS304", "name": "Computer Networks", "grade": "B+", "total": 72},
-                    {"code": "MA301", "name": "Discrete Mathematics", "grade": "A", "total": 84},
+                    {"code": "CS101", "name": "Introduction to Programming", "grade": "A+", "total": 92, "semester": 1, "year": "1st Year"},
+                    {"code": "MA101", "name": "Calculus & Linear Algebra", "grade": "B", "total": 68, "semester": 1, "year": "1st Year"},
+                    {"code": "CS102", "name": "Digital Logic Design", "grade": "A", "total": 85, "semester": 2, "year": "1st Year"},
+                    {"code": "PH101", "name": "Engineering Physics", "grade": "B+", "total": 78, "semester": 2, "year": "1st Year"},
+                    {"code": "CS301", "name": "Data Structures", "grade": "A", "total": 86, "semester": 3, "year": "2nd Year"},
+                    {"code": "CS303", "name": "Database Systems", "grade": "A", "total": 86, "semester": 3, "year": "2nd Year"},
+                    {"code": "MA301", "name": "Discrete Mathematics", "grade": "A", "total": 84, "semester": 3, "year": "2nd Year"},
+                    {"code": "CS302", "name": "Operating Systems", "grade": "A", "total": 82, "semester": 4, "year": "2nd Year"},
+                    {"code": "CS304", "name": "Computer Networks", "grade": "B+", "total": 72, "semester": 4, "year": "2nd Year"},
+                    {"code": "CS305", "name": "Software Engineering", "grade": "A", "total": 88, "semester": 5, "year": "3rd Year"},
+                    {"code": "CS308", "name": "Web Technology", "grade": "A", "total": 85, "semester": 5, "year": "3rd Year"},
+                    {"code": "CS306", "name": "Compiler Design", "grade": "A+", "total": 94, "semester": 6, "year": "3rd Year"},
+                    {"code": "CS307", "name": "Artificial Intelligence", "grade": "B", "total": 70, "semester": 6, "year": "3rd Year"},
                 ],
                 "fees": [
                     {"id": "FEE-101", "type": "Tuition Fee", "amount": 75000, "paid": 75000, "due": 0, "date": "2024-07-15", "status": "Paid"},
@@ -94,6 +102,29 @@ async def _find_student(db, user_id: str, password: str) -> dict | None:
             user = default_student
         else:
             return None
+
+    # Check if we should upgrade the student document subjects in MongoDB to have rich semesters/years
+    if user and (len(user.get("subjects", [])) == 5 or all("semester" not in s for s in user.get("subjects", []))):
+        rich_subjects = [
+            {"code": "CS101", "name": "Introduction to Programming", "grade": "A+", "total": 92, "semester": 1, "year": "1st Year"},
+            {"code": "MA101", "name": "Calculus & Linear Algebra", "grade": "B", "total": 68, "semester": 1, "year": "1st Year"},
+            {"code": "CS102", "name": "Digital Logic Design", "grade": "A", "total": 85, "semester": 2, "year": "1st Year"},
+            {"code": "PH101", "name": "Engineering Physics", "grade": "B+", "total": 78, "semester": 2, "year": "1st Year"},
+            {"code": "CS301", "name": "Data Structures", "grade": "A", "total": 86, "semester": 3, "year": "2nd Year"},
+            {"code": "CS303", "name": "Database Systems", "grade": "A", "total": 86, "semester": 3, "year": "2nd Year"},
+            {"code": "MA301", "name": "Discrete Mathematics", "grade": "A", "total": 84, "semester": 3, "year": "2nd Year"},
+            {"code": "CS302", "name": "Operating Systems", "grade": "A", "total": 82, "semester": 4, "year": "2nd Year"},
+            {"code": "CS304", "name": "Computer Networks", "grade": "B+", "total": 72, "semester": 4, "year": "2nd Year"},
+            {"code": "CS305", "name": "Software Engineering", "grade": "A", "total": 88, "semester": 5, "year": "3rd Year"},
+            {"code": "CS308", "name": "Web Technology", "grade": "A", "total": 85, "semester": 5, "year": "3rd Year"},
+            {"code": "CS306", "name": "Compiler Design", "grade": "A+", "total": 94, "semester": 6, "year": "3rd Year"},
+            {"code": "CS307", "name": "Artificial Intelligence", "grade": "B", "total": 70, "semester": 6, "year": "3rd Year"},
+        ]
+        user["subjects"] = rich_subjects
+        try:
+            await students.update_one({"_id": user["_id"]}, {"$set": {"subjects": rich_subjects}})
+        except Exception as e:
+            print(f"[ERROR] Failed to upgrade student subjects: {e}")
 
     # Check password — stored password, or fallback to rollNumber/id as default password
     stored_password = (

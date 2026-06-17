@@ -29,9 +29,17 @@ export default function NotificationBell({ role = 'student', onBellClick }) {
 
     fetchUnreadCount();
 
+    const handleUpdate = () => {
+      fetchUnreadCount();
+    };
+    window.addEventListener('cms-notifications-update', handleUpdate);
+
     // Poll for updates every 30 seconds
     const interval = setInterval(fetchUnreadCount, 30000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('cms-notifications-update', handleUpdate);
+    };
   }, [role, userId]);
 
   return (

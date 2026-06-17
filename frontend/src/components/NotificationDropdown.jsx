@@ -12,6 +12,17 @@ export default function NotificationDropdown({ role = 'student', isOpen = false,
 
   useEffect(() => {
     if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  useEffect(() => {
+    if (!isOpen) return;
 
     const fetchNotifications = async () => {
       setLoading(true);
@@ -38,6 +49,7 @@ export default function NotificationDropdown({ role = 'student', isOpen = false,
       setNotifications(notifications.map(n =>
         n.id === notificationId ? { ...n, status: 'read' } : n
       ));
+      window.dispatchEvent(new CustomEvent('cms-notifications-update'));
     } catch (error) {
       console.error('Error marking notification as read:', error);
     }
@@ -47,6 +59,7 @@ export default function NotificationDropdown({ role = 'student', isOpen = false,
     try {
       await fetch(buildApiUrl(`/notifications/${notificationId}`), { method: 'DELETE' });
       setNotifications(notifications.filter(n => n.id !== notificationId));
+      window.dispatchEvent(new CustomEvent('cms-notifications-update'));
     } catch (error) {
       console.error('Error deleting notification:', error);
     }
@@ -105,15 +118,6 @@ export default function NotificationDropdown({ role = 'student', isOpen = false,
               ))}
             </ul>
           )}
-        </div>
-
-        <div className="notification-dropdown-footer">
-          <a href="#" className="view-all-link" onClick={(e) => {
-            e.preventDefault();
-            window.location.href = `/notifications?role=${encodeURIComponent(role)}`;
-          }}>
-            View All Notifications →
-          </a>
         </div>
       </div>
     </>
