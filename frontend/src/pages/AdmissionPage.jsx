@@ -145,18 +145,18 @@ export default function AdmissionPage() {
                 className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600"
               /></div></div>{/* Table */}
           {loading ? (
-            <TableSkeleton cols={activeTab === 'students' ? 6 : 7} rows={6} />
+            <TableSkeleton cols={activeTab === 'students' ? 6 : 5} rows={6} />
           ) : (
             <>
               <div className="overflow-x-auto"><table className="w-full text-sm min-w-[750px]"><thead><tr className="border-b-2 border-gray-200"><th className="text-left py-3 px-4 font-semibold text-gray-700">{activeTab === 'students' ? 'Application ID' : 'Employee ID'}
                       </th><th className="text-left py-3 px-4 font-semibold text-gray-700">Name</th><th className="text-left py-3 px-4 font-semibold text-gray-700">{activeTab === 'students' ? 'Course' : 'Role'}
                       </th>{activeTab === 'faculty' && (
                         <th className="text-left py-3 px-4 font-semibold text-gray-700">Department</th>)}
-                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Status</th><th className="text-left py-3 px-4 font-semibold text-gray-700">Payment Status</th><th className="text-left py-3 px-4 font-semibold text-gray-700">Actions</th></tr></thead><tbody>{paginatedApps.map((app) =>(
+                       <th className="text-left py-3 px-4 font-semibold text-gray-700">Status</th>{activeTab === 'students' && (<th className="text-left py-3 px-4 font-semibold text-gray-700">Payment Status</th>)}<th className="text-left py-3 px-4 font-semibold text-gray-700">Actions</th></tr></thead><tbody>{paginatedApps.map((app) =>(
                       <tr key={app.id} className="border-b border-gray-100 hover:bg-gray-50"><td className="py-3 px-4 text-gray-700">{app.id}</td><td className="py-3 px-4 text-gray-700">{app.name || app.fullName}</td><td className="py-3 px-4 text-gray-700">{activeTab === 'students' ? getValue(app.course) : getValue(app.role)}
                         </td>{activeTab === 'faculty' && (
                           <td className="py-3 px-4 text-gray-700">{getValue(app.department)}</td>)}
-                        <td className="py-3 px-4"><StatusBadge status={app.status} /></td><td className="py-3 px-4"><StatusBadge status="Pending" /></td><td className="py-3 px-4"><div className="flex gap-2"><ActionButtons
+                         <td className="py-3 px-4"><StatusBadge status={app.status} /></td>{activeTab === 'students' && (<td className="py-3 px-4"><StatusBadge status={app.paymentStatus || 'Pending'} /></td>)}<td className="py-3 px-4"><div className="flex gap-2"><ActionButtons
                               onView={() =>handleView(app)}
                               onApprove={app.status === 'Pending' ? () =>handleApprove(app.id) : null}
                               onReject={app.status === 'Pending' ? () =>handleReject(app.id) : null}
