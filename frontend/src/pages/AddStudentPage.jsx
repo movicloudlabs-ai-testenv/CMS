@@ -170,7 +170,7 @@ export default function AddStudentPage() {
       }
     } else if (s === 6) {
       // Documents validation
-      if (!formData.docs.passportPhoto) newErrors.passportPhoto = 'Passport Photo is required';
+      if (!formData.docs.transferCertificate) newErrors.transferCertificate = 'Transfer Certificate is required';
       if (!formData.docs.aadhaarCard) newErrors.aadhaarCard = 'Aadhaar Card is required';
       if (!formData.docs.marksheet) newErrors.marksheet = 'Marksheet is required';
     } else if (s === 7) {
@@ -502,10 +502,10 @@ export default function AddStudentPage() {
             {/* Step 6: Documents */}
             {step === 6 && (
               <div className="space-y-4 animate-in slide-in-from-right-4 duration-300"><div className="bg-orange-50 border border-orange-200 rounded-lg p-3 flex gap-2"><span className="material-symbols-outlined text-orange-600 flex-shrink-0 text-lg">file_upload</span><p className="text-xs text-orange-700 leading-relaxed">Please upload valid documents in PDF, JPG, or PNG format. Verification is mandatory.</p></div><div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{[
-                    { label: 'Passport Photo', field: 'passportPhoto', required: true },
+                    { label: 'Passport Photo', field: 'passportPhoto', required: false },
                     { label: 'Aadhaar Card', field: 'aadhaarCard', required: true },
                     { label: 'Marksheet', field: 'marksheet', required: true },
-                    { label: 'Transfer Certificate', field: 'transferCertificate', required: false },
+                    { label: 'Transfer Certificate', field: 'transferCertificate', required: true },
                   ].map((doc) =>(
                     <div key={doc.field} className={`relative border-2 border-dashed rounded-lg p-3 transition-all ${formData.docs[doc.field] ? 'border-green-200 bg-green-50' : errors[doc.field] ? 'border-red-300 bg-red-50' : 'border-gray-200 hover:border-green-300'} group`}><input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) =>handleFileChange(e, doc.field)} /><div className="flex items-center gap-2"><div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${formData.docs[doc.field] ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}><span className="material-symbols-outlined text-sm">{formData.docs[doc.field] ? 'verified' : 'upload'}</span></div><div className="flex-1 min-w-0"><p className="text-xs font-semibold text-gray-700">{doc.label} {doc.required && <span className="text-red-500">*</span>}</p><p className="text-[10px] text-gray-400 truncate">{formData.docs[doc.field] ? formData.docs[doc.field].name : 'Click to browse'}
                           </p></div></div></div>))}

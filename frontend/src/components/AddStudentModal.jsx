@@ -147,7 +147,7 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, editStuden
       if (!formData.docs.marksheet10) newErrors.marksheet10 = '10th Marksheet is required';
       if (!formData.docs.marksheet12) newErrors.marksheet12 = '12th Marksheet is required';
       if (!formData.docs.aadhar) newErrors.aadhar = 'Aadhar Card is required';
-      if (!formData.docs.photo) newErrors.photo = 'Passport Photo is required';
+      if (!formData.docs.tc) newErrors.tc = 'Transfer Certificate is required';
     }
     
     setErrors(newErrors);
@@ -469,22 +469,22 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, editStuden
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {[
-                  { label: '10th Marksheet', field: 'marksheet10' },
-                  { label: '12th Marksheet', field: 'marksheet12' },
-                  { label: 'Aadhar Card', field: 'aadhar' },
-                  { label: 'Passport Photo', field: 'photo' },
-                  { label: 'Transfer Certificate', field: 'tc' },
+                  { label: '10th Marksheet', field: 'marksheet10', required: true },
+                  { label: '12th Marksheet', field: 'marksheet12', required: true },
+                  { label: 'Aadhar Card', field: 'aadhar', required: true },
+                  { label: 'Passport Photo', field: 'photo', required: false },
+                  { label: 'Transfer Certificate', field: 'tc', required: true },
                 ].map((doc) => (
-                  <div key={doc.field} className={`relative border-2 border-dashed rounded-xl p-4 transition-all ${formData.docs[doc.field] ? 'border-green-200 bg-green-50/30' : errors[doc.field] ? 'border-red-300 bg-red-50/30' : 'border-slate-200 hover:border-green-300 hover:bg-slate-50'} group`}>
+                  <div key={doc.field} className={`relative border-2 border-dashed rounded-xl p-4 transition-all ${formData.docs[doc.field] ? 'border-green-200 bg-green-50/30' : (errors[doc.field] && doc.required) ? 'border-red-300 bg-red-50/30' : 'border-slate-200 hover:border-green-300 hover:bg-slate-50'} group`}>
                     <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => handleFileChange(e, doc.field)} />
                     <div className="flex items-center gap-3">
                       <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${formData.docs[doc.field] ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-400 group-hover:bg-green-100 group-hover:text-green-600'}`}>
                         <span className="material-symbols-outlined text-lg">{formData.docs[doc.field] ? 'verified' : 'upload'}</span>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-slate-700 truncate">{doc.label} *</p>
+                        <p className="text-xs font-bold text-slate-700 truncate">{doc.label}{doc.required ? ' *' : ''}</p>
                         <p className="text-[10px] text-slate-400 truncate">
-                          {formData.docs[doc.field] ? formData.docs[doc.field].name : 'Click to browse or drag & drop'}
+                           {formData.docs[doc.field] ? formData.docs[doc.field].name : 'Click to browse or drag & drop'}
                         </p>
                       </div>
                     </div>

@@ -476,40 +476,40 @@ export default function StudentAdmissionModal({ isOpen, onClose }) {
               </div>)}
 
             {currentStep === 6 && (
-              <div className="space-y-4"><h2 className="text-xl font-bold text-gray-800 mb-4">Upload Documents</h2><div className="grid grid-cols-2 gap-4"><div><label className="block text-sm font-medium text-gray-700 mb-2">Passport Photo *
-                    </label><input
-                      type="file"
-                      onChange={(e) =>handleFileChange(e, 'passportPhoto')}
-                      className={`w-full px-4 py-2 border rounded-lg ${formData.passportPhoto ? 'border-green-500 bg-green-50' : 'border-red-300 bg-red-50'}`}
-                    />{formData.passportPhoto && (
-                      <p className="text-xs text-green-600 mt-1">{formData.passportPhoto.name}</p>)}
-                    {!formData.passportPhoto && (
-                      <p className="text-xs text-red-600 mt-1">This field is required</p>)}
+               <div className="space-y-4"><h2 className="text-xl font-bold text-gray-800 mb-4">Upload Documents</h2><div className="grid grid-cols-2 gap-4"><div><label className="block text-sm font-medium text-gray-700 mb-2">Passport Photo (optional)
+                     </label><input
+                       type="file"
+                       onChange={(e) =>handleFileChange(e, 'passportPhoto')}
+                       className={`w-full px-4 py-2 border rounded-lg ${formData.passportPhoto ? 'border-green-500 bg-green-50' : 'border-gray-300'}`}
+                     />{formData.passportPhoto && (
+                       <p className="text-xs text-green-600 mt-1">{formData.passportPhoto.name}</p>)}
                   </div><div><label className="block text-sm font-medium text-gray-700 mb-2">Aadhaar Card *
-                    </label><input
-                      type="file"
-                      onChange={(e) =>handleFileChange(e, 'aadhaarCard')}
-                      className={`w-full px-4 py-2 border rounded-lg ${formData.aadhaarCard ? 'border-green-500 bg-green-50' : 'border-red-300 bg-red-50'}`}
-                    />{formData.aadhaarCard && (
-                      <p className="text-xs text-green-600 mt-1">{formData.aadhaarCard.name}</p>)}
-                    {!formData.aadhaarCard && (
-                      <p className="text-xs text-red-600 mt-1">This field is required</p>)}
+                     </label><input
+                       type="file"
+                       onChange={(e) =>handleFileChange(e, 'aadhaarCard')}
+                       className={`w-full px-4 py-2 border rounded-lg ${formData.aadhaarCard ? 'border-green-500 bg-green-50' : 'border-red-300 bg-red-50'}`}
+                     />{formData.aadhaarCard && (
+                       <p className="text-xs text-green-600 mt-1">{formData.aadhaarCard.name}</p>)}
+                     {!formData.aadhaarCard && (
+                       <p className="text-xs text-red-600 mt-1">This field is required</p>)}
                   </div><div><label className="block text-sm font-medium text-gray-700 mb-2">Marksheet *
-                    </label><input
-                      type="file"
-                      onChange={(e) =>handleFileChange(e, 'marksheet')}
-                      className={`w-full px-4 py-2 border rounded-lg ${formData.marksheet ? 'border-green-500 bg-green-50' : 'border-red-300 bg-red-50'}`}
-                    />{formData.marksheet && (
-                      <p className="text-xs text-green-600 mt-1">{formData.marksheet.name}</p>)}
-                    {!formData.marksheet && (
-                      <p className="text-xs text-red-600 mt-1">This field is required</p>)}
-                  </div><div><label className="block text-sm font-medium text-gray-700 mb-2">Transfer Certificate (optional)
-                    </label><input
-                      type="file"
-                      onChange={(e) =>handleFileChange(e, 'transferCertificate')}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                    />{formData.transferCertificate && (
-                      <p className="text-xs text-green-600 mt-1">{formData.transferCertificate.name}</p>)}
+                     </label><input
+                       type="file"
+                       onChange={(e) =>handleFileChange(e, 'marksheet')}
+                       className={`w-full px-4 py-2 border rounded-lg ${formData.marksheet ? 'border-green-500 bg-green-50' : 'border-red-300 bg-red-50'}`}
+                     />{formData.marksheet && (
+                       <p className="text-xs text-green-600 mt-1">{formData.marksheet.name}</p>)}
+                     {!formData.marksheet && (
+                       <p className="text-xs text-red-600 mt-1">This field is required</p>)}
+                  </div><div><label className="block text-sm font-medium text-gray-700 mb-2">Transfer Certificate *
+                     </label><input
+                       type="file"
+                       onChange={(e) =>handleFileChange(e, 'transferCertificate')}
+                       className={`w-full px-4 py-2 border rounded-lg ${formData.transferCertificate ? 'border-green-500 bg-green-50' : 'border-red-300 bg-red-50'}`}
+                     />{formData.transferCertificate && (
+                       <p className="text-xs text-green-600 mt-1">{formData.transferCertificate.name}</p>)}
+                     {!formData.transferCertificate && (
+                       <p className="text-xs text-red-600 mt-1">This field is required</p>)}
                   </div></div></div>)}
 
             {currentStep === 7 && !paymentDone && (
@@ -612,9 +612,9 @@ export default function StudentAdmissionModal({ isOpen, onClose }) {
             </button><div className="flex-1" />{currentStep < 7 ? (
               <button
                 onClick={handleNext}
-                disabled={currentStep === 6 && (!formData.passportPhoto || !formData.aadhaarCard || !formData.marksheet)}
+                disabled={currentStep === 6 && (!formData.transferCertificate || !formData.aadhaarCard || !formData.marksheet)}
                 className={`px-4 py-1.5 rounded-lg font-medium text-sm transition ${
-                  currentStep === 6 && (!formData.passportPhoto || !formData.aadhaarCard || !formData.marksheet)
+                  currentStep === 6 && (!formData.transferCertificate || !formData.aadhaarCard || !formData.marksheet)
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     : 'bg-green-500 text-white hover:bg-green-600'
                 }`}
