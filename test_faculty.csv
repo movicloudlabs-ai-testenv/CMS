@@ -1,5 +1,0 @@
-name,email,phone,dob,gender,department,designation,highestQualification,specialization,university,yearsOfExperience,employmentType
-"Dr. Alan Turing","alanturing@example.com","9998887770","1985-06-23","Male","Computer Science","Professor","Ph.D.","Artificial Intelligence","Cambridge University","15","Full-Time"
-"Dr. Grace Hopper","gracehopper@example.com","9998887771","1988-12-09","Female","Computer Science","Associate Professor","Ph.D.","Compilers","Yale University","12","Full-Time"
-"Ada Lovelace","adalovelace@example.com","9998887772","1992-12-10","Female","Information Technology","Assistant Professor","M.Tech","Algorithms","Oxford University","6","Full-Time"
-"Claude Shannon","shannon@example.com","9998887773","1990-04-30","Male","Electronics and Communication","Assistant Professor","Ph.D.","Information Theory","MIT","8","Part-Time"

@@ -101,10 +101,10 @@ export default function StudentAdmissionModal({ isOpen, onClose }) {
       quota: 'Management Quota',
       accommodation: 'Hostel Required',
       roomType: 'Double',
-      passportPhoto: new File(['demo'], 'passport.jpg', { type: 'image/jpeg' }),
-      aadhaarCard: new File(['demo'], 'aadhaar.jpg', { type: 'image/jpeg' }),
-      marksheet: new File(['demo'], 'marksheet.pdf', { type: 'application/pdf' }),
-      transferCertificate: new File(['demo'], 'transfer.pdf', { type: 'application/pdf' }),
+      passportPhoto: { name: 'passport.jpg', size: 1024, data: 'data:image/jpeg;base64,demo' },
+      aadhaarCard: { name: 'aadhaar.jpg', size: 2048, data: 'data:image/jpeg;base64,demo' },
+      marksheet: { name: 'marksheet.pdf', size: 4096, data: 'data:application/pdf;base64,demo' },
+      transferCertificate: { name: 'transfer.pdf', size: 3072, data: 'data:application/pdf;base64,demo' },
       paymentMethod: 'UPI',
     });
     alert(' Demo data filled! All fields populated with sample data.');
@@ -120,10 +120,21 @@ export default function StudentAdmissionModal({ isOpen, onClose }) {
 
   const handleFileChange = (e, fieldName) =>{
     const file = e.target.files?.[0];
-    setFormData((prev) =>({
-      ...prev,
-      [fieldName]: file,
-    }));
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData((prev) =>({
+          ...prev,
+          [fieldName]: { name: file.name, size: file.size, data: reader.result },
+        }));
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [fieldName]: null
+      }));
+    }
   };
 
   const handleNext = () =>{
@@ -211,6 +222,12 @@ export default function StudentAdmissionModal({ isOpen, onClose }) {
         paymentMethod: formData.paymentMethod,
         paymentStatus: 'Paid',
         status: 'Pending',
+        documents: [
+          formData.passportPhoto && { id: 'DOC-01', name: 'Passport Photo', type: 'base64', data: formData.passportPhoto },
+          formData.aadhaarCard && { id: 'DOC-02', name: 'Aadhaar Card', type: 'base64', data: formData.aadhaarCard },
+          formData.marksheet && { id: 'DOC-03', name: 'Marksheet', type: 'base64', data: formData.marksheet },
+          formData.transferCertificate && { id: 'DOC-04', name: 'Transfer Certificate', type: 'base64', data: formData.transferCertificate },
+        ].filter(Boolean)
       };
 
       console.log(' Submitting student data:', studentData);
@@ -399,15 +416,15 @@ export default function StudentAdmissionModal({ isOpen, onClose }) {
                       name="courseCategory"
                       value={formData.courseCategory}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600-500"
-                    ><option value="">Select</option><option value="Engineering">Engineering</option><option value="Arts & Science">Arts & Science</option><option value="Commerce">Commerce</option><option value="Management">Management</option><option value="Diploma">Diploma</option></select></div><div><label className="block text-sm font-medium text-gray-700 mb-2">Course *
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600"
+                    ><option value="">Select</option><option value="Engineering">Engineering</option><option value="Medicine & Health Sciences">Medicine & Health Sciences</option><option value="Arts">Arts</option><option value="Sciences">Sciences</option><option value="Commerce">Commerce</option><option value="Management">Management</option><option value="Law">Law</option><option value="Diploma">Diploma</option></select></div><div><label className="block text-sm font-medium text-gray-700 mb-2">Course *
                     </label><input
                       type="text"
                       name="course"
                       value={formData.course}
                       onChange={handleInputChange}
                       placeholder="CSE"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600-500"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600"
                     /></div></div></div>)}
 
             {currentStep === 4 && (

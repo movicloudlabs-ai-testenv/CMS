@@ -404,7 +404,7 @@ export default function AddStudentPage() {
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-gray-700">Course Category <span className="text-red-500">*</span></label>
                     <select name="courseCategory" value={formData.courseCategory} onChange={handleChange} className={`w-full px-3 py-2 text-sm rounded-lg border ${errors.courseCategory ? 'border-red-400' : 'border-gray-200'} focus:outline-none focus:ring-2 bg-white`}>
-                      {['Engineering', 'Arts & Science', 'Commerce', 'Management', 'Diploma'].map(c => <option key={c}>{c}</option>)}
+                      {['Engineering', 'Medicine & Health Sciences', 'Arts', 'Sciences', 'Commerce', 'Management', 'Law', 'Diploma'].map(c => <option key={c}>{c}</option>)}
                     </select>
                     {errors.courseCategory && <p className="text-xs text-red-500 font-medium">{errors.courseCategory}</p>}
                   </div>

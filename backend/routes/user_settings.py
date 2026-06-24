@@ -1132,28 +1132,54 @@ def _get_default_departments():
         {"id": 2, "name": "Electrical Engineering", "code": "EEE", "head": "Prof. K.V. Rao", "hod": "Prof. K.V. Rao", "totalFaculty": 18, "totalStudents": 256, "courses": 38, "email": "eee@mit.edu", "phone": "+91-9876543211", "location": "Building B, Floor 2", "description": "Power systems, control systems, and renewable energy focus", "mappedStaff": 18},
         {"id": 3, "name": "Mechanical Engineering", "code": "ME", "head": "Prof. S. Natarajan", "hod": "Prof. S. Natarajan", "totalFaculty": 22, "totalStudents": 298, "courses": 42, "email": "me@mit.edu", "phone": "+91-9876543212", "location": "Building C, Floor 1", "description": "Thermal engineering, manufacturing, and design specializations", "mappedStaff": 22},
         {"id": 4, "name": "Civil Engineering", "code": "CE", "head": "Prof. Ramesh Gupta", "hod": "Prof. Ramesh Gupta", "totalFaculty": 16, "totalStudents": 224, "courses": 35, "email": "ce@mit.edu", "phone": "+91-9876543213", "location": "Building D, Floor 2", "description": "Infrastructure, structures, and environmental engineering", "mappedStaff": 16},
+        {"id": 5, "name": "Medicine & Health Sciences", "code": "MED", "head": "Prof. Dr. Sarah Johnson", "hod": "Prof. Dr. Sarah Johnson", "totalFaculty": 30, "totalStudents": 400, "courses": 50, "email": "medicine@mit.edu", "phone": "+91-9876543214", "location": "Medical Block, Floor 1", "description": "MBBS, Nursing, and Allied Health Sciences", "mappedStaff": 30},
+        {"id": 6, "name": "Arts & Humanities", "code": "ART", "head": "Prof. Dr. Maya Sen", "hod": "Prof. Dr. Maya Sen", "totalFaculty": 15, "totalStudents": 220, "courses": 30, "email": "arts@mit.edu", "phone": "+91-9876543215", "location": "Arts Block, Floor 2", "description": "Literature, history, sociology and fine arts education", "mappedStaff": 15},
+        {"id": 7, "name": "Business & Commerce", "code": "BUS", "head": "Prof. Dr. Rajesh Kumar", "hod": "Prof. Dr. Rajesh Kumar", "totalFaculty": 20, "totalStudents": 350, "courses": 40, "email": "business@mit.edu", "phone": "+91-9876543216", "location": "Management Block, Floor 3", "description": "Commerce, finance, and business administration programs", "mappedStaff": 20},
+        {"id": 8, "name": "Science & Technology", "code": "SCI", "head": "Prof. Dr. Amit Verma", "hod": "Prof. Dr. Amit Verma", "totalFaculty": 18, "totalStudents": 280, "courses": 35, "email": "science@mit.edu", "phone": "+91-9876543217", "location": "Science Block, Floor 1", "description": "Physics, chemistry, mathematics, and biotechnology programs", "mappedStaff": 18},
     ]
 
 def get_matching_dept_code(dept_val: str, dept_list: list) -> str:
     if not dept_val:
         return None
     val = dept_val.lower().strip()
+    
+    # 1. Exact match on code
     for d in dept_list:
         if d.get("code", "").lower() == val:
             return d.get("code")
+            
+    # 2. Exact match on name
+    for d in dept_list:
+        if d.get("name", "").lower() == val:
+            return d.get("code")
+            
+    # 3. Partial match on name / code
     for d in dept_list:
         name = d.get("name", "").lower()
         code = d.get("code", "").lower()
-        if val in name or name in val or val in code or code in val:
+        if val and (val in name or name in val or val in code or code in val):
             return d.get("code")
-    if "computer" in val or "cse" in val or "cs" in val:
+            
+    # 4. Fallback check for standard code patterns, but only if they exist in active departments
+    valid_codes = {d.get("code").upper() for d in dept_list if d.get("code")}
+    
+    if ("computer" in val or "cse" in val or "cs" in val) and "CSE" in valid_codes:
         return "CSE"
-    if "electrical" in val or "electronics" in val or "eee" in val or "ece" in val:
+    if ("electrical" in val or "electronics" in val or "eee" in val or "ece" in val) and "EEE" in valid_codes:
         return "EEE"
-    if "mechanical" in val or "me" in val or "mech" in val:
+    if ("mechanical" in val or "me" in val or "mech" in val) and "ME" in valid_codes:
         return "ME"
-    if "civil" in val or "ce" in val:
+    if ("civil" in val or "ce" in val) and "CE" in valid_codes:
         return "CE"
+    if ("medicine" in val or "med" in val or "mbbs" in val or "health" in val) and "MED" in valid_codes:
+        return "MED"
+    if ("arts" in val or "humanities" in val or "art" in val) and "ART" in valid_codes:
+        return "ART"
+    if ("business" in val or "commerce" in val or "bus" in val or "com" in val) and "BUS" in valid_codes:
+        return "BUS"
+    if ("science" in val or "sci" in val) and "SCI" in valid_codes:
+        return "SCI"
+        
     return None
 
 @router.get("/departments")
@@ -1182,6 +1208,7 @@ async def list_departments():
     course_counts = {}
 
     if use_db:
+        # Collect counts & courses from students
         async for s in db["students"].find({}, {"department": 1, "subjects": 1}):
             dept_code = get_matching_dept_code(s.get("department"), depts)
             if dept_code:
@@ -1192,15 +1219,37 @@ async def list_departments():
                 for sub in subjects:
                     sub_code = sub.get("code") or sub.get("name")
                     if sub_code:
-                        course_counts[dept_code].add(sub_code)
+                        course_counts[dept_code].add(str(sub_code))
                         
-        async for f in db["faculty"].find({}, {"department": 1, "departmentId": 1, "department_id": 1}):
+        # Collect counts & courses from faculty
+        async for f in db["faculty"].find({}, {"department": 1, "departmentId": 1, "department_id": 1, "courses": 1, "teaching_load": 1}):
             dept = f.get("department") or f.get("departmentId") or f.get("department_id")
             dept_code = get_matching_dept_code(dept, depts)
             if dept_code:
                 faculty_counts[dept_code] = faculty_counts.get(dept_code, 0) + 1
+                
+                f_courses = f.get("courses") or []
+                t_load = f.get("teaching_load") or []
+                
+                if dept_code not in course_counts:
+                    course_counts[dept_code] = set()
+                    
+                for c in f_courses:
+                    if isinstance(c, dict):
+                        c_code = c.get("courseCode") or c.get("course_code") or c.get("courseName")
+                    else:
+                        c_code = c
+                    if c_code:
+                        course_counts[dept_code].add(str(c_code))
+                        
+                for t in t_load:
+                    if isinstance(t, dict):
+                        t_code = t.get("courseCode") or t.get("course_code") or t.get("subject") or t.get("course")
+                        if t_code:
+                            course_counts[dept_code].add(str(t_code))
     else:
         from backend.dev_store import DEV_STORE
+        # Collect counts & courses from DEV_STORE students
         for s in DEV_STORE.get("students", []):
             dept_code = get_matching_dept_code(s.get("department"), depts)
             if dept_code:
@@ -1211,26 +1260,41 @@ async def list_departments():
                 for sub in subjects:
                     sub_code = sub.get("code") or sub.get("name")
                     if sub_code:
-                        course_counts[dept_code].add(sub_code)
+                        course_counts[dept_code].add(str(sub_code))
+                        
+        # Collect counts & courses from DEV_STORE faculty
+        for f in DEV_STORE.get("faculty", []):
+            dept = f.get("department") or f.get("departmentId") or f.get("department_id")
+            dept_code = get_matching_dept_code(dept, depts)
+            if dept_code:
+                faculty_counts[dept_code] = faculty_counts.get(dept_code, 0) + 1
+                
+                f_courses = f.get("courses") or []
+                t_load = f.get("teaching_load") or []
+                
+                if dept_code not in course_counts:
+                    course_counts[dept_code] = set()
+                    
+                for c in f_courses:
+                    if isinstance(c, dict):
+                        c_code = c.get("courseCode") or c.get("course_code") or c.get("courseName")
+                    else:
+                        c_code = c
+                    if c_code:
+                        course_counts[dept_code].add(str(c_code))
+                        
+                for t in t_load:
+                    if isinstance(t, dict):
+                        t_code = t.get("courseCode") or t.get("course_code") or t.get("subject") or t.get("course")
+                        if t_code:
+                            course_counts[dept_code].add(str(t_code))
 
     for d in depts:
         code = d.get("code")
-        if code in student_counts:
-            d["totalStudents"] = student_counts[code]
-        else:
-            d["totalStudents"] = student_counts.get(code, d.get("totalStudents", 0))
-            
-        if code in faculty_counts:
-            d["totalFaculty"] = faculty_counts[code]
-            d["mappedStaff"] = faculty_counts[code]
-        else:
-            d["totalFaculty"] = faculty_counts.get(code, d.get("totalFaculty", 0))
-            d["mappedStaff"] = faculty_counts.get(code, d.get("mappedStaff", 0))
-            
-        if code in course_counts:
-            d["courses"] = len(course_counts[code])
-        else:
-            d["courses"] = d.get("courses", 0)
+        d["totalStudents"] = student_counts.get(code, 0)
+        d["totalFaculty"] = faculty_counts.get(code, 0)
+        d["mappedStaff"] = faculty_counts.get(code, 0)
+        d["courses"] = len(course_counts[code]) if code in course_counts else 0
 
     return depts
 
