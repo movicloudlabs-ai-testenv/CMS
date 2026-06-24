@@ -60,6 +60,15 @@ const SETTINGS_SECTIONS = [
       { id: 'notification-preferences', label: 'Notification Preferences' },
     ],
   },
+  {
+    id: 'profile',
+    label: 'My Profile',
+    icon: 'person',
+    roles: ['admin'],
+    children: [
+      { id: 'profile-info', label: 'Personal Information' },
+    ],
+  },
 ];
 
 function normalizeSection(section) {

@@ -31,6 +31,7 @@ function AdminPanel({ sectionId, role, userId }) {
     case 'finance':  return <RoleGuard roles={['admin', 'finance']}><FinanceSettings /></RoleGuard>;
     case 'security': return <RoleGuard roles={['admin']}><SecuritySettings /></RoleGuard>;
     case 'notifications': return <NotificationSettings role={role} userId={userId} />;
+    case 'profile':  return <ProfileSettings role={role} userId={userId} />;
     default:         return <GeneralSettings />;
   }
 }

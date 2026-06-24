@@ -437,13 +437,39 @@ async def get_student(student_id: str):
         fees_collection = db["fees_structure"]
         fees = []
         async for fee in fees_collection.find({"student_id": student_id}):
-            fees.append(serialize_doc(fee))
+            serialized_fee = serialize_doc(fee)
+            
+            # Map MongoDB keys to frontend expected keys
+            status = serialized_fee.get("payment_status") or serialized_fee.get("status") or "Pending"
+            amount = serialized_fee.get("total_fee") or serialized_fee.get("amount") or 0
+            
+            paid = serialized_fee.get("paid")
+            if paid is None:
+                paid = amount if status.lower() == "paid" else (amount // 2 if status.lower() == "partial" else 0)
+                
+            due = serialized_fee.get("due")
+            if due is None:
+                due = amount - paid
+                
+            fee_type = serialized_fee.get("type")
+            if not fee_type:
+                course_name = serialized_fee.get("course") or "Academic"
+                sem = serialized_fee.get("semester")
+                fee_type = f"{course_name} Sem {sem} Fee" if sem else f"{course_name} general Fee"
+                
+            serialized_fee["status"] = status
+            serialized_fee["amount"] = amount
+            serialized_fee["paid"] = paid
+            serialized_fee["due"] = due
+            serialized_fee["type"] = fee_type
+            
+            fees.append(serialized_fee)
         
         if fees:
             serialized["fees"] = fees
             # Calculate fee status based on payments
-            total_fee = sum(fee.get("total_fee", 0) for fee in fees)
-            total_paid = sum(fee.get("total_fee", 0) for fee in fees if fee.get("payment_status", "").lower() == "paid")
+            total_fee = sum(fee.get("amount", 0) for fee in fees)
+            total_paid = sum(fee.get("paid", 0) for fee in fees)
             
             if total_paid == 0:
                 serialized["feeStatus"] = "Pending"

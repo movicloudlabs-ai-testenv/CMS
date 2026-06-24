@@ -211,6 +211,28 @@ export default function FacultyProfilePage() {
 
               <div className="border-t border-slate-200 my-6" />
 
+              <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-3 mb-6 uppercase tracking-wider">
+                <span className="material-symbols-outlined text-[#276221] text-[20px]">badge</span>
+                Personal Details
+              </h3>
+
+              <div className="space-y-5">
+                <div className="flex items-center gap-3 text-sm font-medium text-slate-700">
+                  <span className="material-symbols-outlined text-slate-400 text-[18px]">wc</span>
+                  <span>Gender: {faculty.gender || 'Not specified'}</span>
+                </div>
+                <div className="flex items-center gap-3 text-sm font-medium text-slate-700">
+                  <span className="material-symbols-outlined text-slate-400 text-[18px]">calendar_today</span>
+                  <span>DOB: {faculty.dob ? new Date(faculty.dob).toLocaleDateString() : 'Not specified'}</span>
+                </div>
+                <div className="flex items-center gap-3 text-sm font-medium text-slate-700">
+                  <span className="material-symbols-outlined text-slate-400 text-[18px]">public</span>
+                  <span>Nationality: {faculty.nationality || 'Not specified'}</span>
+                </div>
+              </div>
+
+              <div className="border-t border-slate-200 my-6" />
+
               <h3 className="text-sm font-semibold text-slate-800 mb-4 uppercase tracking-wider">Office Hours</h3>
               {faculty.office_hours && faculty.office_hours.length > 0 ? (
                 <ul className="space-y-2 text-sm text-slate-600">
@@ -225,30 +247,54 @@ export default function FacultyProfilePage() {
 
             <div className="lg:col-span-8 space-y-8">
               <div className="bg-white rounded-xl border border-slate-200 p-8 shadow-sm">
-                <h3 className="text-sm font-semibold text-slate-800 mb-6 uppercase tracking-wider">Qualifications</h3>
-                {faculty.qualifications && faculty.qualifications.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="bg-slate-50 text-slate-500 text-[10px] font-semibold uppercase tracking-wider border-b border-slate-200">
-                          <th className="px-4 py-3">Degree</th>
-                          <th className="px-4 py-3">Institution</th>
-                          <th className="px-4 py-3">Year</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {faculty.qualifications.map((q, i) => (
-                          <tr key={i} className="hover:bg-slate-50/50 transition-colors">
-                            <td className="px-4 py-4 text-sm font-semibold text-slate-800">{q.degree}</td>
-                            <td className="px-4 py-4 text-sm text-slate-600">{q.institution}</td>
-                            <td className="px-4 py-4 text-sm text-slate-600">{q.year}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-3 mb-6 uppercase tracking-wider">
+                  <span className="material-symbols-outlined text-[#276221] text-[20px]">school</span>
+                  Education & Qualifications
+                </h3>
+
+                {/* Primary Qualification from Edit Profile */}
+                <div className="mb-6 p-5 bg-green-50/40 border border-green-100 rounded-xl">
+                  <h4 className="text-xs font-bold text-[#276221] uppercase tracking-wider mb-3">Primary Qualification</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <span className="block text-[10px] uppercase font-bold text-slate-400">Degree / Qualification</span>
+                      <span className="text-sm font-semibold text-slate-800">{faculty.qualification || 'Not provided'}</span>
+                    </div>
+                    <div>
+                      <span className="block text-[10px] uppercase font-bold text-slate-400">College</span>
+                      <span className="text-sm font-semibold text-slate-800">{faculty.college || 'Not provided'}</span>
+                    </div>
+                    <div>
+                      <span className="block text-[10px] uppercase font-bold text-slate-400">University</span>
+                      <span className="text-sm font-semibold text-slate-800">{faculty.university || 'Not provided'}</span>
+                    </div>
                   </div>
-                ) : (
-                  <p className="text-sm text-slate-500 p-4 bg-slate-50 rounded-xl text-center">No qualifications recorded yet.</p>
+                </div>
+
+                {faculty.qualifications && faculty.qualifications.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Other Qualifications</h4>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="bg-slate-50 text-slate-500 text-[10px] font-semibold uppercase tracking-wider border-b border-slate-200">
+                            <th className="px-4 py-3">Degree</th>
+                            <th className="px-4 py-3">Institution</th>
+                            <th className="px-4 py-3">Year</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {faculty.qualifications.map((q, i) => (
+                            <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                              <td className="px-4 py-4 text-sm font-semibold text-slate-800">{q.degree}</td>
+                              <td className="px-4 py-4 text-sm text-slate-600">{q.institution}</td>
+                              <td className="px-4 py-4 text-sm text-slate-600">{q.year}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 )}
               </div>
 

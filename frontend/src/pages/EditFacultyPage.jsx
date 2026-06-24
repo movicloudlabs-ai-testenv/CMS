@@ -330,7 +330,32 @@ export default function EditFacultyPage() {
                   <label className="text-xs font-semibold text-gray-700">Highest Qualification</label>
                   <select name="highestQualification" value={formData.highestQualification} onChange={handleChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 bg-white">
                     <option value="">Select</option>
-                    <option>B.Tech</option><option>M.Tech</option><option>MBA</option><option>Ph.D.</option>
+                    <option value="B.Tech">B.Tech (Bachelor of Technology)</option>
+                    <option value="M.Tech">M.Tech (Master of Technology)</option>
+                    <option value="B.E.">B.E. (Bachelor of Engineering)</option>
+                    <option value="M.E.">M.E. (Master of Engineering)</option>
+                    <option value="MBBS">MBBS (Bachelor of Medicine, Surgery)</option>
+                    <option value="MD">MD (Doctor of Medicine)</option>
+                    <option value="MS">MS (Master of Surgery)</option>
+                    <option value="BDS">BDS (Bachelor of Dental Surgery)</option>
+                    <option value="MDS">MDS (Master of Dental Surgery)</option>
+                    <option value="B.Pharm">B.Pharm (Bachelor of Pharmacy)</option>
+                    <option value="M.Pharm">M.Pharm (Master of Pharmacy)</option>
+                    <option value="B.A.">B.A. (Bachelor of Arts)</option>
+                    <option value="M.A.">M.A. (Master of Arts)</option>
+                    <option value="B.F.A.">B.F.A. (Bachelor of Fine Arts)</option>
+                    <option value="M.F.A.">M.F.A. (Master of Fine Arts)</option>
+                    <option value="B.Sc">B.Sc (Bachelor of Science)</option>
+                    <option value="M.Sc">M.Sc (Master of Science)</option>
+                    <option value="B.Com">B.Com (Bachelor of Commerce)</option>
+                    <option value="M.Com">M.Com (Master of Commerce)</option>
+                    <option value="BBA">BBA (Bachelor of Business Admin)</option>
+                    <option value="MBA">MBA (Master of Business Admin)</option>
+                    <option value="LL.B.">LL.B. (Bachelor of Laws)</option>
+                    <option value="LL.M.">LL.M. (Master of Laws)</option>
+                    <option value="M.Phil">M.Phil (Master of Philosophy)</option>
+                    <option value="Ph.D.">Ph.D. (Doctor of Philosophy)</option>
+                    <option value="Post-Doc">Post-Doctoral Fellowship</option>
                   </select>
                 </div>
                 <div className="space-y-1">

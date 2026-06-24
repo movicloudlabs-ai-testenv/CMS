@@ -86,6 +86,11 @@ export default function DashboardPage() {
           if (summary) {
             setDashboardStats(summary);
           }
+          const profileRes = await fetch(`${API_BASE}/settings/${role}/${encodeURIComponent(sessionUserId)}/profile`);
+          if (profileRes.ok) {
+            const profileData = await profileRes.json();
+            setFreshUserData(profileData);
+          }
         } else if (role === 'student' && sessionUserId) {
           const res = await fetch(`${API_BASE}/students/${encodeURIComponent(sessionUserId)}`);
           if (res.ok) {

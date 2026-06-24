@@ -122,7 +122,7 @@ def _normalize_from_flat_payload(payload: dict[str, Any]) -> dict[str, Any]:
         "quota": payload.get("quota") or "",
         "accommodation": payload.get("accommodation") or "",
         "roomType": payload.get("roomType") or "",
-        "documents": {
+        "documents": payload.get("documents") or {
             "passport_photo": payload.get("passportPhoto"),
             "aadhaar_card": payload.get("aadhaarCard"),
             "marksheet": payload.get("marksheet"),
@@ -432,7 +432,7 @@ async def _create_student_from_admission(admission: dict[str, Any]) -> bool:
             # Initialize empty collections
             "subjects": [],
             "fees": [],
-            "documents": [],
+            "documents": admission.get("documents") or [],
             "attendanceMonthly": []
         }
         

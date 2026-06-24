@@ -105,7 +105,7 @@ export default function ProfileSettings({ role, userId }) {
             {validation.phone && <p className="text-xs text-red-500 mt-1">{validation.phone}</p>}
           </div>
           <div>
-            {role === 'faculty' ? (
+            {profile.department !== undefined ? (
               <>
                 <label className={labelCls}>Department</label>
                 <input type="text" value={profile.department || ''} onChange={(e) => updateField('department', e.target.value)} className={inputCls} />

@@ -6,7 +6,7 @@ import { TableSkeleton } from '../components/common';
 import { getUserSession, updateUserData } from '../auth/sessionController';
 import { 
   ArrowLeft, User, BarChart2,
-  Mail, Phone, MapPin, Calendar, Users
+  Mail, Phone, MapPin, Calendar, Users, FolderOpen
 } from 'lucide-react';
 import { API_BASE } from '../api/apiBase';
 import '../styles.css';
@@ -265,27 +265,38 @@ export default function StudentProfilePage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-8 border-b border-slate-200 mb-8 px-4 overflow-x-auto">
-          {profileTabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`pb-4 text-sm font-semibold transition-all relative whitespace-nowrap ${
-                activeTab === tab.id
-                  ? 'text-[#276221]'
-                  : 'text-slate-400 hover:text-slate-600'
-              }`}
-            >
-              <span className="inline-flex items-center gap-2">
-                <tab.icon size={16} />
-                {tab.label}
-              </span>
-              {activeTab === tab.id && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#276221] rounded-t-full" />
-              )}
-            </button>
-          ))}
-        </div>
+        {(() => {
+          const session = getUserSession();
+          const showDocumentsTab = session && (session.role === 'admin' || session.userId === id || session.userId?.toString() === id?.toString());
+          const dynamicTabs = [...profileTabs];
+          if (showDocumentsTab) {
+            dynamicTabs.push({ id: 'documents', label: 'Documents', icon: FolderOpen });
+          }
+
+          return (
+            <div className="flex items-center gap-8 border-b border-slate-200 mb-8 px-4 overflow-x-auto">
+              {dynamicTabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`pb-4 text-sm font-semibold transition-all relative whitespace-nowrap ${
+                    activeTab === tab.id
+                      ? 'text-[#276221]'
+                      : 'text-slate-400 hover:text-slate-600'
+                  }`}
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <tab.icon size={16} />
+                    {tab.label}
+                  </span>
+                  {activeTab === tab.id && (
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#276221] rounded-t-full" />
+                  )}
+                </button>
+              ))}
+            </div>
+          );
+        })()}
 
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
           {activeTab === 'overview' && (
@@ -572,6 +583,7 @@ export default function StudentProfilePage() {
               </div>
             </div>
           )}
+          {activeTab === 'documents' && <DocumentsTab student={student} />}
         </div>
       </div>
 
@@ -587,5 +599,97 @@ export default function StudentProfilePage() {
         />
       )}
     </Layout>
+  );
+}
+
+function DocumentsTab({ student }) {
+  const docs = student.documents || [];
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 p-8 shadow-sm">
+      <h3 className="text-sm font-semibold text-slate-800 mb-6 uppercase tracking-wider flex items-center gap-2">
+        <FolderOpen size={18} className="text-[#276221]" />
+        Uploaded Documents
+      </h3>
+      {docs.length === 0 ? (
+        <div className="text-center py-12 text-slate-500">
+          <span className="material-symbols-outlined text-4xl text-slate-300 mb-2">folder_open</span>
+          <p className="text-sm font-medium">No documents uploaded yet.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {docs.map((doc, idx) => {
+            const hasData = !!(doc.data?.data || (typeof doc.data === 'string' ? doc.data : null) || doc.file_url || doc.fileUrl);
+            const fileName = doc.data?.name || doc.name || 'Document';
+            const fileSize = doc.data?.size ? `${(doc.data.size / 1024 / 1024).toFixed(2)} MB` : (doc.size || 'N/A');
+            return (
+              <div key={doc.id || idx} className="flex items-center justify-between p-4 bg-slate-50/50 rounded-xl border border-slate-100 hover:border-[#276221]/30 transition-all hover:bg-white hover:shadow-sm">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-green-50 text-[#276221] rounded-lg flex items-center justify-center">
+                    <span className="material-symbols-outlined text-[24px]">
+                      {doc.name?.toLowerCase().includes('photo') ? 'image' : 'picture_as_pdf'}
+                    </span>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-semibold text-slate-800 leading-tight">{doc.name || 'Uploaded Document'}</h4>
+                    <p className="text-[10px] font-medium text-slate-400 mt-1 uppercase tracking-tight">
+                      {fileName} • {fileSize}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      const fileData = doc.data?.data || (typeof doc.data === 'string' ? doc.data : null) || doc.file_url || doc.fileUrl;
+                      if (!fileData) {
+                        alert("Document data is not available (demo seed document).");
+                        return;
+                      }
+                      const newWindow = window.open();
+                      if (newWindow) {
+                        newWindow.document.write(
+                          `<iframe src="${fileData}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`
+                        );
+                      }
+                    }}
+                    disabled={!hasData}
+                    className={`p-2 rounded-lg transition-all ${
+                      hasData 
+                        ? 'text-slate-400 hover:text-[#276221] hover:bg-green-50' 
+                        : 'text-slate-200 cursor-not-allowed'
+                    }`}
+                    title="View Document"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">visibility</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      const fileData = doc.data?.data || (typeof doc.data === 'string' ? doc.data : null) || doc.file_url || doc.fileUrl;
+                      if (!fileData) {
+                        alert("Document data is not available (demo seed document).");
+                        return;
+                      }
+                      const link = document.createElement('a');
+                      link.href = fileData;
+                      link.download = fileName;
+                      link.click();
+                    }}
+                    disabled={!hasData}
+                    className={`p-2 rounded-lg transition-all ${
+                      hasData 
+                        ? 'text-slate-400 hover:text-[#276221] hover:bg-green-50' 
+                        : 'text-slate-200 cursor-not-allowed'
+                    }`}
+                    title="Download Document"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">download</span>
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
