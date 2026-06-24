@@ -85,6 +85,50 @@ def _serialize_admission(item: dict[str, Any]) -> dict[str, Any]:
     if not serialized.get("fullName") and serialized.get("name"):
         serialized["fullName"] = serialized["name"]
 
+    # Flatten nested personal fields for frontend compatibility
+    personal = serialized.get("personal") or {}
+    for field in ["address", "city", "state", "pincode", "guardianName", "guardianPhone", "relationship", "guardianEmail", "guardianOccupation"]:
+        if not serialized.get(field) and personal.get(field):
+            serialized[field] = personal.get(field)
+
+    # Flatten academic info
+    academic = serialized.get("academic") or {}
+    if not serialized.get("previousSchool") and academic.get("previous_school"):
+        serialized["previousSchool"] = academic.get("previous_school")
+    if not serialized.get("board") and academic.get("board"):
+        serialized["board"] = academic.get("board")
+    if not serialized.get("yearOfPassing") and academic.get("year_of_passing"):
+        serialized["yearOfPassing"] = academic.get("year_of_passing")
+    if not serialized.get("marksPercentage") and academic.get("marks_percentage"):
+        serialized["marksPercentage"] = academic.get("marks_percentage")
+
+    # Flatten course info
+    course_info = serialized.get("course_info") or {}
+    if not serialized.get("course") and course_info.get("course"):
+        serialized["course"] = course_info.get("course")
+    if not serialized.get("courseCategory") and course_info.get("category"):
+        serialized["courseCategory"] = course_info.get("category")
+
+    # Set student defaults for admissions review page
+    is_student = (
+        serialized.get("type") == "student"
+        or serialized.get("role") == "student"
+        or "roll" in serialized
+        or "semester" in serialized
+    )
+    if is_student:
+        if not serialized.get("semester"):
+            serialized["semester"] = 1
+        if not serialized.get("roll"):
+            serialized["roll"] = (
+                serialized.get("rollNumber")
+                or serialized.get("roll_number")
+                or serialized.get("id")
+                or ""
+            )
+        if not serialized.get("cgpa"):
+            serialized["cgpa"] = 0.0
+
     return serialized
 
 
@@ -122,6 +166,20 @@ def _normalize_from_flat_payload(payload: dict[str, Any]) -> dict[str, Any]:
         "quota": payload.get("quota") or "",
         "accommodation": payload.get("accommodation") or "",
         "roomType": payload.get("roomType") or "",
+        # Flat fields for direct root access
+        "address": payload.get("address") or "",
+        "city": payload.get("city") or "",
+        "state": payload.get("state") or "",
+        "pincode": payload.get("pincode") or "",
+        "guardianName": payload.get("guardianName") or "",
+        "guardianPhone": payload.get("guardianPhone") or "",
+        "relationship": payload.get("relationship") or "",
+        "guardianEmail": payload.get("guardianEmail") or "",
+        "guardianOccupation": payload.get("guardianOccupation") or "",
+        "hostelName": payload.get("hostelName") or "",
+        "semester": payload.get("semester") or 1,
+        "roll": payload.get("roll") or payload.get("rollNumber") or payload.get("roll_number") or admission_id,
+        "cgpa": _to_float(payload.get("cgpa"), 0.0),
         "documents": payload.get("documents") or {
             "passport_photo": payload.get("passportPhoto"),
             "aadhaar_card": payload.get("aadhaarCard"),
@@ -148,10 +206,15 @@ def _normalize_from_flat_payload(payload: dict[str, Any]) -> dict[str, Any]:
         "email": normalized["email"],
         "phone": normalized["phone"],
         "student_id": normalized["id"],
-        "address": payload.get("address") or "",
-        "city": payload.get("city") or "",
-        "state": payload.get("state") or "",
-        "pincode": payload.get("pincode") or "",
+        "address": normalized["address"],
+        "city": normalized["city"],
+        "state": normalized["state"],
+        "pincode": normalized["pincode"],
+        "guardianName": normalized["guardianName"],
+        "guardianPhone": normalized["guardianPhone"],
+        "relationship": normalized["relationship"],
+        "guardianEmail": normalized["guardianEmail"],
+        "guardianOccupation": normalized["guardianOccupation"],
     }
     normalized["academic"] = {
         "previous_school": normalized["previousSchool"],
@@ -206,6 +269,20 @@ def _normalize_from_nested_payload(payload: dict[str, Any]) -> dict[str, Any]:
                 "category": course.get("category") or "",
                 "course": course.get("course") or "",
             },
+            # Flat fields for direct root access
+            "address": personal.get("address") or "",
+            "city": personal.get("city") or "",
+            "state": personal.get("state") or "",
+            "pincode": personal.get("pincode") or "",
+            "guardianName": personal.get("guardianName") or payload.get("guardianName") or "",
+            "guardianPhone": personal.get("guardianPhone") or payload.get("guardianPhone") or "",
+            "relationship": personal.get("relationship") or payload.get("relationship") or "",
+            "guardianEmail": personal.get("guardianEmail") or payload.get("guardianEmail") or "",
+            "guardianOccupation": personal.get("guardianOccupation") or payload.get("guardianOccupation") or "",
+            "hostelName": payload.get("hostelName") or "",
+            "semester": payload.get("semester") or 1,
+            "roll": payload.get("roll") or payload.get("rollNumber") or payload.get("roll_number") or admission_id,
+            "cgpa": _to_float(payload.get("cgpa"), 0.0),
         }
     )
 
@@ -370,13 +447,33 @@ async def _create_student_from_admission(admission: dict[str, Any]) -> bool:
         
         name = admission.get("name") or admission.get("fullName") or ""
         
-        # Use admission ID as student_id (it's already guaranteed to exist)
+        # Use admission ID as student_id
         student_id = admission_id
         
-        # Determine department and semester from admission
+        # Determine department from admission
         course_info = admission.get("course_info") or {}
         department = admission.get("department") or course_info.get("category") or admission.get("courseCategory") or "General"
+
+        # Extract guardian and address fields with fallbacks
+        personal = admission.get("personal") or {}
+        address = admission.get("address") or personal.get("address") or ""
+        city = admission.get("city") or personal.get("city") or ""
+        state = admission.get("state") or personal.get("state") or ""
+        pincode = admission.get("pincode") or personal.get("pincode") or ""
         
+        guardian = (
+            admission.get("guardianName")
+            or personal.get("guardianName")
+            or admission.get("guardian")
+            or ""
+        )
+        guardian_phone = (
+            admission.get("guardianPhone")
+            or personal.get("guardianPhone")
+            or admission.get("guardian_phone")
+            or ""
+        )
+
         # Build student data with comprehensive field mappings
         student_data = {
             # ID Fields (CRITICAL - must have both)
@@ -393,10 +490,10 @@ async def _create_student_from_admission(admission: dict[str, Any]) -> bool:
             "gender": admission.get("gender") or "",
             "dateOfBirth": admission.get("dateOfBirth") or admission.get("dob") or "",
             "dob": admission.get("dateOfBirth") or admission.get("dob") or "",
-            "address": admission.get("address") or "",
-            "city": admission.get("city") or "",
-            "state": admission.get("state") or "",
-            "pincode": admission.get("pincode") or "",
+            "address": address,
+            "city": city,
+            "state": state,
+            "pincode": pincode,
             
             # Academic Information
             "department_id": department,
@@ -422,9 +519,11 @@ async def _create_student_from_admission(admission: dict[str, Any]) -> bool:
             "feeStatus": "Pending",
             
             # Guardian Information
-            "guardian": "",
-            "guardian_phone": "",
-            "guardianPhone": "",
+            "guardian": guardian,
+            "guardian_phone": guardian_phone,
+            "guardianPhone": guardian_phone,
+            "guardianEmail": admission.get("guardianEmail") or personal.get("guardianEmail") or "",
+            "relationship": admission.get("relationship") or personal.get("relationship") or "",
             
             # Appearance
             "avatar": f"https://ui-avatars.com/api/?name={name}&background=1162d4&color=fff",

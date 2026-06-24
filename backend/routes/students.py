@@ -740,7 +740,21 @@ async def bulk_import_students(payload: BulkStudentImportPayload):
                 "payment_method": "UPI",
                 "transaction_id": f"TXN-{int(datetime.now(timezone.utc).timestamp() * 1000) % 1000000}",
                 "status": "Paid"
-            }
+            },
+            # Flat fields for direct root access
+            "address": s.get("address", ""),
+            "city": s.get("city", ""),
+            "state": s.get("state", ""),
+            "pincode": s.get("pincode", ""),
+            "guardianName": s.get("guardian", s.get("guardianName", "")),
+            "guardianPhone": s.get("guardianPhone", ""),
+            "relationship": s.get("relationship", "Father"),
+            "guardianEmail": s.get("guardianEmail", ""),
+            "guardianOccupation": s.get("guardianOccupation", ""),
+            "hostelName": s.get("hostelName", ""),
+            "semester": int(s.get("semester") or 1),
+            "roll": s.get("roll") or s.get("rollNumber") or s.get("roll_number") or student_id,
+            "cgpa": float(s.get("cgpa") or 0.0),
         }
         
         # For compatibility
@@ -751,7 +765,15 @@ async def bulk_import_students(payload: BulkStudentImportPayload):
             "email": admission_record["email"],
             "phone": admission_record["phone"],
             "student_id": student_id,
-            "address": s.get("address", "")
+            "address": admission_record["address"],
+            "city": admission_record["city"],
+            "state": admission_record["state"],
+            "pincode": admission_record["pincode"],
+            "guardianName": admission_record["guardianName"],
+            "guardianPhone": admission_record["guardianPhone"],
+            "relationship": admission_record["relationship"],
+            "guardianEmail": admission_record["guardianEmail"],
+            "guardianOccupation": admission_record["guardianOccupation"],
         }
         admission_record["academic"] = {
             "previous_school": admission_record["previousSchool"],
