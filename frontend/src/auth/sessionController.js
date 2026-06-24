@@ -78,9 +78,8 @@ export function hasActiveSession() {
 
 export function updateUserData(newData) {
   const current = getUserData();
-  if (current) {
-    const updated = { ...current, ...newData };
-    sessionStorage.setItem('cmsUser', JSON.stringify(updated));
-    notifyAuthChange();
-  }
+  // Always persist — even if no prior user data exists in session storage.
+  const updated = { ...(current || {}), ...newData };
+  sessionStorage.setItem('cmsUser', JSON.stringify(updated));
+  notifyAuthChange();
 }
