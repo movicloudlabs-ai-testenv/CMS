@@ -80,7 +80,9 @@ export default function AddStudentPage() {
         if (data && data.length > 0) {
           setFormData(prev => ({
             ...prev,
-            department: prev.department || data[0].name
+            department: prev.department || data[0].name,
+            course: prev.course || data[0].code || data[0].name,
+            courseCategory: prev.courseCategory || data[0].category || 'Engineering',
           }));
         }
       } catch (err) {
@@ -397,29 +399,56 @@ export default function AddStudentPage() {
                     </select></div><div className="space-y-1"><label className="text-xs font-semibold text-gray-700">Year of Passing</label><input type="number" name="yearOfPassing" value={formData.yearOfPassing} onChange={handleChange} className={`w-full px-3 py-2 text-sm rounded-lg border ${errors.yearOfPassing ? 'border-red-400' : 'border-gray-200'} focus:outline-none focus:ring-2`} placeholder="e.g. 2023" />{errors.yearOfPassing && <p className="text-xs text-red-500 font-medium">{errors.yearOfPassing}</p>}
                   </div><div className="space-y-1"><label className="text-xs font-semibold text-gray-700">Marks Percentage</label><input name="marksPercentage" value={formData.marksPercentage} onChange={handleChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2" placeholder="e.g. 92%" /></div></div></div>)}
 
-            {/* Step 3: Course */}
+            {/* Step 3: Course / Department */}
             {step === 3 && (
               <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-gray-700">Course Category <span className="text-red-500">*</span></label>
-                    <select name="courseCategory" value={formData.courseCategory} onChange={handleChange} className={`w-full px-3 py-2 text-sm rounded-lg border ${errors.courseCategory ? 'border-red-400' : 'border-gray-200'} focus:outline-none focus:ring-2 bg-white`}>
-                      {['Engineering', 'Medicine & Health Sciences', 'Arts', 'Sciences', 'Commerce', 'Management', 'Law', 'Diploma'].map(c => <option key={c}>{c}</option>)}
-                    </select>
-                    {errors.courseCategory && <p className="text-xs text-red-500 font-medium">{errors.courseCategory}</p>}
+                {departments.length === 0 ? (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-center">
+                    <span className="material-symbols-outlined text-amber-500 text-2xl mb-2 block">warning</span>
+                    <p className="text-sm font-semibold text-amber-800">No departments available</p>
+                    <p className="text-xs text-amber-600 mt-1">Please add departments in Settings before enrolling a student.</p>
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-gray-700">Course <span className="text-red-500">*</span></label>
-                    <input name="course" value={formData.course} onChange={handleChange} className={`w-full px-3 py-2 text-sm rounded-lg border ${errors.course ? 'border-red-400' : 'border-gray-200'} focus:outline-none focus:ring-2`} placeholder="e.g. CSE, ECE, Mechanical" />
-                    {errors.course && <p className="text-xs text-red-500 font-medium">{errors.course}</p>}
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-gray-700">Department <span className="text-red-500">*</span></label>
+                      <select
+                        name="department"
+                        value={formData.department}
+                        onChange={(e) => {
+                          const selected = departments.find(d => d.name === e.target.value);
+                          setFormData(prev => ({
+                            ...prev,
+                            department: e.target.value,
+                            // Auto-set course to the department code
+                            course: selected?.code || e.target.value,
+                            courseCategory: selected?.category || prev.courseCategory,
+                          }));
+                        }}
+                        className={`w-full px-3 py-2 text-sm rounded-lg border ${
+                          errors.department ? 'border-red-400' : 'border-gray-200'
+                        } focus:outline-none focus:ring-2 focus:ring-[#276221]/20 bg-white`}
+                      >
+                        <option value="">Select Department</option>
+                        {departments.map(d => (
+                          <option key={d.id || d.code} value={d.name}>{d.name}</option>
+                        ))}
+                      </select>
+                      {errors.department && <p className="text-xs text-red-500 font-medium">{errors.department}</p>}
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-gray-700">Course</label>
+                      <input
+                        name="course"
+                        value={formData.course}
+                        readOnly
+                        className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed"
+                        placeholder="Auto-filled from department"
+                      />
+                      <p className="text-[10px] text-gray-400">Auto-filled based on selected department</p>
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-gray-700">Department <span className="text-red-500">*</span></label>
-                    <select name="department" value={formData.department} onChange={handleChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 bg-white">
-                      {(departments || []).map(d => <option key={d.id || d.code} value={d.name}>{d.name}</option>)}
-                    </select>
-                  </div>
-                </div>
+                )}
               </div>
             )}
 
