@@ -134,7 +134,9 @@ export default function FacultyPage() {
         method: 'DELETE'
       });
       if (response.ok) {
-        setFacultyList(facultyList.filter(f => f._id !== faculty._id && f.employeeId !== faculty.employeeId));
+        // Re-fetch from server to get an accurate up-to-date list
+        // (avoids client-side filter bugs with missing/mismatched _id fields)
+        await fetchFaculty();
         alert('Faculty member deleted successfully');
       } else {
         alert('Failed to delete faculty member');
