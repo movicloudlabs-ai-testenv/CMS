@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from bson import ObjectId
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Body
 
 from backend.db import get_db
 from backend.schemas.admission_schema import AdmissionCreate
@@ -722,6 +722,46 @@ async def delete_admission(admission_id: str):
         raise HTTPException(status_code=404, detail="Admission not found")
 
     return {"message": "Admission deleted successfully", "id": admission_id}
+
+
+@router.get("/{admission_id}")
+async def get_admission(admission_id: str):
+    admissions_collection = _admissions_collection()
+    doc = await admissions_collection.find_one(_build_lookup_query(admission_id))
+    if not doc:
+        raise HTTPException(status_code=404, detail="Admission not found")
+    return _serialize_admission(doc)
+
+
+@router.put("/{admission_id}/documents")
+async def update_admission_documents(admission_id: str, payload: dict = Body(...)):
+    admissions_collection = _admissions_collection()
+    
+    # Check if admission exists
+    admission = await admissions_collection.find_one(_build_lookup_query(admission_id))
+    if not admission:
+        raise HTTPException(status_code=404, detail="Admission not found")
+        
+    documents = payload.get("documents")
+    if documents is None:
+        raise HTTPException(status_code=400, detail="Missing documents in request body")
+        
+    update_data = {
+        "documents": documents,
+        "updated_at": _utc_now_iso()
+    }
+    if payload.get("status"):
+        update_data["status"] = payload.get("status")
+        
+    result = await admissions_collection.update_one(
+        _build_lookup_query(admission_id),
+        {"$set": update_data}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Admission not found")
+        
+    return {"message": "Documents updated successfully", "id": admission_id}
 
 
 # -----------------

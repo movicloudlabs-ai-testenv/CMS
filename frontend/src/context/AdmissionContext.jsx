@@ -188,6 +188,26 @@ export function AdmissionProvider({ children }) {
     }
   };
 
+  //  Update Student Documents (NEW)
+  const updateStudentDocuments = async (id, documents, status = null) => {
+    try {
+      const response = await fetch(`${API_BASE}/admissions/${id}/documents`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ documents, status }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to update student documents: ${response.statusText}`);
+      }
+
+      await fetchStudentAdmissions();
+    } catch (err) {
+      console.error(' Error updating student documents:', err);
+      throw err;
+    }
+  };
+
   const value = {
     studentApps,
     facultyApps,
@@ -199,6 +219,7 @@ export function AdmissionProvider({ children }) {
     updateFacultyStatus,
     addFacultyApp,
     addStudentApp,
+    updateStudentDocuments,
   };
 
   return (

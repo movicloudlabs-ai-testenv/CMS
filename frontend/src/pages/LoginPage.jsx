@@ -44,6 +44,97 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const loginFormSectionRef = useRef(null);
 
+  const [showTrackModal, setShowTrackModal] = useState(false);
+  const [trackAppId, setTrackAppId] = useState('');
+  const [trackedApplication, setTrackedApplication] = useState(null);
+  const [trackError, setTrackError] = useState('');
+  const [trackLoading, setTrackLoading] = useState(false);
+
+  const handleTrackApplication = async (e) => {
+    e.preventDefault();
+    if (!trackAppId.trim()) {
+      setTrackError('Please enter an Application ID.');
+      return;
+    }
+    setTrackLoading(true);
+    setTrackError('');
+    try {
+      const res = await fetch(`${API_BASE}/admissions/${trackAppId.trim()}`);
+      if (res.ok) {
+        const data = await res.json();
+        setTrackedApplication(data);
+      } else {
+        setTrackError('Application ID not found. Please double-check your ID.');
+      }
+    } catch (err) {
+      console.error('Error tracking application:', err);
+      setTrackError('Network error. Failed to reach the server.');
+    } finally {
+      setTrackLoading(false);
+    }
+  };
+
+  const handleStudentDocUpload = async (docId, file) => {
+    if (!file || !trackedApplication) return;
+    
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      try {
+        const standardDocTypes = [
+          { id: 'DOC-01', name: 'Passport Photo' },
+          { id: 'DOC-02', name: 'Aadhaar Card' },
+          { id: 'DOC-03', name: 'Marksheet' },
+          { id: 'DOC-04', name: 'Transfer Certificate' },
+        ];
+        
+        const currentDocs = [...(trackedApplication.documents || [])];
+        const docIndex = currentDocs.findIndex(d => d.id === docId);
+        
+        const newDoc = {
+          id: docId,
+          name: standardDocTypes.find(t => t.id === docId)?.name || 'Document',
+          type: 'base64',
+          status: 'Uploaded',
+          data: {
+            name: file.name,
+            size: file.size,
+            data: reader.result
+          }
+        };
+
+        if (docIndex > -1) {
+          currentDocs[docIndex] = newDoc;
+        } else {
+          currentDocs.push(newDoc);
+        }
+        
+        const anyRemainingRequest = currentDocs.some(d => d.status === 'Pending Re-upload');
+        const newAppStatus = anyRemainingRequest ? 'Pending Documents' : 'Pending';
+
+        const res = await fetch(`${API_BASE}/admissions/${trackedApplication.id}/documents`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ documents: currentDocs, status: newAppStatus }),
+        });
+
+        if (!res.ok) {
+          throw new Error('Failed to save document on the server');
+        }
+
+        alert('Document uploaded successfully!');
+        
+        const refreshRes = await fetch(`${API_BASE}/admissions/${trackedApplication.id}`);
+        if (refreshRes.ok) {
+          const freshData = await refreshRes.json();
+          setTrackedApplication(freshData);
+        }
+      } catch (err) {
+        alert('Upload failed: ' + err.message);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   const [systemSettings, setSystemSettings] = useState(null);
 
   useEffect(() =>{
@@ -186,5 +277,196 @@ export default function LoginPage() {
                   ><span style={{ fontSize: '14px' }}>{roleIcons[demoRole]}</span>{demoRole.charAt(0).toUpperCase() + demoRole.slice(1)}
                   </button>))}
               </div></div><button type="submit" className="btn-login" id="loginBtn" disabled={loading}><LoginArrowIcon />{loading ? 'Signing in…' : 'Sign In'}
-            </button></form></section></div></div>);
+            </button></form>
+            <div style={{ textAlign: 'center', marginTop: '16px' }}>
+              <button
+                type="button"
+                onClick={() => setShowTrackModal(true)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#276221',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  textDecoration: 'underline',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}
+              >
+                Track Admission Status & Upload Documents
+              </button>
+            </div>
+          </section>
+        </div>
+
+        {showTrackModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6 relative max-h-[90vh] overflow-y-auto">
+              <button
+                onClick={() => {
+                  setShowTrackModal(false);
+                  setTrackedApplication(null);
+                  setTrackAppId('');
+                  setTrackError('');
+                }}
+                className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-xl font-bold"
+              >
+                &times;
+              </button>
+
+              <h2 className="text-xl font-bold text-gray-800 mb-2">Track Admission Application</h2>
+              <p className="text-xs text-gray-500 mb-6">Enter your Application ID below to check your status and upload requested documents.</p>
+
+              {!trackedApplication ? (
+                <form onSubmit={handleTrackApplication} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Application ID</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. STU-1782290094407"
+                      value={trackAppId}
+                      onChange={(e) => setTrackAppId(e.target.value)}
+                      className="w-full px-4 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600"
+                    />
+                  </div>
+                  {trackError && <p className="text-xs text-red-500 font-medium">{trackError}</p>}
+                  <button
+                    type="submit"
+                    disabled={trackLoading}
+                    className="w-full py-2 bg-[#276221] text-white rounded-lg text-sm font-semibold hover:bg-[#1e4618] transition disabled:opacity-50"
+                  >
+                    {trackLoading ? 'Searching...' : 'Track Application'}
+                  </button>
+                </form>
+              ) : (
+                <div className="space-y-6">
+                  <div className="bg-gray-50 p-4 rounded-lg space-y-2 border">
+                    <p className="text-xs text-gray-500 font-medium font-semibold">Applicant Details</p>
+                    <h3 className="text-sm font-bold text-gray-800">{trackedApplication.fullName || trackedApplication.name}</h3>
+                    <p className="text-xs text-gray-600">Course: <span className="font-semibold text-gray-700">{trackedApplication.course}</span></p>
+                    <p className="text-xs text-gray-600">ID: <span className="font-mono text-gray-700 font-semibold">{trackedApplication.id}</span></p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-xs text-gray-500 font-medium font-semibold">Application Status</p>
+                    <div className={`p-4 rounded-lg border flex flex-col gap-1 ${
+                      trackedApplication.status === 'Approved'
+                        ? 'bg-green-50 border-green-200 text-green-800'
+                        : trackedApplication.status === 'Rejected'
+                        ? 'bg-red-50 border-red-200 text-red-800'
+                        : trackedApplication.status === 'Pending Documents'
+                        ? 'bg-amber-50 border-amber-200 text-amber-800'
+                        : 'bg-orange-50 border-orange-200 text-orange-800'
+                    }`}>
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2.5 h-2.5 rounded-full ${
+                          trackedApplication.status === 'Approved'
+                            ? 'bg-green-500'
+                            : trackedApplication.status === 'Rejected'
+                            ? 'bg-red-500'
+                            : 'bg-amber-500'
+                        }`} />
+                        <span className="text-sm font-bold uppercase tracking-wider">{trackedApplication.status}</span>
+                      </div>
+                      <p className="text-xs mt-1 leading-relaxed">
+                        {trackedApplication.status === 'Approved'
+                          ? 'Congratulations! Your application is approved. You can now sign in using your Application ID as your student login ID.'
+                          : trackedApplication.status === 'Rejected'
+                          ? 'We regret to inform you that your application has been rejected. Please contact the admissions office for further details.'
+                          : trackedApplication.status === 'Pending Documents'
+                          ? 'Action Required: The administration team has requested updated documents. Please check the document list below and re-upload the highlighted documents.'
+                          : 'Your application is currently under review. The administrative team is verifying your details.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Document upload list for student */}
+                  <div className="space-y-3">
+                    <p className="text-xs text-gray-500 font-medium font-semibold">Required Documents</p>
+                    <div className="space-y-2">
+                      {[
+                        { id: 'DOC-01', name: 'Passport Photo' },
+                        { id: 'DOC-02', name: 'Aadhaar Card' },
+                        { id: 'DOC-03', name: 'Marksheet' },
+                        { id: 'DOC-04', name: 'Transfer Certificate' }
+                      ].map(docType => {
+                        const doc = (trackedApplication.documents || []).find(d => d.id === docType.id);
+                        const hasFile = doc && doc.data;
+                        const isRequested = doc && doc.status === 'Pending Re-upload';
+
+                        return (
+                          <div key={docType.id} className="p-3 border rounded-lg bg-gray-50 flex items-center justify-between gap-4">
+                            <div className="min-w-0 flex-1">
+                              <h4 className="text-xs font-semibold text-gray-800">{docType.name}</h4>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${
+                                  isRequested 
+                                    ? 'bg-amber-100 text-amber-800 border border-amber-200 animate-pulse'
+                                    : hasFile
+                                    ? 'bg-green-100 text-green-800 border border-green-200'
+                                    : 'bg-gray-100 text-gray-500 border border-gray-200'
+                                }`}>
+                                  {isRequested ? 'Action Required' : hasFile ? 'Uploaded' : 'Missing'}
+                                </span>
+                                {hasFile && (
+                                  <span className="text-[10px] text-gray-500 truncate max-w-[120px]">
+                                    {doc.data.name || 'document_file'}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex-shrink-0">
+                              {isRequested ? (
+                                <label className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white text-xs rounded font-semibold transition cursor-pointer flex items-center justify-center">
+                                  Upload
+                                  <input
+                                    type="file"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) handleStudentDocUpload(docType.id, file);
+                                    }}
+                                  />
+                                </label>
+                              ) : hasFile ? (
+                                <span className="text-xs text-green-600 font-semibold flex items-center gap-0.5">
+                                  ✓ Verified
+                                </span>
+                              ) : (
+                                <label className="px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs rounded font-semibold transition cursor-pointer flex items-center justify-center">
+                                  Upload
+                                  <input
+                                    type="file"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) handleStudentDocUpload(docType.id, file);
+                                    }}
+                                  />
+                                </label>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  
+                  <button
+                    onClick={() => {
+                      setTrackedApplication(null);
+                      setTrackAppId('');
+                      setTrackError('');
+                    }}
+                    className="w-full py-2 bg-gray-100 border text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-200 transition"
+                  >
+                    Track Another Application
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+    </div>);
 }
