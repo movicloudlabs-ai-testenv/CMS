@@ -815,23 +815,31 @@ async def create_faculty(faculty: Faculty):
 async def _get_next_faculty_id():
     db = get_db()
     collection = db["faculty"]
-    # Find the highest employeeId with FAC prefix
-    cursor = (
-        collection.find({"employeeId": {"$regex": "^FAC"}}, {"employeeId": 1})
-        .sort("employeeId", -1)
-        .limit(1)
+    # Scan ALL existing FAC-NNN ids and find the true numeric maximum.
+    # The old code used last_id[3:] which kept the dash → int("-203") = -203,
+    # breaking arithmetic and always falling back to FAC001 (causing duplicates).
+    max_num = 200  # start from FAC-201 for new installs
+    cursor = collection.find(
+        {"employeeId": {"$regex": "^FAC-\\d+$"}}, {"employeeId": 1}
     )
     async for doc in cursor:
-        last_id = doc.get("employeeId")
-        if last_id and last_id.startswith("FAC"):
-            try:
-                # Extract the number part
-                num_str = last_id[3:]
-                num = int(num_str)
-                return f"FAC{str(num + 1).zfill(3)}"
-            except (ValueError, IndexError):
-                pass
-    return "FAC001"
+        last_id = doc.get("employeeId", "")
+        try:
+            # Format is FAC-NNN; split on dash to get the numeric part
+            num = int(last_id.split("-", 1)[1])
+            if num > max_num:
+                max_num = num
+        except (ValueError, IndexError):
+            pass
+
+    # Loop until we find an ID not already in use (guards against races)
+    candidate_num = max_num + 1
+    while True:
+        candidate = f"FAC-{candidate_num}"
+        existing = await collection.find_one({"employeeId": candidate})
+        if not existing:
+            return candidate
+        candidate_num += 1
 
 
 def get_role_from_designation(designation: str) -> str:
