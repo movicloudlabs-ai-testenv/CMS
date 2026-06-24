@@ -104,7 +104,12 @@ async def _find_student(db, user_id: str, password: str) -> dict | None:
             return None
 
     # Check if we should upgrade the student document subjects in MongoDB to have rich semesters/years
-    if user and (len(user.get("subjects", [])) == 5 or all("semester" not in s for s in user.get("subjects", []))):
+    is_demo_student = (
+        user.get("id") == "STU-2024-1547"
+        or user.get("rollNumber") == "STU-2024-1547"
+        or user.get("email") == "john.anderson@mit.edu"
+    )
+    if user and is_demo_student and user.get("subjects") and (len(user.get("subjects", [])) == 5 or all("semester" not in s for s in user.get("subjects", []))):
         rich_subjects = [
             {"code": "CS101", "name": "Introduction to Programming", "grade": "A+", "total": 92, "semester": 1, "year": "1st Year"},
             {"code": "MA101", "name": "Calculus & Linear Algebra", "grade": "B", "total": 68, "semester": 1, "year": "1st Year"},
