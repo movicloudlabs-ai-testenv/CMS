@@ -633,6 +633,162 @@ function OverviewTab({ student }) {
     }
   };
 
+  // --- Dynamic GPA Trend Calculation ---
+  const GRADE_POINTS = {
+    'A+': 10.0,
+    'A': 9.0,
+    'B+': 8.0,
+    'B': 7.0,
+    'C+': 6.0,
+    'C': 5.0,
+    'D': 4.0,
+    'F': 0.0,
+  };
+
+  const subjects = student.subjects || [];
+  const semestersData = {};
+
+  subjects.forEach(sub => {
+    const sem = sub.semester;
+    if (!sem) return;
+    
+    if (!semestersData[sem]) {
+      semestersData[sem] = { totalPoints: 0, totalCredits: 0 };
+    }
+    
+    if (sub.grade === 'Pending' || sub.status === 'In Progress') {
+      return;
+    }
+    
+    const gradePoint = GRADE_POINTS[sub.grade];
+    if (gradePoint !== undefined) {
+      const credits = parseFloat(sub.credits) || 4.0;
+      semestersData[sem].totalPoints += gradePoint * credits;
+      semestersData[sem].totalCredits += credits;
+    }
+  });
+
+  const semestersList = [];
+  const maxSem = Math.max(4, ...Object.keys(semestersData).map(Number));
+
+  for (let sem = 1; sem <= maxSem; sem++) {
+    const data = semestersData[sem];
+    const gpa = data && data.totalCredits > 0 ? (data.totalPoints / data.totalCredits) : 0;
+    semestersList.push({
+      semester: sem,
+      gpa: parseFloat(gpa.toFixed(2)),
+      hasData: !!(data && data.totalCredits > 0)
+    });
+  }
+
+  let totalGpaSum = 0;
+  let semestersWithData = 0;
+  semestersList.forEach(s => {
+    if (s.hasData) {
+      totalGpaSum += s.gpa;
+      semestersWithData++;
+    }
+  });
+  
+  const averageGpa = semestersWithData > 0 ? totalGpaSum / semestersWithData : 0;
+  let averageLabel = "No GPA Recorded";
+  if (averageGpa >= 9.0) averageLabel = "O Outstanding";
+  else if (averageGpa >= 8.0) averageLabel = "A+ Excellent";
+  else if (averageGpa >= 7.0) averageLabel = "A Good";
+  else if (averageGpa >= 6.0) averageLabel = "B+ Average";
+  else if (averageGpa >= 5.0) averageLabel = "B Below Average";
+  else if (averageGpa > 0) averageLabel = "C Re-eval required";
+
+  // --- Dynamic Attendance Calendar Generation ---
+  const attendancePct = student.attendancePct !== undefined ? student.attendancePct : 0;
+  const currentDate = new Date();
+  const currentMonthName = currentDate.toLocaleString('default', { month: 'long' });
+  const currentYear = currentDate.getFullYear();
+
+  const firstDayOfMonth = new Date(currentYear, currentDate.getMonth(), 1);
+  const rawDayOfWeek = firstDayOfMonth.getDay(); // 0 = Sunday, 1 = Monday...
+  const startOffset = rawDayOfWeek === 0 ? 6 : rawDayOfWeek - 1; // Monday = 0
+  const totalDays = new Date(currentYear, currentDate.getMonth() + 1, 0).getDate();
+
+  const getDayStatus = (dayNum, dayOfWeek) => {
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+    if (isWeekend) return 'weekend';
+    if (dayNum > currentDate.getDate()) return 'future';
+    if (!attendancePct || attendancePct === 0) return 'no-data';
+
+    // Deterministic pseudo-random generation to match the attendance percentage
+    const hash = (dayNum * 19 + 7) % 100;
+    return hash < attendancePct ? 'present' : 'absent';
+  };
+
+  // --- Dynamic Academic Alert Configuration ---
+  const getAlertConfig = () => {
+    const failedSubjects = subjects.filter(s => s.grade === 'F' || s.status === 'Failed');
+    const hasBacklogs = failedSubjects.length > 0;
+    const cgpaVal = typeof student.cgpa === 'number' ? student.cgpa : parseFloat(student.cgpa) || 0.0;
+    const isNewStudent = subjects.length === 0;
+
+    if (hasBacklogs) {
+      return {
+        title: "Academic Alert: Backlogs Detected",
+        message: `${student.name} has backlog(s) in: ${failedSubjects.map(s => s.code).join(', ')}. Please contact the academic advisor to schedule remedial classes.`,
+        icon: "warning",
+        bgColor: "bg-red-50 border-red-200",
+        textColor: "text-red-800",
+        iconBg: "bg-red-600 shadow-red-200",
+        iconColor: "text-white"
+      };
+    }
+
+    if (attendancePct > 0 && attendancePct < 75) {
+      return {
+        title: "Critical Alert: Low Attendance",
+        message: `${student.name}'s attendance is currently at ${attendancePct}%, which falls below the mandatory 75% threshold. Immediate improvement is required to avoid exam debarment.`,
+        icon: "event_busy",
+        bgColor: "bg-amber-50 border-amber-200",
+        textColor: "text-amber-800",
+        iconBg: "bg-amber-500 shadow-amber-200",
+        iconColor: "text-white"
+      };
+    }
+
+    if (cgpaVal >= 8.5) {
+      return {
+        title: "Academic Distinction: Honor Roll",
+        message: `Congratulations! ${student.name} has achieved an outstanding academic performance with a CGPA of ${cgpaVal.toFixed(2)}. Keep up the excellent work!`,
+        icon: "workspace_premium",
+        bgColor: "bg-[#276221]/5 border-[#276221]/20",
+        textColor: "text-[#276221]",
+        iconBg: "bg-[#276221] shadow-green-200",
+        iconColor: "text-yellow-300"
+      };
+    }
+
+    if (isNewStudent) {
+      return {
+        title: "Academic Status: Welcome",
+        message: `Welcome, ${student.name}! You are newly enrolled. Your academic records, GPA trends, and class attendance will populate here once classes and exams begin.`,
+        icon: "school",
+        bgColor: "bg-blue-50/50 border-blue-200",
+        textColor: "text-blue-800",
+        iconBg: "bg-blue-600 shadow-blue-200",
+        iconColor: "text-white"
+      };
+    }
+
+    return {
+      title: "Academic Status: Normal",
+      message: `${student.name} is in good academic standing. All requirements for the current academic session are being met successfully.`,
+      icon: "check_circle",
+      bgColor: "bg-[#276221]/5 border-[#276221]/10",
+      textColor: "text-[#276221]",
+      iconBg: "bg-[#276221] shadow-[#276221]/10",
+      iconColor: "text-white"
+    };
+  };
+
+  const alert = getAlertConfig();
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
       {/* Left Column - Core Info */}
@@ -809,7 +965,7 @@ function OverviewTab({ student }) {
               <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100 justify-center">
                 <div className="text-center">
                   <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Attendance</p>
-                  <p className="text-lg font-bold text-[#276221] mt-1">{student.attendancePct || 0}%</p>
+                  <p className="text-lg font-bold text-[#276221] mt-1">{attendancePct}%</p>
                 </div>
               </div>
               <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100 justify-center">
@@ -825,57 +981,115 @@ function OverviewTab({ student }) {
 
       {/* Right Column - Trends & Status */}
       <div className="lg:col-span-4 space-y-8">
-        {/* GPA Trend Mock */}
+        {/* GPA Trend Card */}
         <div className="bg-white rounded-xl border border-slate-200 p-8 shadow-sm">
           <div className="flex items-center justify-between mb-8">
             <h3 className="text-sm font-semibold text-slate-800 uppercase tracking-wider text-slate-900 leading-none">GPA Trend</h3>
-            <span className="px-2 py-0.5 bg-green-50 text-[#276221] rounded text-[9px] font-bold uppercase tracking-wider">B+ Average</span>
+            <span className="px-2 py-0.5 bg-green-50 text-[#276221] rounded text-[9px] font-bold uppercase tracking-wider">{averageLabel}</span>
           </div>
-          <div className="flex items-end justify-between h-24 gap-2 mb-4">
-            {[35, 45, 100, 40].map((h, i) => (
-              <div key={i} className="flex-1 flex flex-col items-center gap-2">
-                <div 
-                  className={`w-full rounded-md transition-all duration-1000 ${i === 2 ? 'bg-[#276221]' : 'bg-[#276221]/20'}`} 
-                  style={{ height: `${h}%` }} 
-                />
-                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">SEM{i+1}</span>
+          <div className="flex items-end justify-between h-24 gap-2 mb-4 relative">
+            {semestersWithData === 0 && (
+              <div className="absolute inset-0 flex items-center justify-center bg-slate-50/70 rounded-lg backdrop-blur-[0.5px]">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider bg-white px-3 py-1.5 rounded-full border border-slate-200 shadow-sm">
+                  No GPA Records Available
+                </span>
               </div>
-            ))}
+            )}
+            {semestersList.map((semInfo) => {
+              const heightPct = semInfo.hasData ? (semInfo.gpa / 10.0) * 100 : 0;
+              return (
+                <div key={semInfo.semester} className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
+                  {semInfo.hasData && (
+                    <span className="text-[9px] font-bold text-[#276221] leading-none mb-0.5">{semInfo.gpa}</span>
+                  )}
+                  <div 
+                    className={`w-full rounded-md transition-all duration-1000 ${
+                      semInfo.hasData 
+                        ? 'bg-[#276221]' 
+                        : 'bg-slate-100 border border-dashed border-slate-200'
+                    }`} 
+                    style={{ height: semInfo.hasData ? `${heightPct}%` : '8px' }} 
+                    title={semInfo.hasData ? `Semester ${semInfo.semester} GPA: ${semInfo.gpa}` : `Semester ${semInfo.semester}: No records`}
+                  />
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">SEM{semInfo.semester}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
 
-        {/* Attendance Calendar Mock */}
+        {/* Attendance Calendar Card */}
         <div className="bg-white rounded-xl border border-slate-200 p-8 shadow-sm">
            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-sm font-semibold text-slate-800 uppercase tracking-wider">Attendance: June 2024</h3>
+              <h3 className="text-sm font-semibold text-slate-800 uppercase tracking-wider">Attendance: {currentMonthName} {currentYear}</h3>
               <div className="flex gap-1">
-                 <div className="w-2 h-2 rounded-full bg-green-500" />
-                 <div className="w-2 h-2 rounded-full bg-red-400" />
+                 <div className="w-2 h-2 rounded-full bg-green-500" title="Present" />
+                 <div className="w-2 h-2 rounded-full bg-red-400" title="Absent" />
               </div>
            </div>
-           <div className="grid grid-cols-7 gap-2">
+           <div className="grid grid-cols-7 gap-2 mb-4">
               {['M','T','W','T','F','S','S'].map(d => (
                 <div key={d} className="text-center text-[9px] font-bold text-slate-300 py-1">{d}</div>
               ))}
-              {Array.from({length: 21}).map((_, i) => (
-                <div key={i} className={`aspect-square rounded-md border border-slate-50 transition-colors cursor-pointer ${
-                  i === 15 ? 'bg-red-400' : 
-                  i % 3 === 0 ? 'bg-green-100' : 
-                  i % 2 === 0 ? 'bg-green-400' : 'bg-green-50'
-                }`} />
+              {Array.from({ length: startOffset }).map((_, idx) => (
+                <div key={`pad-${idx}`} className="aspect-square bg-transparent" />
               ))}
+              {Array.from({ length: totalDays }).map((_, idx) => {
+                const dayNum = idx + 1;
+                const date = new Date(currentYear, currentDate.getMonth(), dayNum);
+                const dayOfWeek = date.getDay();
+                const status = getDayStatus(dayNum, dayOfWeek);
+                
+                let bgClass = 'bg-slate-50 border border-slate-100';
+                let titleText = `Day ${dayNum}`;
+                
+                if (status === 'present') {
+                  bgClass = 'bg-green-500 text-white';
+                  titleText = `Day ${dayNum}: Present`;
+                } else if (status === 'absent') {
+                  bgClass = 'bg-red-400 text-white';
+                  titleText = `Day ${dayNum}: Absent`;
+                } else if (status === 'weekend') {
+                  bgClass = 'bg-slate-50 text-slate-300 cursor-not-allowed';
+                  titleText = `Day ${dayNum}: Weekend`;
+                } else if (status === 'future') {
+                  bgClass = 'bg-slate-50/50 text-slate-200 cursor-not-allowed';
+                  titleText = `Day ${dayNum}: Scheduled`;
+                } else if (status === 'no-data') {
+                  bgClass = 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed';
+                  titleText = `Day ${dayNum}: No attendance logs`;
+                }
+                
+                return (
+                  <div 
+                    key={`day-${dayNum}`} 
+                    className={`aspect-square rounded-md flex items-center justify-center text-[9px] font-bold transition-all ${bgClass}`}
+                    title={titleText}
+                  >
+                    {dayNum}
+                  </div>
+                );
+              })}
            </div>
+           {attendancePct === 0 ? (
+             <p className="text-[10px] text-slate-400 italic text-center">* No attendance logs exist for this session.</p>
+           ) : (
+             <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium">
+               <span>Rate: {attendancePct}%</span>
+               <span>{currentMonthName} {currentYear} estimate</span>
+             </div>
+           )}
         </div>
 
-        {/* Academic Alert */}
-        <div className="bg-[#276221]/5 border border-[#276221]/10 rounded-xl p-8 flex gap-4">
-           <div className="w-10 h-10 bg-[#276221] rounded-lg flex items-center justify-center text-white shrink-0 shadow-lg shadow-[#276221]/10">
-              <span className="material-symbols-outlined text-[20px]">info</span>
+        {/* Academic Alert Card */}
+        <div className={`border rounded-xl p-8 flex gap-4 transition-all duration-300 ${alert.bgColor}`}>
+           <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 shadow-lg ${alert.iconBg}`}>
+              <span className={`material-symbols-outlined text-[20px] ${alert.iconColor}`}>{alert.icon}</span>
            </div>
            <div>
-              <p className="text-xs font-semibold text-[#276221] uppercase tracking-wider mb-1">Academic Alert</p>
-              <p className="text-xs font-medium text-[#276221]/80 leading-relaxed">
-                {student.name} has successfully completed 85% of his credit requirements for the current year.
+              <p className={`text-xs font-semibold uppercase tracking-wider mb-1 ${alert.textColor}`}>{alert.title}</p>
+              <p className={`text-xs font-medium leading-relaxed ${alert.textColor}/90`}>
+                {alert.message}
               </p>
            </div>
         </div>
