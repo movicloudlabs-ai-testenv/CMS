@@ -1149,13 +1149,63 @@ export default function StudentDetailPage() {
     const fetchStudent = async () => {
       try {
         setLoading(true)
-        const res = await fetch(buildApiUrl(`/students/${encodeURIComponent(id)}`))
+        const [res, examsRes, marksRes] = await Promise.all([
+          fetch(buildApiUrl(`/students/${encodeURIComponent(id)}`)),
+          fetch(buildApiUrl(`/exams`)),
+          fetch(buildApiUrl(`/exams/marks?student_id=${encodeURIComponent(id)}`))
+        ])
         if (!res.ok) {
           if (res.status === 404) throw new Error('Student not found')
           throw new Error('Failed to fetch student details')
         }
         const data = await res.json()
-        setStudent(data)
+        
+        let allExams = [];
+        let studentMarks = [];
+        if (examsRes && examsRes.ok) {
+          const examsData = await examsRes.json();
+          allExams = examsData.data || [];
+        }
+        if (marksRes && marksRes.ok) {
+          const marksData = await marksRes.json();
+          studentMarks = marksData.data || [];
+        }
+
+        const norm = (c) => String(c || '').replace(/[-_\s]+/g, '').toUpperCase();
+
+        // Map subjects to End-Sem marks
+        const mapped = (data.subjects || []).map(sub => {
+          const subCodeNorm = norm(sub.code);
+          const endSemExam = allExams.find(e => norm(e.code) === subCodeNorm && e.type === 'End-Sem');
+          let marksRecord = null;
+          if (endSemExam) {
+            const examId = endSemExam._id || endSemExam.id;
+            marksRecord = studentMarks.find(m => String(m.examId) === String(examId));
+          }
+          if (!marksRecord) {
+            marksRecord = studentMarks.find(m => {
+              const ex = allExams.find(e => String(e._id || e.id) === String(m.examId));
+              return ex && norm(ex.code) === subCodeNorm && ex.type === 'End-Sem';
+            });
+          }
+          return {
+            ...sub,
+            grade: marksRecord ? (marksRecord.grade || 'Pending') : 'Pending',
+            total: marksRecord ? (marksRecord.marks !== undefined ? marksRecord.marks : null) : null
+          };
+        });
+
+        // Calculate dynamic CGPA based only on End-Sem passed courses
+        const passed = mapped.filter(s => s.grade && s.grade !== 'Pending' && s.grade !== 'F');
+        const totalObtained = passed.reduce((acc, s) => acc + (s.total || 0), 0);
+        const totalMax = passed.length * 100;
+        const calculatedCgpa = totalMax > 0 ? ((totalObtained / totalMax) * 10).toFixed(2) : '0.00';
+
+        setStudent({
+          ...data,
+          subjects: mapped,
+          cgpa: calculatedCgpa
+        })
         setError(null)
       } catch (err) {
         console.error('Error fetching student:', err)

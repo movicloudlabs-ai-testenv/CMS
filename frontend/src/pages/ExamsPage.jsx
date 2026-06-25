@@ -78,6 +78,8 @@ export default function ExamsPage({ noLayout = false }) {
   const [yearFilter, setYearFilter] = useState('All')
   const [semesterFilter, setSemesterFilter] = useState('All')
   const [loadingStudent, setLoadingStudent] = useState(false)
+  const [studentMarks, setStudentMarks] = useState([])
+  const [allExams, setAllExams] = useState([])
 
   // Fetch list of students for Admin/Faculty
   useEffect(() => {
@@ -100,41 +102,83 @@ export default function ExamsPage({ noLayout = false }) {
     }
   }, [activeExamsTab, isAdmin, isFaculty, studentsList.length]);
 
-  // Fetch selected student details
+  // Fetch selected student details and marks
   useEffect(() => {
     if (selectedStudentId) {
-      const fetchDetails = async () => {
+      const fetchDetailsAndMarks = async () => {
         setLoadingStudent(true);
         try {
-          const res = await fetch(buildApiUrl(`/students/${selectedStudentId}`));
+          const [res, marksData] = await Promise.all([
+            fetch(buildApiUrl(`/students/${selectedStudentId}`)),
+            listMarks({ studentId: selectedStudentId })
+          ]);
           if (res.ok) {
             const data = await res.json();
             setStudentDetails(data);
           }
+          setStudentMarks(marksData || []);
         } catch (err) {
-          console.error("Failed to fetch student details:", err);
+          console.error("Failed to fetch student details/marks:", err);
+          setStudentMarks([]);
         } finally {
           setLoadingStudent(false);
         }
       };
-      fetchDetails();
+      fetchDetailsAndMarks();
+    } else {
+      setStudentDetails(null);
+      setStudentMarks([]);
     }
   }, [selectedStudentId]);
 
+  // Mapped subjects list based on live End-Sem marks
+  const mappedSubjects = useMemo(() => {
+    if (!studentDetails?.subjects) return [];
+
+    const norm = (c) => String(c || '').replace(/[-_\s]+/g, '').toUpperCase();
+
+    return studentDetails.subjects.map(sub => {
+      const subCodeNorm = norm(sub.code);
+
+      // Find an End-Sem exam for this subject
+      const endSemExam = allExams.find(e => norm(e.code) === subCodeNorm && e.type === 'End-Sem');
+
+      // If we found an End-Sem exam, find the student's mark for it
+      let marksRecord = null;
+      if (endSemExam) {
+        const examId = endSemExam._id || endSemExam.id;
+        marksRecord = studentMarks.find(m => String(m.examId) === String(examId));
+      }
+
+      // Fallback: search studentMarks for any mark where the corresponding exam has type 'End-Sem' and matches code
+      if (!marksRecord) {
+        marksRecord = studentMarks.find(m => {
+          const ex = allExams.find(e => String(e._id || e.id) === String(m.examId));
+          return ex && norm(ex.code) === subCodeNorm && ex.type === 'End-Sem';
+        });
+      }
+
+      return {
+        ...sub,
+        grade: marksRecord ? (marksRecord.grade || 'Pending') : 'Pending',
+        total: marksRecord ? (marksRecord.marks !== undefined ? marksRecord.marks : null) : null
+      };
+    });
+  }, [studentDetails, studentMarks, allExams]);
+
   // Filtered subjects list
   const filteredSubjects = useMemo(() => {
-    if (!studentDetails?.subjects) return [];
-    return studentDetails.subjects.filter(sub => {
+    return mappedSubjects.filter(sub => {
       const matchesYear = yearFilter === 'All' || sub.year === yearFilter;
       const matchesSem = semesterFilter === 'All' || sub.semester?.toString() === semesterFilter;
       return matchesYear && matchesSem;
     });
-  }, [studentDetails, yearFilter, semesterFilter]);
+  }, [mappedSubjects, yearFilter, semesterFilter]);
 
   // Dynamic statistics for marks tab
   const marksStats = useMemo(() => {
-    if (!studentDetails?.subjects) return { gpa: '0.00', cgpa: '0.00', coursesCount: 0, passedCredits: 0 };
-    const allPassed = studentDetails.subjects.filter(s => s.grade && s.grade !== 'Pending' && s.grade !== 'F');
+    if (mappedSubjects.length === 0) return { gpa: '0.00', cgpa: '0.00', coursesCount: 0, passedCredits: 0 };
+    const allPassed = mappedSubjects.filter(s => s.grade && s.grade !== 'Pending' && s.grade !== 'F');
     const allObtained = allPassed.reduce((s, sub) => s + (sub.total || 0), 0);
     const allMax = allPassed.length * 100;
     const cgpa = allMax > 0 ? ((allObtained / allMax) * 10).toFixed(2) : '0.00';
@@ -145,7 +189,7 @@ export default function ExamsPage({ noLayout = false }) {
     const gpa = activeMax > 0 ? ((activeObtained / activeMax) * 10).toFixed(2) : '0.00';
 
     return { gpa, cgpa, coursesCount: filteredSubjects.length, passedCredits: activePassed.length * 4 };
-  }, [studentDetails, filteredSubjects]);
+  }, [mappedSubjects, filteredSubjects]);
   
   // Handle exam registration
   const handleRegister = async (examId) => {
@@ -206,6 +250,15 @@ export default function ExamsPage({ noLayout = false }) {
   // Fetch exams from backend
   useEffect(() => {
     fetchExams()
+    const loadAll = async () => {
+      try {
+        const list = await listExams()
+        setAllExams(list)
+      } catch (err) {
+        console.error('Failed to load all exams:', err)
+      }
+    }
+    loadAll()
   }, [])
 
   const fetchExams = async () => {

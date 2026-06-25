@@ -92,10 +92,59 @@ export default function DashboardPage() {
             setFreshUserData(profileData);
           }
         } else if (role === 'student' && sessionUserId) {
-          const res = await fetch(`${API_BASE}/students/${encodeURIComponent(sessionUserId)}`);
-          if (res.ok) {
-            const stuData = await res.json();
-            setFreshUserData(stuData);
+          const [stuRes, examsRes, marksRes] = await Promise.all([
+            fetch(`${API_BASE}/students/${encodeURIComponent(sessionUserId)}`),
+            fetch(`${API_BASE}/exams`),
+            fetch(`${API_BASE}/exams/marks?student_id=${encodeURIComponent(sessionUserId)}`)
+          ]);
+          if (stuRes.ok) {
+            const stuData = await stuRes.json();
+            let allExams = [];
+            let studentMarks = [];
+            if (examsRes && examsRes.ok) {
+              const examsData = await examsRes.json();
+              allExams = examsData.data || [];
+            }
+            if (marksRes && marksRes.ok) {
+              const marksData = await marksRes.json();
+              studentMarks = marksData.data || [];
+            }
+
+            const norm = (c) => String(c || '').replace(/[-_\s]+/g, '').toUpperCase();
+
+            // Map subjects to End-Sem marks
+            const mapped = (stuData.subjects || []).map(sub => {
+              const subCodeNorm = norm(sub.code);
+              const endSemExam = allExams.find(e => norm(e.code) === subCodeNorm && e.type === 'End-Sem');
+              let marksRecord = null;
+              if (endSemExam) {
+                const examId = endSemExam._id || endSemExam.id;
+                marksRecord = studentMarks.find(m => String(m.examId) === String(examId));
+              }
+              if (!marksRecord) {
+                marksRecord = studentMarks.find(m => {
+                  const ex = allExams.find(e => String(e._id || e.id) === String(m.examId));
+                  return ex && norm(ex.code) === subCodeNorm && ex.type === 'End-Sem';
+                });
+              }
+              return {
+                ...sub,
+                grade: marksRecord ? (marksRecord.grade || 'Pending') : 'Pending',
+                total: marksRecord ? (marksRecord.marks !== undefined ? marksRecord.marks : null) : null
+              };
+            });
+
+            // Calculate dynamic CGPA based only on End-Sem passed courses
+            const passed = mapped.filter(s => s.grade && s.grade !== 'Pending' && s.grade !== 'F');
+            const totalObtained = passed.reduce((acc, s) => acc + (s.total || 0), 0);
+            const totalMax = passed.length * 100;
+            const calculatedCgpa = totalMax > 0 ? ((totalObtained / totalMax) * 10).toFixed(2) : '0.00';
+
+            setFreshUserData({
+              ...stuData,
+              subjects: mapped,
+              cgpa: calculatedCgpa
+            });
           }
         }
 
