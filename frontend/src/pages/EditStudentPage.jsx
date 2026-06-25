@@ -14,6 +14,10 @@ export default function EditStudentPage() {
     name: '', email: '', phone: '', gender: '', dob: '',
     department: '', year: '', semester: '', section: '',
     address: '', bloodGroup: '', status: 'Active',
+    guardianName: '', relationship: 'Father', guardianPhone: '', guardianEmail: '', guardianOccupation: '',
+    quota: 'Government Quota', accommodation: 'Day Scholar', hostelName: '', roomType: '', admissionType: 'Regular',
+    previousSchool: '', board: 'CBSE', yearOfPassing: '', marksPercentage: '',
+    paymentMethod: '', transactionId: '', feeAmount: '500',
   });
   const [departments, setDepartments] = useState([]);
 
@@ -39,12 +43,20 @@ export default function EditStudentPage() {
       const res = await fetch(buildApiUrl(`/students/${encodeURIComponent(id)}`));
       if (!res.ok) throw new Error('Student not found');
       const data = await res.json();
+      const formatDate = (dateStr) => {
+        if (!dateStr) return '';
+        try {
+          return new Date(dateStr).toISOString().split('T')[0];
+        } catch (e) {
+          return dateStr;
+        }
+      };
       setFormData({
         name: data.name || data.fullName || '',
         email: data.email || '',
         phone: data.phone || '',
         gender: data.gender || '',
-        dob: data.dateOfBirth || data.dob || '',
+        dob: formatDate(data.dob || data.dateOfBirth),
         department: data.department || data.department_id || '',
         year: data.year?.toString() || '1',
         semester: data.semester?.toString() || '1',
@@ -52,6 +64,23 @@ export default function EditStudentPage() {
         address: data.address || '',
         bloodGroup: data.bloodGroup || data.blood_group || '',
         status: data.status || 'Active',
+        guardianName: data.guardianName || data.guardian || '',
+        relationship: data.relationship || 'Father',
+        guardianPhone: data.guardianPhone || '',
+        guardianEmail: data.guardianEmail || '',
+        guardianOccupation: data.guardianOccupation || '',
+        quota: data.quota || 'Government Quota',
+        accommodation: data.accommodation || 'Day Scholar',
+        hostelName: data.hostelName || '',
+        roomType: data.roomType || '',
+        admissionType: data.admissionType || 'Regular',
+        previousSchool: data.previousSchool || data.previousInstitution || '',
+        board: data.board || 'CBSE',
+        yearOfPassing: data.yearOfPassing?.toString() || '',
+        marksPercentage: data.marksPercentage?.toString() || '',
+        paymentMethod: data.paymentMethod || data.payment?.payment_method || '',
+        transactionId: data.transactionId || data.payment?.transaction_id || '',
+        feeAmount: data.feeAmount?.toString() || data.payment?.application_fee?.toString() || '500',
       });
       setError(null);
     } catch (err) {
@@ -83,6 +112,7 @@ export default function EditStudentPage() {
           phone: formData.phone,
           gender: formData.gender,
           dateOfBirth: formData.dob,
+          dob: formData.dob,
           department: formData.department,
           year: parseInt(formData.year) || 1,
           semester: parseInt(formData.semester) || 1,
@@ -90,6 +120,29 @@ export default function EditStudentPage() {
           address: formData.address,
           bloodGroup: formData.bloodGroup,
           status: formData.status,
+          guardianName: formData.guardianName,
+          relationship: formData.relationship,
+          guardianPhone: formData.guardianPhone,
+          guardianEmail: formData.guardianEmail,
+          guardianOccupation: formData.guardianOccupation,
+          quota: formData.quota,
+          accommodation: formData.accommodation,
+          hostelName: formData.hostelName,
+          roomType: formData.roomType,
+          admissionType: formData.admissionType,
+          previousSchool: formData.previousSchool,
+          board: formData.board,
+          yearOfPassing: parseInt(formData.yearOfPassing) || 0,
+          marksPercentage: parseFloat(formData.marksPercentage) || 0.0,
+          paymentMethod: formData.paymentMethod,
+          transactionId: formData.transactionId,
+          feeAmount: parseFloat(formData.feeAmount) || 500,
+          payment: {
+            application_fee: parseFloat(formData.feeAmount) || 500,
+            payment_method: formData.paymentMethod,
+            transaction_id: formData.transactionId,
+            status: formData.paymentMethod ? 'Paid' : 'Pending'
+          }
         }),
       });
       if (!res.ok) throw new Error('Failed to update student');
@@ -203,10 +256,39 @@ export default function EditStudentPage() {
               </div>
             </div>
 
+            {/* Guardian Info */}
+            <div>
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Guardian Details</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-700">Guardian Name</label>
+                  <input name="guardianName" value={formData.guardianName} onChange={handleChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-700">Relationship</label>
+                  <select name="relationship" value={formData.relationship} onChange={handleChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 bg-white">
+                    <option>Father</option><option>Mother</option><option>Guardian</option><option>Other</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-700">Guardian Phone</label>
+                  <input name="guardianPhone" value={formData.guardianPhone} onChange={handleChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-700">Guardian Email</label>
+                  <input name="guardianEmail" value={formData.guardianEmail} onChange={handleChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2" />
+                </div>
+                <div className="space-y-1 md:col-span-2">
+                  <label className="text-xs font-semibold text-gray-700">Guardian Occupation</label>
+                  <input name="guardianOccupation" value={formData.guardianOccupation} onChange={handleChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2" placeholder="e.g. Business, Engineer" />
+                </div>
+              </div>
+            </div>
+
             {/* Academic Info */}
             <div>
-              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Academic Information</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Academic & Housing Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-gray-700">Department</label>
                   <select name="department" value={formData.department} onChange={handleChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 bg-white">
@@ -230,6 +312,88 @@ export default function EditStudentPage() {
                   <select name="section" value={formData.section} onChange={handleChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 bg-white">
                     {['A','B','C','D'].map(s => <option key={s}>{s}</option>)}
                   </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-700">Admission Type</label>
+                  <select name="admissionType" value={formData.admissionType} onChange={handleChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 bg-white">
+                    <option>Regular</option><option>Lateral Entry</option><option>Transfer</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-700">Quota / Category</label>
+                  <select name="quota" value={formData.quota} onChange={handleChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 bg-white">
+                    <option>Government Quota</option><option>Management Quota</option><option>NRI Quota</option><option>Sports Quota</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-700">Accommodation</label>
+                  <select name="accommodation" value={formData.accommodation} onChange={handleChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 bg-white">
+                    <option>Day Scholar</option><option>Hostel Required</option>
+                  </select>
+                </div>
+              </div>
+              {formData.accommodation === 'Hostel Required' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 p-4 bg-slate-50 rounded-xl border border-slate-100 animate-in slide-in-from-top-2">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-700">Hostel Name</label>
+                    <input name="hostelName" value={formData.hostelName} onChange={handleChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 bg-white" placeholder="e.g. Boys Hostel A" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-700">Room Type</label>
+                    <select name="roomType" value={formData.roomType} onChange={handleChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 bg-white">
+                      <option value="">Select Room Type</option>
+                      <option>Single</option><option>Double</option><option>Triple</option><option>AC Single</option><option>AC Double</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Previous Academics */}
+            <div>
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Previous Academic History</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-700">Previous School / Institution</label>
+                  <input name="previousSchool" value={formData.previousSchool} onChange={handleChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-700">Board of Study</label>
+                  <input name="board" value={formData.board} onChange={handleChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2" />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-700">Year of Passing</label>
+                  <input type="number" name="yearOfPassing" value={formData.yearOfPassing} onChange={handleChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-700">Marks Percentage</label>
+                  <input type="number" step="0.01" name="marksPercentage" value={formData.marksPercentage} onChange={handleChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2" />
+                </div>
+              </div>
+            </div>
+
+            {/* Payment Details */}
+            <div>
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Application Fee Payment Details</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-700">Application Fee (₹)</label>
+                  <input type="number" name="feeAmount" value={formData.feeAmount} onChange={handleChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-700">Payment Method</label>
+                  <select name="paymentMethod" value={formData.paymentMethod} onChange={handleChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 bg-white">
+                    <option value="">Select Method</option>
+                    <option>Net Banking</option><option>Credit Card</option><option>Debit Card</option><option>UPI</option><option>Cash</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-700">Transaction ID</label>
+                  <input name="transactionId" value={formData.transactionId} onChange={handleChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2" />
                 </div>
               </div>
             </div>
