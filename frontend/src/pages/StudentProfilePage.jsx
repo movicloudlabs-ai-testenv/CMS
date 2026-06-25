@@ -633,6 +633,26 @@ function OverviewTab({ student }) {
     }
   };
 
+  const getFormattedAddress = () => {
+    const addr = student.address || student.personal?.address;
+    const city = student.city || student.personal?.city;
+    const state = student.state || student.personal?.state;
+    const pin = student.pincode || student.personal?.pincode;
+
+    let parts = [];
+    if (addr) parts.push(addr);
+    if (city) parts.push(city);
+    if (state) parts.push(state);
+    
+    let baseAddr = parts.join(', ');
+    if (pin) {
+      if (baseAddr) baseAddr += ` - ${pin}`;
+      else baseAddr = pin;
+    }
+    
+    return baseAddr || 'Not provided';
+  };
+
   // --- Dynamic GPA Trend Calculation ---
   const GRADE_POINTS = {
     'A+': 10.0,
@@ -811,7 +831,7 @@ function OverviewTab({ student }) {
               </div>
               <div>
                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Permanent Address</p>
-                <p className="text-sm font-medium text-slate-700 leading-relaxed">{formatValue(student.address)}</p>
+                <p className="text-sm font-medium text-slate-700 leading-relaxed">{getFormattedAddress()}</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
