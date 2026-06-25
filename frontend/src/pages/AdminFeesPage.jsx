@@ -5,6 +5,7 @@ import { useAdmission } from '../context/AdmissionContext';
 import { getUserSession } from '../auth/sessionController';
 import { listFees, assignFee, deleteFeeAssignment } from '../api/feesApi';
 import { createInvoice } from '../api/invoicesApi';
+import { fetchStudents } from '../api/studentsApi';
 
 export default function AdminFeesPage() {
   const session = getUserSession();
@@ -15,7 +16,8 @@ export default function AdminFeesPage() {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [deleteReason, setDeleteReason] = useState('');
-  const [studentIdMapping, setStudentIdMapping] = useState('');
+  const [enrolledStudents, setEnrolledStudents] = useState([]);
+  const [selectedEnrolledStudentId, setSelectedEnrolledStudentId] = useState('');
   const [expandedFeeId, setExpandedFeeId] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(3);
@@ -27,17 +29,15 @@ export default function AdminFeesPage() {
     isAcHostel: false,
   });
 
-  // Demo student IDs for mapping
-  const demoStudents = [
-    { id: 'STU-2024-1547', name: 'John Anderson' },
-    { id: 'STU-2024-042', name: 'Priya Sharma' },
-    { id: 'STU-2024-089', name: 'Sneha Reddy' },
-    { id: 'STU-2024-118', name: 'Vikram Singh' },
-    { id: 'STU-2024-155', name: 'Ananya Patel' },
-    { id: 'STU-2024-190', name: 'Divya Iyer' },
-    { id: 'STU-2024-203', name: 'Rohan Mehta' },
-    { id: 'STU-2024-245', name: 'Meera Joshi' },
-  ];
+  // Fetch enrolled students from backend
+  useEffect(() => {
+    fetchStudents()
+      .then((data) => {
+        const list = Array.isArray(data) ? data : [];
+        setEnrolledStudents(list.filter((s) => s.status?.toLowerCase() === 'active' || !s.status));
+      })
+      .catch((err) => console.error('Failed to load enrolled students:', err));
+  }, []);
 
   // Fetch fee assignments from backend
   const fetchFees = useCallback(async () =>{
@@ -84,28 +84,30 @@ export default function AdminFeesPage() {
 
   const handleAssignClick = (student) =>{
     setSelectedStudent(student);
-    setStudentIdMapping('');
+    setSelectedEnrolledStudentId('');
     setShowAssignModal(true);
   };
 
-  const handleConfirmAssignFee = async () =>{
+  const handleConfirmAssignFee = async () => {
     if (!selectedStudent || !assignFormData.semester) {
       alert('Please fill required fields');
       return;
     }
 
-    if (!studentIdMapping) {
-      alert('Please map this student to a demo user ID');
+    if (!selectedEnrolledStudentId) {
+      alert('Please select an enrolled student to assign the fee to');
       return;
     }
 
-    // Get the mapped student name
-    const mappedStudent = demoStudents.find((s) =>s.id === studentIdMapping);
+    // Get selected enrolled student details
+    const enrolledStudent = enrolledStudents.find(
+      (s) => (s.id || s.rollNumber) === selectedEnrolledStudentId
+    );
 
     const payload = {
-      student_id: studentIdMapping,
-      student_name: mappedStudent?.name || selectedStudent.name || selectedStudent.fullName,
-      course: assignFormData.course || selectedStudent.course,
+      student_id: selectedEnrolledStudentId,
+      student_name: enrolledStudent?.name || selectedEnrolledStudentId,
+      course: assignFormData.course || enrolledStudent?.department || selectedStudent.course || '',
       semester: assignFormData.semester,
       first_graduate: assignFormData.isFirstGraduate,
       hostel_required: assignFormData.needsHostel,
@@ -113,10 +115,10 @@ export default function AdminFeesPage() {
 
     try {
       await assignFee(payload);
-      await fetchFees(); // Refresh from backend
+      await fetchFees();
       setShowAssignModal(false);
       setSelectedStudent(null);
-      setStudentIdMapping('');
+      setSelectedEnrolledStudentId('');
       setAssignFormData({
         semester: '',
         course: '',
@@ -273,22 +275,30 @@ export default function AdminFeesPage() {
       </PageContainer>{/* Assign Fee Modal */}
       {showAssignModal && selectedStudent && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50"><div className="bg-white rounded-lg p-8 max-w-2xl w-full mx-4 shadow-xl max-h-[90vh] overflow-y-auto"><h2 className="text-2xl font-bold mb-6">Assign Fee for {selectedStudent.name || selectedStudent.fullName}
-            </h2><div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6"><p className="text-sm text-gray-600"><span className="font-semibold">Application ID:</span>{selectedStudent.id}
-              </p><p className="text-sm text-gray-600"><span className="font-semibold">Course:</span>{selectedStudent.course}
-              </p></div>{/* Student ID Mapping - Link to Demo Account */}
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6"><label className="block text-sm font-semibold text-gray-700 mb-2">Map to Student Login Account * (Required)
-              </label><p className="text-xs text-gray-600 mb-3">Select which demo student account this approved student should be linked to for login and fees viewing.
-              </p><select
-                value={studentIdMapping}
-                onChange={(e) =>setStudentIdMapping(e.target.value)}
-                className="w-full px-4 py-2 border border-yellow-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 bg-white"
-              ><option value="">-- Select Student Account --</option>{demoStudents.map((student) =>(
-                  <option key={student.id} value={student.id}>{student.id} - {student.name}
-                  </option>))}
-              </select>{studentIdMapping && (
-                <p className="text-xs text-green-700 mt-2 bg-green-50 p-2 rounded">Mapped to: {demoStudents.find((s) =>s.id === studentIdMapping)?.name}
-                </p>)}
-            </div><div className="space-y-4 mb-8"><div><label className="block text-sm font-medium text-gray-700 mb-2">Semester *
+            </h2><div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6"><p className="text-sm text-gray-600"><span className="font-semibold">Application ID:</span> {selectedStudent.id}</p><p className="text-sm text-gray-600"><span className="font-semibold">Course:</span> {selectedStudent.course}</p></div>
+            
+            {/* Select Enrolled Student */}
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 mb-6">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Select Enrolled Student * <span className="text-red-500">(Required)</span></label>
+              <p className="text-xs text-gray-500 mb-3">Choose the student from the enrolled list to assign this fee to.</p>
+              <select
+                value={selectedEnrolledStudentId}
+                onChange={(e) => setSelectedEnrolledStudentId(e.target.value)}
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600 bg-white"
+              >
+                <option value="">-- Select Enrolled Student --</option>
+                {enrolledStudents.map((s) => {
+                  const sid = s.id || s.rollNumber;
+                  return <option key={sid} value={sid}>{s.name} — {sid} ({s.department || s.department_id || 'N/A'})</option>;
+                })}
+              </select>
+              {selectedEnrolledStudentId && (() => {
+                const es = enrolledStudents.find((s) => (s.id || s.rollNumber) === selectedEnrolledStudentId);
+                return es ? <p className="text-xs text-green-700 mt-2 bg-green-50 p-2 rounded">Selected: <strong>{es.name}</strong> · Sem {es.semester} · {es.department || es.department_id}</p> : null;
+              })()}
+            </div>
+
+            <div className="space-y-4 mb-8"><div><label className="block text-sm font-medium text-gray-700 mb-2">Semester *
                 </label><select
                   value={assignFormData.semester}
                   onChange={(e) =>setAssignFormData({
@@ -357,9 +367,10 @@ export default function AdminFeesPage() {
                 </div></div>)}
 
             <div className="flex justify-end gap-3"><button
-                onClick={() =>{
+                onClick={() => {
                   setShowAssignModal(false);
                   setSelectedStudent(null);
+                  setSelectedEnrolledStudentId('');
                 }}
                 className="px-6 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition"
               >Cancel
