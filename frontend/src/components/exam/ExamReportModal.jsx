@@ -39,9 +39,9 @@ export default function ExamReportModal({ isOpen, onClose, exam }) {
         }, {});
 
         setStats({
-          totalRegistered: regs.length,
+          totalRegistered: enrolled.length,
           totalEvaluated: examMarks.length,
-          pending: regs.length - examMarks.length,
+          pending: enrolled.length - examMarks.length,
           average: avgMarks.toFixed(2),
           highest: maxMarks,
           lowest: minMarks,
@@ -50,9 +50,9 @@ export default function ExamReportModal({ isOpen, onClose, exam }) {
         });
       } else {
         setStats({
-          totalRegistered: regs.length,
+          totalRegistered: enrolled.length,
           totalEvaluated: 0,
-          pending: regs.length,
+          pending: enrolled.length,
           average: 0,
           highest: 0,
           lowest: 0,

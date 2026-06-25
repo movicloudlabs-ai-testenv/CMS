@@ -15,7 +15,7 @@ import RevaluationModal from '../components/exam/RevaluationModal'
 import ExamReportModal from '../components/exam/ExamReportModal'
 import AttendanceModal from '../components/exam/AttendanceModal'
 import SeatAssignmentModal from '../components/exam/SeatAssignmentModal'
-import InternalMarksModal from '../components/exam/InternalMarksModal'
+
 import TimetableApprovalModal from '../components/exam/TimetableApprovalModal'
 import NotificationPanel from '../components/exam/NotificationPanel'
 import {
@@ -63,7 +63,7 @@ export default function ExamsPage({ noLayout = false }) {
   const [showExamReportModal, setShowExamReportModal] = useState(false)
   const [showAttendanceModal, setShowAttendanceModal] = useState(false)
   const [showSeatAssignmentModal, setShowSeatAssignmentModal] = useState(false)
-  const [showInternalMarksModal, setShowInternalMarksModal] = useState(false)
+
   const [showTimetableApprovalModal, setShowTimetableApprovalModal] = useState(false)
   const [showNotificationPanel, setShowNotificationPanel] = useState(false)
   const [selectedExam, setSelectedExam] = useState(null)
@@ -387,10 +387,7 @@ export default function ExamsPage({ noLayout = false }) {
     setShowSeatAssignmentModal(true)
   }
   
-  const handleOpenInternalMarks = (exam) => {
-    setSelectedExam(exam)
-    setShowInternalMarksModal(true)
-  }
+
 
   const formatDate = (dateStr) => {
     const date = new Date(dateStr)
@@ -534,7 +531,7 @@ export default function ExamsPage({ noLayout = false }) {
                         {isStudent && (
                           <>
                             <td className="px-6 py-4 text-center">
-                              {exam.resultsPublished && exam.marks !== undefined ? (
+                              {exam.marks !== undefined && exam.marks !== null ? (
                                 <div>
                                   <p className="text-lg font-bold text-slate-900">{exam.marks}/{exam.maxMarks}</p>
                                   <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${
@@ -586,13 +583,6 @@ export default function ExamsPage({ noLayout = false }) {
                             <div className="flex items-center justify-end gap-2">
                               {isFaculty && (
                                 <>
-                                  <button
-                                    onClick={() => handleOpenInternalMarks(exam)}
-                                    className="p-1.5 text-slate-400 hover:text-[#276221] hover:bg-[#276221]/10 rounded-lg transition-colors"
-                                    title="Internal Marks"
-                                  >
-                                    <span className="material-symbols-outlined text-lg">assignment</span>
-                                  </button>
                                   <button
                                     onClick={() => handleOpenMarksEntry(exam)}
                                     className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
@@ -989,15 +979,7 @@ export default function ExamsPage({ noLayout = false }) {
         />
       )}
 
-      {showInternalMarksModal && selectedExam && (
-        <InternalMarksModal
-          exam={selectedExam}
-          onClose={() => setShowInternalMarksModal(false)}
-          onSave={() => {
-            setShowInternalMarksModal(false);
-          }}
-        />
-      )}
+
 
 
 
