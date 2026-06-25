@@ -611,12 +611,15 @@ export default function ExamsPage({ noLayout = false }) {
     try {
       if (editingExam) {
         await updateExamById(editingExam._id || editingExam.id, payload)
+        alert('Exam updated successfully!')
       } else {
         await createExam(payload)
+        alert('Exam scheduled successfully!')
       }
       await fetchExams()
     } catch (err) {
       console.error('Failed to save exam:', err)
+      alert('Failed to save exam: ' + err.message)
     }
     
     closeModal()
