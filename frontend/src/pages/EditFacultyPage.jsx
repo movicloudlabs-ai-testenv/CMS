@@ -15,6 +15,7 @@ export default function EditFacultyPage() {
     department: '', designation: '', employmentType: '',
     highestQualification: '', specialization: '', university: '',
     yearsOfExperience: '', employment_status: 'Active',
+    nationality: '', college: '', office_location: '',
     // Academic Assignment
     courses: '',   // comma-separated course names
     classes: '',   // comma-separated class/section names
@@ -63,10 +64,13 @@ export default function EditFacultyPage() {
         designation: data.designation || data.role || '',
         employmentType: data.employmentType || data.employment_type || '',
         highestQualification: data.highestQualification || data.qualification || '',
-        specialization: data.specialization || '',
+        specialization: data.specialization || (data.specializations && data.specializations[0]) || '',
         university: data.university || '',
         yearsOfExperience: data.yearsOfExperience?.toString() || data.years_of_experience?.toString() || '',
         employment_status: data.employment_status || data.status || 'Active',
+        nationality: data.nationality || '',
+        college: data.college || '',
+        office_location: data.office_location || '',
         courses: Array.isArray(data.courses) ? data.courses.join(', ') : (data.courses || ''),
         classes: Array.isArray(data.classes) ? data.classes.join(', ') : (data.classes || data.assignedClasses || ''),
       });
@@ -101,15 +105,23 @@ export default function EditFacultyPage() {
           phone: formData.phone,
           gender: formData.gender,
           dateOfBirth: formData.dateOfBirth,
+          dob: formData.dateOfBirth,
           department: formData.department,
+          departmentId: formData.department,
           designation: formData.designation,
+          role: formData.designation,
           employmentType: formData.employmentType,
           highestQualification: formData.highestQualification,
+          qualification: formData.highestQualification,
           specialization: formData.specialization,
+          specializations: [formData.specialization].filter(Boolean),
           university: formData.university,
           yearsOfExperience: parseInt(formData.yearsOfExperience) || 0,
           employment_status: formData.employment_status,
           status: formData.employment_status,
+          nationality: formData.nationality,
+          college: formData.college,
+          office_location: formData.office_location,
           courses: formData.courses.split(',').map(s => s.trim()).filter(Boolean),
           classes: formData.classes.split(',').map(s => s.trim()).filter(Boolean),
           assignedClasses: formData.classes.split(',').map(s => s.trim()).filter(Boolean),
@@ -212,6 +224,10 @@ export default function EditFacultyPage() {
                   <label className="text-xs font-semibold text-gray-700">Date of Birth</label>
                   <input type="date" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2" />
                 </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-700">Nationality</label>
+                  <input name="nationality" value={formData.nationality} onChange={handleChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#276221]/20" placeholder="e.g. Indian" />
+                </div>
               </div>
             </div>
 
@@ -243,6 +259,10 @@ export default function EditFacultyPage() {
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-gray-700">Years of Experience</label>
                   <input type="number" name="yearsOfExperience" value={formData.yearsOfExperience} onChange={handleChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-700">Office Location / Room</label>
+                  <input name="office_location" value={formData.office_location} onChange={handleChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#276221]/20" placeholder="e.g. Room 302, Main Block" />
                 </div>
               </div>
             </div>
@@ -365,6 +385,10 @@ export default function EditFacultyPage() {
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-gray-700">University</label>
                   <input name="university" value={formData.university} onChange={handleChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-700">College / Institution</label>
+                  <input name="college" value={formData.college} onChange={handleChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#276221]/20" placeholder="e.g. ABC College of Engineering" />
                 </div>
               </div>
             </div>

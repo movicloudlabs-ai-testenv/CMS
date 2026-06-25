@@ -207,6 +207,14 @@ export default function FacultyProfilePage() {
                   <Briefcase size={18} className="text-slate-400" />
                   <span>Employee ID: {faculty.employeeId}</span>
                 </div>
+                <div className="flex items-center gap-3 text-sm font-medium text-slate-700">
+                  <span className="material-symbols-outlined text-slate-400 text-[18px]">work_history</span>
+                  <span>Experience: {faculty.yearsOfExperience || faculty.years_of_experience || 0} Years</span>
+                </div>
+                <div className="flex items-center gap-3 text-sm font-medium text-slate-700">
+                  <span className="material-symbols-outlined text-slate-400 text-[18px]">badge</span>
+                  <span>Type: {faculty.employmentType || faculty.employment_type || 'Not specified'}</span>
+                </div>
               </div>
 
               <div className="border-t border-slate-200 my-6" />
