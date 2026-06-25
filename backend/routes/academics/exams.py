@@ -53,6 +53,8 @@ def is_department_match(dept1: Optional[str], dept2: Optional[str]) -> bool:
         return True
     clean = lambda d: d.replace("and", "").replace("&", "").replace("engineering", "").replace("eng.", "").replace(" ", "").replace("-", "").strip()
     c1, c2 = clean(d1), clean(d2)
+    if not c1 or not c2:
+        return d1 in d2 or d2 in d1
     return c1 == c2 or c1 in c2 or c2 in c1 or d1 in d2 or d2 in d1
 
 
@@ -104,6 +106,89 @@ def is_exam_class_match(exam, assigned_classes) -> bool:
     return False
 
 
+async def find_students_for_exam(db, exam, use_db: bool):
+    norm_code = lambda c: str(c or '').replace('-', '').replace(' ', '').upper().strip()
+    exam_code = exam.get("code")
+    exam_name = exam.get("name")
+    exam_dept = exam.get("department")
+    exam_sem = exam.get("semester")
+    exam_year = exam.get("year")
+    
+    matched = []
+    
+    if use_db:
+        async for s in db["students"].find():
+            student = serialize_doc(s)
+            
+            # 1. Subject code/name match
+            subject_match = False
+            for sub in student.get("subjects", []):
+                sub_code = sub.get("code")
+                sub_name = sub.get("name")
+                
+                if sub_code and exam_code and norm_code(sub_code) == norm_code(exam_code):
+                    subject_match = True
+                    break
+                if sub_name and exam_name:
+                    n1 = str(sub_name).lower().strip()
+                    n2 = str(exam_name).lower().strip()
+                    if n1 == n2 or n1 in n2 or n2 in n1:
+                        subject_match = True
+                        break
+            
+            if subject_match:
+                matched.append(student)
+                continue
+                
+            # 2. Class match
+            if exam_dept and exam_sem and exam_year:
+                is_class_match = (
+                    is_department_match(student.get("department"), exam_dept) and
+                    str(student.get("semester", "")) == str(exam_sem) and
+                    is_year_match(student.get("year"), exam_year)
+                )
+                if is_class_match:
+                    matched.append(student)
+                    continue
+    else:
+        from backend.routes.students import _seed_dev_students
+        _seed_dev_students()
+        from backend.dev_store import list_items
+        for student in list_items("students"):
+            # 1. Subject code/name match
+            subject_match = False
+            for sub in student.get("subjects", []):
+                sub_code = sub.get("code")
+                sub_name = sub.get("name")
+                
+                if sub_code and exam_code and norm_code(sub_code) == norm_code(exam_code):
+                    subject_match = True
+                    break
+                if sub_name and exam_name:
+                    n1 = str(sub_name).lower().strip()
+                    n2 = str(exam_name).lower().strip()
+                    if n1 == n2 or n1 in n2 or n2 in n1:
+                        subject_match = True
+                        break
+            
+            if subject_match:
+                matched.append(student)
+                continue
+                
+            # 2. Class match
+            if exam_dept and exam_sem and exam_year:
+                is_class_match = (
+                    is_department_match(student.get("department"), exam_dept) and
+                    str(student.get("semester", "")) == str(exam_sem) and
+                    is_year_match(student.get("year"), exam_year)
+                )
+                if is_class_match:
+                    matched.append(student)
+                    continue
+                    
+    return matched
+
+
 @router.get("")
 async def list_exams(role: Optional[str] = None, userId: Optional[str] = None):
     try:
@@ -139,13 +224,24 @@ async def list_exams(role: Optional[str] = None, userId: Optional[str] = None):
         
         if student:
             enrolled_codes = {norm_code(s.get("code")) for s in student.get("subjects", []) if s.get("code")}
+            enrolled_names = {str(s.get("name") or "").strip().lower() for s in student.get("subjects", []) if s.get("name")}
             for exam in exams:
+                exam_code = norm_code(exam.get("code"))
+                exam_name = str(exam.get("name") or "").strip().lower()
+                
+                subject_match = exam_code in enrolled_codes
+                if not subject_match and exam_name:
+                    for sname in enrolled_names:
+                        if exam_name == sname or exam_name in sname or sname in exam_name:
+                            subject_match = True
+                            break
+                            
                 is_class_match = (
                     is_department_match(student.get("department", ""), exam.get("department", "")) and
                     str(student.get("semester", "")) == str(exam.get("semester", "")) and
                     is_year_match(student.get("year", ""), exam.get("year", ""))
                 )
-                if norm_code(exam.get("code")) in enrolled_codes or is_class_match:
+                if subject_match or is_class_match:
                     filtered_exams.append(exam)
         return {"success": True, "data": filtered_exams}
 
@@ -412,8 +508,8 @@ async def schedule_bulk(payload: dict):
             }
             await db["exam_invigilators"].insert_one(inv_doc)
             
-            code_variants = list(set([ex.get("code"), ex.get("code").replace("-", ""), ex.get("code").replace(" ", "")]))
-            async for student in db["students"].find({"subjects.code": {"$in": code_variants}}):
+            matched_students = await find_students_for_exam(db, ex, use_db=True)
+            for student in matched_students:
                 student_id = student.get("id") or student.get("rollNumber") or str(student.get("_id"))
                 await send_notification(
                     db=db,
@@ -452,9 +548,8 @@ async def schedule_bulk(payload: dict):
             }
             DEV_STORE.setdefault("exam_invigilators", []).append(inv_doc)
             
-            norm_code = lambda c: str(c or '').replace('-', '').replace(' ', '').upper()
-            students = [s for s in list_items("students") if any(norm_code(sub.get("code")) == norm_code(ex.get("code")) for sub in s.get("subjects", []))]
-            for s in students:
+            matched_students = await find_students_for_exam(None, ex, use_db=False)
+            for s in matched_students:
                 student_id = s.get("id") or s.get("rollNumber") or str(s.get("_id"))
                 create_notification({
                     "title": "New Exam Scheduled",
@@ -495,17 +590,30 @@ async def get_enrolled_students(exam_id: str):
         else:
             raise
 
-    norm_code = lambda c: str(c or '').replace('-', '').replace(' ', '').upper()
     if use_db:
         exam = await db["exams"].find_one(_id_query(exam_id))
         if not exam:
             raise HTTPException(status_code=404, detail="Exam not found")
-        code = exam.get("code")
-        code_variants = list(set([code, code.replace("-", ""), code.replace(" ", "")]))
         
-        students = []
-        async for s in db["students"].find({"subjects.code": {"$in": code_variants}}):
-            students.append(serialize_doc(s))
+        exam_id_str = str(exam.get("_id"))
+        exam_id_val = exam.get("id")
+        
+        # 1. Active registrations inside exam_registrations
+        registered_student_ids = set()
+        async for reg in db["exam_registrations"].find({"examId": {"$in": [exam_id_str, exam_id_val]}}):
+            if reg.get("studentId"):
+                registered_student_ids.add(str(reg.get("studentId")))
+                
+        # 2. Get students matching exam subject or class details
+        matched_students = await find_students_for_exam(db, exam, use_db=True)
+        
+        # 3. Add registered students who might not match the subject/class anymore
+        for sid in registered_student_ids:
+            already_matched = any(str(s.get("id") or s.get("rollNumber") or s.get("_id")) == sid for s in matched_students)
+            if not already_matched:
+                s_doc = await db["students"].find_one({"$or": [{"id": sid}, {"rollNumber": sid}, {"_id": ObjectId(sid) if ObjectId.is_valid(sid) else None}]})
+                if s_doc:
+                    matched_students.append(serialize_doc(s_doc))
     else:
         from backend.dev_store import list_items
         from backend.routes.students import _seed_dev_students
@@ -514,13 +622,28 @@ async def get_enrolled_students(exam_id: str):
         exam = next((e for e in exams if str(e.get("id")) == str(exam_id) or str(e.get("_id")) == str(exam_id)), None)
         if not exam:
             raise HTTPException(status_code=404, detail="Exam not found")
-        code = exam.get("code")
+            
+        exam_id_str = str(exam.get("id") or exam.get("_id"))
         
-        students = [s for s in list_items("students") if any(norm_code(sub.get("code")) == norm_code(code) for sub in s.get("subjects", []))]
+        regs = [item for item in _dev_list("exam_registrations") if str(item.get("examId")) == exam_id_str]
+        registered_student_ids = {str(r.get("studentId")) for r in regs if r.get("studentId")}
+        
+        matched_students = await find_students_for_exam(None, exam, use_db=False)
+        
+        for sid in registered_student_ids:
+            already_matched = any(str(s.get("id") or s.get("rollNumber") or s.get("_id")) == sid for s in matched_students)
+            if not already_matched:
+                s_doc = next((s for s in list_items("students") if str(s.get("id")) == sid or str(s.get("rollNumber")) == sid or str(s.get("_id")) == sid), None)
+                if s_doc:
+                    matched_students.append(s_doc)
 
     mapped_students = []
-    for s in students:
+    seen_ids = set()
+    for s in matched_students:
         sid = s.get("id") or s.get("rollNumber") or str(s.get("_id"))
+        if sid in seen_ids:
+            continue
+        seen_ids.add(sid)
         sname = s.get("name") or s.get("fullName") or sid
         mapped_students.append({
             "id": sid,
@@ -555,10 +678,9 @@ async def create_exam(payload: ExamCreate):
     code = exam_doc.get("code")
     
     if exam_type != "End-Sem" and code:
-        norm_code = lambda c: str(c or '').replace('-', '').replace(' ', '').upper()
         if use_db:
-            code_variants = list(set([code, code.replace("-", ""), code.replace(" ", "")]))
-            async for student in db["students"].find({"subjects.code": {"$in": code_variants}}):
+            matched_students = await find_students_for_exam(db, exam_doc, use_db=True)
+            for student in matched_students:
                 student_id = student.get("id") or student.get("rollNumber") or str(student.get("_id"))
                 dup = await db["exam_registrations"].find_one({"examId": exam_id, "studentId": student_id})
                 if not dup:
@@ -571,10 +693,8 @@ async def create_exam(payload: ExamCreate):
                         "registeredAt": _now_iso(),
                     })
         else:
-            from backend.routes.students import _seed_dev_students
-            _seed_dev_students()
-            students = [s for s in list_items("students") if any(norm_code(sub.get("code")) == norm_code(code) for sub in s.get("subjects", []))]
-            for s in students:
+            matched_students = await find_students_for_exam(None, exam_doc, use_db=False)
+            for s in matched_students:
                 student_id = s.get("id") or s.get("rollNumber") or str(s.get("_id"))
                 regs = _dev_list("exam_registrations")
                 dup = next((item for item in regs if str(item.get("examId")) == str(exam_id) and str(item.get("studentId")) == str(student_id)), None)
