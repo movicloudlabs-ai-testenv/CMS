@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { getUserSession, updateUserData } from '../auth/sessionController';
 import { buildApiUrl } from '../api/apiBase';
+import { settingsApi } from '../api/settingsApi';
 
 export default function AddStudentModal({ isOpen, onClose, onSuccess, editStudent }) {
   const [step, setStep] = useState(1);
@@ -46,6 +47,28 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, editStuden
   const [avatarPreview, setAvatarPreview] = useState(null);
   const fileInputRef = useRef(null);
   const maxStep = editStudent ? 3 : 5;
+  const [departments, setDepartments] = useState([]);
+
+  useEffect(() => {
+    const fetchDepts = async () => {
+      try {
+        const data = await settingsApi.getDepartments();
+        setDepartments(data || []);
+        if (data && data.length > 0 && !editStudent) {
+          const draft = localStorage.getItem('add_student_draft');
+          if (!draft) {
+            setFormData(prev => ({
+              ...prev,
+              department: prev.department === 'Computer Science' ? data[0].name : prev.department
+            }));
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching departments in AddStudentModal:', err);
+      }
+    };
+    fetchDepts();
+  }, [editStudent]);
 
   // Load draft from localStorage on mount or populate from editStudent
   useEffect(() => {
@@ -384,7 +407,7 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, editStuden
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider px-1">Department</label>
                   <select name="department" value={formData.department} onChange={handleChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-green-600 outline-none text-slate-700 bg-white">
-                    {['Computer Science', 'Mechanical Eng.', 'Electrical Eng.', 'Civil Engineering', 'Automobile Eng.', 'Electronics Eng.'].map(d => <option key={d}>{d}</option>)}
+                    {departments.map(d => <option key={d.code} value={d.name}>{d.name}</option>)}
                   </select>
                 </div>
                 <div className="space-y-1.5">
