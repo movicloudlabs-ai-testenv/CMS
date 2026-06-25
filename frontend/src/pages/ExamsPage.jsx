@@ -145,10 +145,42 @@ export default function ExamsPage({ noLayout = false }) {
     const codeNorm = subjectCode.replace(/[-_\s]+/g, '').toUpperCase();
     const typeNorm = type.trim().toUpperCase();
 
+    // Find the subject name from studentDetails
+    let subjectName = '';
+    if (studentDetails?.subjects) {
+      const sub = studentDetails.subjects.find(s => s.code && s.code.replace(/[-_\s]+/g, '').toUpperCase() === codeNorm);
+      if (sub) {
+        subjectName = String(sub.name || '').trim().toLowerCase();
+      }
+    }
+    if (!subjectName && (appliedSem === 'Semester 6' || appliedSem === '6')) {
+      const fallbackSubjects = [
+        { code: 'CSB1321', name: 'WEB TECHNOLOGY' },
+        { code: 'CSB1322', name: 'COMPILER DESIGN' },
+        { code: 'CSB1323', name: 'CRYPTOGRAPHY AND NETWORK SECURITY' },
+        { code: 'CSB1332', name: 'DESIGN PROJECT' },
+        { code: 'CSB1333', name: 'COMPREHENSION' }
+      ];
+      const sub = fallbackSubjects.find(s => s.code.replace(/[-_\s]+/g, '').toUpperCase() === codeNorm);
+      if (sub) {
+        subjectName = sub.name.toLowerCase();
+      }
+    }
+
     // Live DB matching
     const matchingExams = allExams.filter(e => {
+      if (String(e.type || '').trim().toUpperCase() !== typeNorm) return false;
+
       const examCodeNorm = String(e.code || '').replace(/[-_\s]+/g, '').toUpperCase();
-      return examCodeNorm === codeNorm && String(e.type || '').trim().toUpperCase() === typeNorm;
+      if (examCodeNorm === codeNorm) return true;
+
+      if (subjectName) {
+        const examNameNorm = String(e.name || '').trim().toLowerCase();
+        if (examNameNorm && (examNameNorm.includes(subjectName) || subjectName.includes(examNameNorm))) {
+          return true;
+        }
+      }
+      return false;
     });
     
     if (matchingExams.length === 0) return null;
@@ -292,7 +324,18 @@ export default function ExamsPage({ noLayout = false }) {
 
     return subjects.map(sub => {
       const subCodeNorm = norm(sub.code);
-      const endSemExam = allExams.find(e => norm(e.code) === subCodeNorm && e.type === 'End-Sem');
+      const subNameNorm = String(sub.name || '').trim().toLowerCase();
+      
+      const endSemExam = allExams.find(e => {
+        if (e.type !== 'End-Sem') return false;
+        const examCodeNorm = norm(e.code);
+        if (examCodeNorm === subCodeNorm) return true;
+        if (subNameNorm) {
+          const examNameNorm = String(e.name || '').trim().toLowerCase();
+          return examNameNorm && (examNameNorm.includes(subNameNorm) || subNameNorm.includes(examNameNorm));
+        }
+        return false;
+      });
 
       let marksRecord = null;
       if (endSemExam) {
@@ -303,7 +346,14 @@ export default function ExamsPage({ noLayout = false }) {
       if (!marksRecord) {
         marksRecord = studentMarks.find(m => {
           const ex = allExams.find(e => String(e._id || e.id) === String(m.examId));
-          return ex && norm(ex.code) === subCodeNorm && ex.type === 'End-Sem';
+          if (!ex || ex.type !== 'End-Sem') return false;
+          const examCodeNorm = norm(ex.code);
+          if (examCodeNorm === subCodeNorm) return true;
+          if (subNameNorm) {
+            const examNameNorm = String(ex.name || '').trim().toLowerCase();
+            return examNameNorm && (examNameNorm.includes(subNameNorm) || subNameNorm.includes(examNameNorm));
+          }
+          return false;
         });
       }
 
