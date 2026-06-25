@@ -156,6 +156,8 @@ def _normalize_from_flat_payload(payload: dict[str, Any]) -> dict[str, Any]:
         "phone": phone,
         "dateOfBirth": payload.get("dateOfBirth") or payload.get("dob") or "",
         "gender": payload.get("gender") or "",
+        "bloodGroup": payload.get("bloodGroup") or "",
+        "admissionType": payload.get("admissionType") or "Regular",
         "previousSchool": payload.get("previousSchool") or "",
         "board": payload.get("board") or "",
         "yearOfPassing": _to_int(payload.get("yearOfPassing")),
@@ -202,6 +204,7 @@ def _normalize_from_flat_payload(payload: dict[str, Any]) -> dict[str, Any]:
     normalized["personal"] = {
         "full_name": normalized["fullName"],
         "gender": normalized["gender"],
+        "bloodGroup": normalized["bloodGroup"],
         "dob": normalized["dateOfBirth"],
         "email": normalized["email"],
         "phone": normalized["phone"],
@@ -475,6 +478,7 @@ async def _create_student_from_admission(admission: dict[str, Any]) -> bool:
         )
 
         # Build student data with comprehensive field mappings
+        academic = admission.get("academic") or {}
         student_data = {
             # ID Fields (CRITICAL - must have both)
             "id": student_id,
@@ -488,6 +492,7 @@ async def _create_student_from_admission(admission: dict[str, Any]) -> bool:
             "password": admission.get("password") or student_id,
             "phone": admission.get("phone") or "",
             "gender": admission.get("gender") or "",
+            "bloodGroup": admission.get("bloodGroup") or personal.get("bloodGroup") or "",
             "dateOfBirth": admission.get("dateOfBirth") or admission.get("dob") or "",
             "dob": admission.get("dateOfBirth") or admission.get("dob") or "",
             "address": address,
@@ -498,7 +503,7 @@ async def _create_student_from_admission(admission: dict[str, Any]) -> bool:
             # Academic Information
             "department_id": department,
             "department": department,
-            "year": 1,
+            "year": "1st Year",
             "semester": 1,
             "section": "A",
             
@@ -508,6 +513,7 @@ async def _create_student_from_admission(admission: dict[str, Any]) -> bool:
             "created_at": _utc_now_iso(),
             "enroll_date": _today_ymd(),
             "enrollDate": _today_ymd(),
+            "admissionType": admission.get("admissionType") or "Regular",
             
             # Academic Metrics
             "cgpa": 0.0,
@@ -520,10 +526,30 @@ async def _create_student_from_admission(admission: dict[str, Any]) -> bool:
             
             # Guardian Information
             "guardian": guardian,
+            "guardianName": guardian,
             "guardian_phone": guardian_phone,
             "guardianPhone": guardian_phone,
             "guardianEmail": admission.get("guardianEmail") or personal.get("guardianEmail") or "",
             "relationship": admission.get("relationship") or personal.get("relationship") or "",
+            "guardianOccupation": admission.get("guardianOccupation") or personal.get("guardianOccupation") or "",
+            
+            # Previous Academics
+            "previousSchool": admission.get("previousSchool") or academic.get("previous_school") or "",
+            "previousInstitution": admission.get("previousSchool") or academic.get("previous_school") or "",
+            "board": admission.get("board") or academic.get("board") or "",
+            "yearOfPassing": admission.get("yearOfPassing") or academic.get("year_of_passing") or 0,
+            "marksPercentage": admission.get("marksPercentage") or academic.get("marks_percentage") or 0.0,
+            
+            # Course category & Quota & Housing
+            "courseCategory": admission.get("courseCategory") or course_info.get("category") or "",
+            "course": admission.get("course") or course_info.get("course") or "",
+            "quota": admission.get("quota") or "",
+            "accommodation": admission.get("accommodation") or "",
+            "roomType": admission.get("roomType") or "",
+            "hostelName": admission.get("hostelName") or "",
+            
+            # Payment information
+            "payment": admission.get("payment") or {},
             
             # Appearance
             "avatar": f"https://ui-avatars.com/api/?name={name}&background=1162d4&color=fff",

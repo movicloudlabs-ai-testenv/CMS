@@ -300,83 +300,7 @@ export default function StudentProfilePage() {
 
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
           {activeTab === 'overview' && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-              <div className="lg:col-span-4 bg-white rounded-xl border border-slate-200 p-8 shadow-sm">
-                <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-3 mb-6 uppercase tracking-wider">
-                  <span className="material-symbols-outlined text-[#276221] text-[20px]">contact_page</span>
-                  Contact Info
-                </h3>
-
-                <div className="space-y-5">
-                  <div className="flex items-center gap-3 text-sm font-medium text-slate-700">
-                    <Mail size={18} className="text-slate-400" />
-                    <span>{student.email || 'Not provided'}</span>
-                  </div>
-                  <div className="flex items-center gap-3 text-sm font-medium text-slate-700">
-                    <Phone size={18} className="text-slate-400" />
-                    <span>{student.phone || 'Not provided'}</span>
-                  </div>
-                  <div className="flex items-center gap-3 text-sm font-medium text-slate-700">
-                    <MapPin size={18} className="text-slate-400" />
-                    <span>{student.address || 'Not provided'}</span>
-                  </div>
-                  <div className="flex items-center gap-3 text-sm font-medium text-slate-700">
-                    <Calendar size={18} className="text-slate-400" />
-                    <span>DOB: {student.dob || 'Not provided'}</span>
-                  </div>
-                </div>
-
-                <div className="border-t border-slate-200 my-6" />
-
-                <h3 className="text-sm font-semibold text-slate-800 mb-6 uppercase tracking-wider flex items-center gap-2">
-                  <Users size={16} className="text-slate-400" />
-                  Family Details
-                </h3>
-
-                <div className="space-y-5">
-                  <div>
-                    <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-1">Guardian</p>
-                    <p className="text-sm font-medium text-slate-800">{student.guardian || 'Not provided'}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-1">Guardian Phone</p>
-                    <p className="text-sm font-medium text-slate-800">{student.guardianPhone || 'Not provided'}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="lg:col-span-8 space-y-8">
-                <div className="bg-white rounded-xl border border-slate-200 p-8 shadow-sm">
-                  <h3 className="text-sm font-semibold text-slate-800 mb-6 uppercase tracking-wider">Academic Info</h3>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
-                    <div>
-                      <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-2">Year</p>
-                      <p className="text-lg font-bold text-slate-900">{student.year || 1}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-2">Semester</p>
-                      <p className="text-lg font-bold text-slate-900">{student.semester || 1}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-2">CGPA</p>
-                      <p className="text-lg font-bold text-slate-900">{student.cgpa || '0.0'}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-2">Attendance</p>
-                      <p className="text-lg font-bold text-slate-900">{student.attendancePct || 0}%</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-2">Section</p>
-                      <p className="text-lg font-bold text-slate-900">{student.section || 'A'}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-2">Enroll Date</p>
-                      <p className="text-sm font-medium text-slate-700">{student.enrollDate || 'Not set'}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <OverviewTab student={student} />
           )}
 
           {activeTab === 'academics' && (() => {
@@ -690,6 +614,272 @@ function DocumentsTab({ student }) {
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+function OverviewTab({ student }) {
+  const formatValue = (val) => val || 'Not provided';
+  const formatDate = (dateStr) => {
+    if (!dateStr) return 'Not provided';
+    try {
+      return new Date(dateStr).toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+      });
+    } catch (e) {
+      return dateStr;
+    }
+  };
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      {/* Left Column - Core Info */}
+      <div className="lg:col-span-8 space-y-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Contact & Personal Information */}
+          <div className="bg-white rounded-xl border border-slate-200 p-8 shadow-sm">
+            <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-3 mb-6 uppercase tracking-wider">
+              <span className="material-symbols-outlined text-[#276221] text-[20px]">contact_page</span>
+              Personal & Contact
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Phone Number</p>
+                <p className="text-sm font-medium text-slate-700">{formatValue(student.phone)}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Personal Email</p>
+                <p className="text-sm font-medium text-slate-700">{formatValue(student.email)}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Permanent Address</p>
+                <p className="text-sm font-medium text-slate-700 leading-relaxed">{formatValue(student.address)}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Date of Birth</p>
+                  <p className="text-sm font-medium text-slate-700">{formatDate(student.dateOfBirth || student.dob)}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Gender</p>
+                  <p className="text-sm font-medium text-slate-700">{formatValue(student.gender)}</p>
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Blood Group</p>
+                <p className="text-sm font-medium text-slate-700">{formatValue(student.bloodGroup)}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Family & Guardian Details */}
+          <div className="bg-white rounded-xl border border-slate-200 p-8 shadow-sm">
+            <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-3 mb-6 uppercase tracking-wider">
+              <span className="material-symbols-outlined text-[#276221] text-[20px]">family_restroom</span>
+              Family & Guardian
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Guardian Name</p>
+                <p className="text-sm font-medium text-slate-700">{formatValue(student.guardianName || student.guardian)}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Relationship</p>
+                <p className="text-sm font-medium text-slate-700">{formatValue(student.relationship)}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Guardian Contact</p>
+                <p className="text-sm font-medium text-slate-700">{formatValue(student.guardianPhone)}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Guardian Email</p>
+                <p className="text-sm font-medium text-slate-700">{formatValue(student.guardianEmail)}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Guardian Occupation</p>
+                <p className="text-sm font-medium text-slate-700">{formatValue(student.guardianOccupation)}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Academic & Housing Details */}
+          <div className="bg-white rounded-xl border border-slate-200 p-8 shadow-sm">
+            <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-3 mb-6 uppercase tracking-wider">
+              <span className="material-symbols-outlined text-[#276221] text-[20px]">menu_book</span>
+              Academic & Housing
+            </h3>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Admission Date</p>
+                  <p className="text-sm font-medium text-slate-700">{formatDate(student.enrollDate)}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Admission Type</p>
+                  <p className="text-sm font-medium text-slate-700">{formatValue(student.admissionType)}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Quota / Category</p>
+                  <p className="text-sm font-medium text-slate-700">{formatValue(student.quota)}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Accommodation</p>
+                  <p className="text-sm font-medium text-slate-700">{formatValue(student.accommodation)}</p>
+                </div>
+              </div>
+              {student.accommodation === 'Hostel Required' && (
+                <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+                  <div>
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Hostel Name</p>
+                    <p className="text-sm font-medium text-slate-700">{formatValue(student.hostelName)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Room Type</p>
+                    <p className="text-sm font-medium text-slate-700">{formatValue(student.roomType)}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Previous Education Record */}
+          <div className="bg-white rounded-xl border border-slate-200 p-8 shadow-sm">
+            <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-3 mb-6 uppercase tracking-wider">
+              <span className="material-symbols-outlined text-[#276221] text-[20px]">history_edu</span>
+              Previous Education
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Previous School / Institution</p>
+                <p className="text-sm font-medium text-slate-700">{formatValue(student.previousSchool || student.previousInstitution)}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Board of Study</p>
+                <p className="text-sm font-medium text-slate-700">{formatValue(student.board)}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Year of Passing</p>
+                  <p className="text-sm font-medium text-slate-700">{student.yearOfPassing || 'Not provided'}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Marks Percentage</p>
+                  <p className="text-sm font-medium text-slate-700">{student.marksPercentage ? `${student.marksPercentage}%` : 'Not provided'}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Application Payment & Metrics */}
+        <div className="bg-white rounded-xl border border-slate-200 p-8 shadow-sm">
+          <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-3 mb-6 uppercase tracking-wider">
+            <span className="material-symbols-outlined text-[#276221] text-[20px]">payments</span>
+            Application Payment & Metrics
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Application Fee</span>
+                <span className="text-sm font-bold text-slate-700">₹{(student.payment?.application_fee || student.feeAmount || 500).toLocaleString('en-IN')}</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Payment Method</span>
+                <span className="text-sm font-medium text-slate-700">{formatValue(student.payment?.payment_method || student.paymentMethod)}</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Transaction ID</span>
+                <span className="text-sm font-medium text-mono text-slate-700">{formatValue(student.payment?.transaction_id || student.transactionId)}</span>
+              </div>
+              {student.payment?.payment_datetime && (
+                <div className="flex justify-between items-center py-2">
+                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Payment Date</span>
+                  <span className="text-sm font-medium text-slate-700">{new Date(student.payment.payment_datetime).toLocaleString('en-IN')}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100 justify-center">
+                <div className="text-center">
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Attendance</p>
+                  <p className="text-lg font-bold text-[#276221] mt-1">{student.attendancePct || 0}%</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100 justify-center">
+                <div className="text-center">
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Current CGPA</p>
+                  <p className="text-lg font-bold text-slate-800 mt-1">{student.cgpa || 0.0}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Right Column - Trends & Status */}
+      <div className="lg:col-span-4 space-y-8">
+        {/* GPA Trend Mock */}
+        <div className="bg-white rounded-xl border border-slate-200 p-8 shadow-sm">
+          <div className="flex items-center justify-between mb-8">
+            <h3 className="text-sm font-semibold text-slate-800 uppercase tracking-wider text-slate-900 leading-none">GPA Trend</h3>
+            <span className="px-2 py-0.5 bg-green-50 text-[#276221] rounded text-[9px] font-bold uppercase tracking-wider">B+ Average</span>
+          </div>
+          <div className="flex items-end justify-between h-24 gap-2 mb-4">
+            {[35, 45, 100, 40].map((h, i) => (
+              <div key={i} className="flex-1 flex flex-col items-center gap-2">
+                <div 
+                  className={`w-full rounded-md transition-all duration-1000 ${i === 2 ? 'bg-[#276221]' : 'bg-[#276221]/20'}`} 
+                  style={{ height: `${h}%` }} 
+                />
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">SEM{i+1}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Attendance Calendar Mock */}
+        <div className="bg-white rounded-xl border border-slate-200 p-8 shadow-sm">
+           <div className="flex items-center justify-between mb-6">
+              <h3 className="text-sm font-semibold text-slate-800 uppercase tracking-wider">Attendance: June 2024</h3>
+              <div className="flex gap-1">
+                 <div className="w-2 h-2 rounded-full bg-green-500" />
+                 <div className="w-2 h-2 rounded-full bg-red-400" />
+              </div>
+           </div>
+           <div className="grid grid-cols-7 gap-2">
+              {['M','T','W','T','F','S','S'].map(d => (
+                <div key={d} className="text-center text-[9px] font-bold text-slate-300 py-1">{d}</div>
+              ))}
+              {Array.from({length: 21}).map((_, i) => (
+                <div key={i} className={`aspect-square rounded-md border border-slate-50 transition-colors cursor-pointer ${
+                  i === 15 ? 'bg-red-400' : 
+                  i % 3 === 0 ? 'bg-green-100' : 
+                  i % 2 === 0 ? 'bg-green-400' : 'bg-green-50'
+                }`} />
+              ))}
+           </div>
+        </div>
+
+        {/* Academic Alert */}
+        <div className="bg-[#276221]/5 border border-[#276221]/10 rounded-xl p-8 flex gap-4">
+           <div className="w-10 h-10 bg-[#276221] rounded-lg flex items-center justify-center text-white shrink-0 shadow-lg shadow-[#276221]/10">
+              <span className="material-symbols-outlined text-[20px]">info</span>
+           </div>
+           <div>
+              <p className="text-xs font-semibold text-[#276221] uppercase tracking-wider mb-1">Academic Alert</p>
+              <p className="text-xs font-medium text-[#276221]/80 leading-relaxed">
+                {student.name} has successfully completed 85% of his credit requirements for the current year.
+              </p>
+           </div>
+        </div>
+      </div>
     </div>
   );
 }

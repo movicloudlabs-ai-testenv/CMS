@@ -9,102 +9,206 @@ import KpiGrid from '../components/KpiGrid'
 // ─── Tab Components ──────────────────────────────────────────────
 
 function OverviewTab({ student }) {
+  const formatValue = (val) => val || 'Not provided';
+  const formatDate = (dateStr) => {
+    if (!dateStr) return 'Not provided';
+    try {
+      return new Date(dateStr).toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+      });
+    } catch (e) {
+      return dateStr;
+    }
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
       {/* Left Column - Core Info */}
       <div className="lg:col-span-8 space-y-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Contact Information */}
+          {/* Contact & Personal Information */}
           <div className="bg-white rounded-xl border border-slate-200 p-8 shadow-sm">
             <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-3 mb-6 uppercase tracking-wider">
               <span className="material-symbols-outlined text-[#276221] text-[20px]">contact_page</span>
-              Contact Information
+              Personal & Contact
             </h3>
-            <div className="space-y-5">
+            <div className="space-y-4">
               <div>
                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Phone Number</p>
-                <p className="text-sm font-medium text-slate-700">{student.phone}</p>
+                <p className="text-sm font-medium text-slate-700">{formatValue(student.phone)}</p>
               </div>
               <div>
                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Personal Email</p>
-                <p className="text-sm font-medium text-slate-700">{student.email}</p>
+                <p className="text-sm font-medium text-slate-700">{formatValue(student.email)}</p>
               </div>
               <div>
                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Permanent Address</p>
-                <p className="text-sm font-medium text-slate-700 leading-relaxed">{student.address}</p>
+                <p className="text-sm font-medium text-slate-700 leading-relaxed">{formatValue(student.address)}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Date of Birth</p>
+                  <p className="text-sm font-medium text-slate-700">{formatDate(student.dateOfBirth || student.dob)}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Gender</p>
+                  <p className="text-sm font-medium text-slate-700">{formatValue(student.gender)}</p>
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Blood Group</p>
+                <p className="text-sm font-medium text-slate-700">{formatValue(student.bloodGroup)}</p>
               </div>
             </div>
           </div>
 
-          {/* Family Details */}
+          {/* Family & Guardian Details */}
           <div className="bg-white rounded-xl border border-slate-200 p-8 shadow-sm">
             <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-3 mb-6 uppercase tracking-wider">
               <span className="material-symbols-outlined text-[#276221] text-[20px]">family_restroom</span>
-              Family Details
+              Family & Guardian
             </h3>
-            <div className="space-y-5">
+            <div className="space-y-4">
               <div>
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Father's Name</p>
-                <p className="text-sm font-medium text-slate-700">{student.guardian}</p>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Guardian Name</p>
+                <p className="text-sm font-medium text-slate-700">{formatValue(student.guardianName || student.guardian)}</p>
               </div>
               <div>
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Mother's Name</p>
-                <p className="text-sm font-medium text-slate-700">Sunita Devi</p>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Relationship</p>
+                <p className="text-sm font-medium text-slate-700">{formatValue(student.relationship)}</p>
               </div>
               <div>
                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Guardian Contact</p>
-                <p className="text-sm font-medium text-slate-700">{student.guardianPhone}</p>
+                <p className="text-sm font-medium text-slate-700">{formatValue(student.guardianPhone)}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Guardian Email</p>
+                <p className="text-sm font-medium text-slate-700">{formatValue(student.guardianEmail)}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Guardian Occupation</p>
+                <p className="text-sm font-medium text-slate-700">{formatValue(student.guardianOccupation)}</p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Academic Info Strip */}
-        <div className="bg-white rounded-xl border border-slate-200 p-8 shadow-sm">
-          <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-3 mb-6 uppercase tracking-wider">
-            <span className="material-symbols-outlined text-[#276221] text-[20px]">menu_book</span>
-            Academic Info
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
-               <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-[#276221] shadow-sm">
-                  <span className="material-symbols-outlined text-[20px]">event_available</span>
-               </div>
-               <div>
-                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Admission Date</p>
-                  <p className="text-sm font-medium text-slate-700">{new Date(student.enrollDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
-               </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Academic & Housing Details */}
+          <div className="bg-white rounded-xl border border-slate-200 p-8 shadow-sm">
+            <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-3 mb-6 uppercase tracking-wider">
+              <span className="material-symbols-outlined text-[#276221] text-[20px]">menu_book</span>
+              Academic & Housing
+            </h3>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Admission Date</p>
+                  <p className="text-sm font-medium text-slate-700">{formatDate(student.enrollDate)}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Admission Type</p>
+                  <p className="text-sm font-medium text-slate-700">{formatValue(student.admissionType)}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Quota / Category</p>
+                  <p className="text-sm font-medium text-slate-700">{formatValue(student.quota)}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Accommodation</p>
+                  <p className="text-sm font-medium text-slate-700">{formatValue(student.accommodation)}</p>
+                </div>
+              </div>
+              {student.accommodation === 'Hostel Required' && (
+                <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+                  <div>
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Hostel Name</p>
+                    <p className="text-sm font-medium text-slate-700">{formatValue(student.hostelName)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Room Type</p>
+                    <p className="text-sm font-medium text-slate-700">{formatValue(student.roomType)}</p>
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
-               <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-red-500 shadow-sm">
-                  <span className="material-symbols-outlined text-[20px]">bloodtype</span>
-               </div>
-               <div>
-                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Blood Group</p>
-                  <p className="text-sm font-medium text-slate-700">O+</p>
-               </div>
-            </div>
-            <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
-               <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-green-500 shadow-sm">
-                  <span className="material-symbols-outlined text-[20px]">task_alt</span>
-               </div>
-               <div>
-                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Attendance</p>
-                  <p className="text-sm font-medium text-slate-700">{student.attendancePct}%</p>
-               </div>
+          </div>
+
+          {/* Previous Education Record */}
+          <div className="bg-white rounded-xl border border-slate-200 p-8 shadow-sm">
+            <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-3 mb-6 uppercase tracking-wider">
+              <span className="material-symbols-outlined text-[#276221] text-[20px]">history_edu</span>
+              Previous Education
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Previous School / Institution</p>
+                <p className="text-sm font-medium text-slate-700">{formatValue(student.previousSchool || student.previousInstitution)}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Board of Study</p>
+                <p className="text-sm font-medium text-slate-700">{formatValue(student.board)}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Year of Passing</p>
+                  <p className="text-sm font-medium text-slate-700">{student.yearOfPassing || 'Not provided'}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Marks Percentage</p>
+                  <p className="text-sm font-medium text-slate-700">{student.marksPercentage ? `${student.marksPercentage}%` : 'Not provided'}</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Technical Skills */}
+        {/* Application Payment & Metrics */}
         <div className="bg-white rounded-xl border border-slate-200 p-8 shadow-sm">
-          <h3 className="text-sm font-semibold text-slate-800 mb-6 uppercase tracking-wider">Technical Skills</h3>
-          <div className="flex flex-wrap gap-2">
-            {['Python', 'Java', 'SQL', 'React JS', 'Node.js'].map((skill, idx) => (
-              <span key={skill} className={`px-4 py-2 rounded-lg text-xs font-semibold ${idx === 3 ? 'bg-[#276221]/10 text-[#276221]' : 'bg-slate-100 text-slate-600'}`}>
-                {skill}
-              </span>
-            ))}
+          <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-3 mb-6 uppercase tracking-wider">
+            <span className="material-symbols-outlined text-[#276221] text-[20px]">payments</span>
+            Application Payment & Metrics
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Application Fee</span>
+                <span className="text-sm font-bold text-slate-700">₹{(student.payment?.application_fee || student.feeAmount || 500).toLocaleString('en-IN')}</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Payment Method</span>
+                <span className="text-sm font-medium text-slate-700">{formatValue(student.payment?.payment_method || student.paymentMethod)}</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Transaction ID</span>
+                <span className="text-sm font-medium text-mono text-slate-700">{formatValue(student.payment?.transaction_id || student.transactionId)}</span>
+              </div>
+              {student.payment?.payment_datetime && (
+                <div className="flex justify-between items-center py-2">
+                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Payment Date</span>
+                  <span className="text-sm font-medium text-slate-700">{new Date(student.payment.payment_datetime).toLocaleString('en-IN')}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100 justify-center">
+                <div className="text-center">
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Attendance</p>
+                  <p className="text-lg font-bold text-[#276221] mt-1">{student.attendancePct || 0}%</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100 justify-center">
+                <div className="text-center">
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Current CGPA</p>
+                  <p className="text-lg font-bold text-slate-800 mt-1">{student.cgpa || 0.0}</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
