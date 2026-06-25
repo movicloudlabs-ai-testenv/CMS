@@ -7,6 +7,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from backend.db import get_db
 from backend.utils.mongo import serialize_doc
+from backend.routes.academics.exams import is_department_match, is_year_match
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
@@ -422,9 +423,9 @@ async def get_student_dashboard_widgets(student_id: str):
             async for exam in db["exams"].find({"status": {"$in": ["Scheduled", "Active", "Upcoming"]}}).sort("date", 1):
                 exam_code = exam.get("code")
                 is_class_match = (
-                    str(student.get("department", "")).lower() == str(exam.get("department", "")).lower() and
+                    is_department_match(student.get("department", ""), exam.get("department", "")) and
                     str(student.get("semester", "")) == str(exam.get("semester", "")) and
-                    str(student.get("year", "")).lower() == str(exam.get("year", "")).lower()
+                    is_year_match(student.get("year", ""), exam.get("year", ""))
                 )
                 if not enrolled_codes or norm_code(exam_code) in enrolled_codes or is_class_match:
                     upcoming_tasks.append({
@@ -443,9 +444,9 @@ async def get_student_dashboard_widgets(student_id: str):
                 if exam.get("status") in ["Scheduled", "Active", "Upcoming"]:
                     exam_code = exam.get("code")
                     is_class_match = (
-                        str(student.get("department", "")).lower() == str(exam.get("department", "")).lower() and
+                        is_department_match(student.get("department", ""), exam.get("department", "")) and
                         str(student.get("semester", "")) == str(exam.get("semester", "")) and
-                        str(student.get("year", "")).lower() == str(exam.get("year", "")).lower()
+                        is_year_match(student.get("year", ""), exam.get("year", ""))
                     )
                     if not enrolled_codes or norm_code(exam_code) in enrolled_codes or is_class_match:
                         upcoming_tasks.append({

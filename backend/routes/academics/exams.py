@@ -56,6 +56,32 @@ def is_department_match(dept1: Optional[str], dept2: Optional[str]) -> bool:
     return c1 == c2 or c1 in c2 or c2 in c1 or d1 in d2 or d2 in d1
 
 
+def is_year_match(year1, year2) -> bool:
+    y1 = str(year1 or "").strip().lower()
+    y2 = str(year2 or "").strip().lower()
+    if not y1 or not y2:
+        return False
+    if y1 == y2:
+        return True
+    
+    def normalize_year(y_str):
+        import re
+        digit_match = re.search(r'\d+', y_str)
+        if digit_match:
+            return digit_match.group()
+        if "first" in y_str or "1st" in y_str:
+            return "1"
+        if "second" in y_str or "2nd" in y_str:
+            return "2"
+        if "third" in y_str or "3rd" in y_str:
+            return "3"
+        if "fourth" in y_str or "4th" in y_str:
+            return "4"
+        return y_str
+        
+    return normalize_year(y1) == normalize_year(y2)
+
+
 @router.get("")
 async def list_exams(role: Optional[str] = None, userId: Optional[str] = None):
     try:
@@ -95,7 +121,7 @@ async def list_exams(role: Optional[str] = None, userId: Optional[str] = None):
                 is_class_match = (
                     is_department_match(student.get("department", ""), exam.get("department", "")) and
                     str(student.get("semester", "")) == str(exam.get("semester", "")) and
-                    str(student.get("year", "")).lower() == str(exam.get("year", "")).lower()
+                    is_year_match(student.get("year", ""), exam.get("year", ""))
                 )
                 if norm_code(exam.get("code")) in enrolled_codes or is_class_match:
                     filtered_exams.append(exam)
