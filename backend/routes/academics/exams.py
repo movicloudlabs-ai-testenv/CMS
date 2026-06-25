@@ -82,6 +82,28 @@ def is_year_match(year1, year2) -> bool:
     return normalize_year(y1) == normalize_year(y2)
 
 
+def is_exam_class_match(exam, assigned_classes) -> bool:
+    if not assigned_classes:
+        return False
+    
+    exam_dept = exam.get("department", "")
+    exam_year = exam.get("year", "")
+    
+    for ac in assigned_classes:
+        ac_norm = str(ac).strip().lower()
+        if not ac_norm:
+            continue
+        
+        clean = lambda d: str(d or "").replace("and", "").replace("&", "").replace("engineering", "").replace("eng.", "").replace(" ", "").replace("-", "").strip().lower()
+        exam_dept_clean = clean(exam_dept)
+        ac_clean = clean(ac_norm)
+        
+        if exam_dept_clean and (exam_dept_clean in ac_clean or ac_clean in exam_dept_clean):
+            if is_year_match(exam_year, ac_norm):
+                return True
+    return False
+
+
 @router.get("")
 async def list_exams(role: Optional[str] = None, userId: Optional[str] = None):
     try:
@@ -143,6 +165,10 @@ async def list_exams(role: Optional[str] = None, userId: Optional[str] = None):
             faculty_id = faculty.get("employeeId") or faculty.get("id") or str(faculty.get("_id", ""))
             faculty_name = faculty.get("name") or faculty.get("fullName") or ""
             
+            assigned_classes = faculty.get("assignedClasses") or faculty.get("classes") or []
+            if isinstance(assigned_classes, str):
+                assigned_classes = [c.strip() for c in assigned_classes.split(",") if c.strip()]
+            
             for exam in exams:
                 ex_code = exam.get("code", "").lower()
                 ex_name = exam.get("name", "").lower()
@@ -152,11 +178,13 @@ async def list_exams(role: Optional[str] = None, userId: Optional[str] = None):
                         match = True
                         break
                 
+                class_match = is_exam_class_match(exam, assigned_classes)
+                
                 is_invigilator = (
                     str(exam.get("invigilatorEmployeeId", "")).lower() == str(faculty_id).lower() or
                     str(exam.get("invigilatorName", "")).lower() == str(faculty_name).lower()
                 )
-                if match or is_invigilator:
+                if match or class_match or is_invigilator:
                     filtered_exams.append(exam)
         return {"success": True, "data": filtered_exams}
 
@@ -796,8 +824,14 @@ async def validate_faculty_exam_permission(db, entered_by: str, exam_id: str, st
                (exam_name and exam_name.lower() in fc_norm):
                 course_match = True
                 break
-        if not course_match:
-            raise HTTPException(status_code=403, detail="You are not assigned to this exam's subject.")
+
+        assigned_classes = faculty.get("assignedClasses") or faculty.get("classes") or []
+        if isinstance(assigned_classes, str):
+            assigned_classes = [c.strip() for c in assigned_classes.split(",") if c.strip()]
+        class_match = is_exam_class_match(exam, assigned_classes)
+
+        if not course_match and not class_match:
+            raise HTTPException(status_code=403, detail="You are not assigned to this exam's subject or class.")
             
     # 2. Check student class assignment
     student = await db["students"].find_one({"$or": [{"id": student_id}, {"rollNumber": student_id}, {"student_id": student_id}]})
