@@ -21,6 +21,12 @@ from backend.utils.notify import send_notification
 router = APIRouter(prefix="/api/exams", tags=["academics:exams"])
 
 
+def get_student_id_val(student: dict) -> str:
+    if not student:
+        return ""
+    return student.get("rollNumber") or student.get("roll_number") or student.get("student_id") or student.get("id") or str(student.get("_id"))
+
+
 def _id_query(id_value: str):
     query = {"id": id_value}
     if ObjectId.is_valid(id_value):
@@ -510,7 +516,7 @@ async def schedule_bulk(payload: dict):
             
             matched_students = await find_students_for_exam(db, ex, use_db=True)
             for student in matched_students:
-                student_id = student.get("id") or student.get("rollNumber") or str(student.get("_id"))
+                student_id = get_student_id_val(student)
                 await send_notification(
                     db=db,
                     receiver_role="student",
@@ -550,7 +556,7 @@ async def schedule_bulk(payload: dict):
             
             matched_students = await find_students_for_exam(None, ex, use_db=False)
             for s in matched_students:
-                student_id = s.get("id") or s.get("rollNumber") or str(s.get("_id"))
+                student_id = get_student_id_val(s)
                 create_notification({
                     "title": "New Exam Scheduled",
                     "message": f"A new exam '{ex.get('name')}' ({ex.get('code')}) has been scheduled for {ex.get('date')} at {ex.get('time')} in {ex.get('room')}.",
@@ -609,7 +615,7 @@ async def get_enrolled_students(exam_id: str):
         
         # 3. Add registered students who might not match the subject/class anymore
         for sid in registered_student_ids:
-            already_matched = any(str(s.get("id") or s.get("rollNumber") or s.get("_id")) == sid for s in matched_students)
+            already_matched = any(get_student_id_val(s) == sid for s in matched_students)
             if not already_matched:
                 s_doc = await db["students"].find_one({"$or": [{"id": sid}, {"rollNumber": sid}, {"_id": ObjectId(sid) if ObjectId.is_valid(sid) else None}]})
                 if s_doc:
@@ -631,7 +637,7 @@ async def get_enrolled_students(exam_id: str):
         matched_students = await find_students_for_exam(None, exam, use_db=False)
         
         for sid in registered_student_ids:
-            already_matched = any(str(s.get("id") or s.get("rollNumber") or s.get("_id")) == sid for s in matched_students)
+            already_matched = any(get_student_id_val(s) == sid for s in matched_students)
             if not already_matched:
                 s_doc = next((s for s in list_items("students") if str(s.get("id")) == sid or str(s.get("rollNumber")) == sid or str(s.get("_id")) == sid), None)
                 if s_doc:
@@ -640,7 +646,7 @@ async def get_enrolled_students(exam_id: str):
     mapped_students = []
     seen_ids = set()
     for s in matched_students:
-        sid = s.get("id") or s.get("rollNumber") or str(s.get("_id"))
+        sid = get_student_id_val(s)
         if sid in seen_ids:
             continue
         seen_ids.add(sid)
@@ -681,7 +687,7 @@ async def create_exam(payload: ExamCreate):
         if use_db:
             matched_students = await find_students_for_exam(db, exam_doc, use_db=True)
             for student in matched_students:
-                student_id = student.get("id") or student.get("rollNumber") or str(student.get("_id"))
+                student_id = get_student_id_val(student)
                 dup = await db["exam_registrations"].find_one({"examId": exam_id, "studentId": student_id})
                 if not dup:
                     await db["exam_registrations"].insert_one({
@@ -695,7 +701,7 @@ async def create_exam(payload: ExamCreate):
         else:
             matched_students = await find_students_for_exam(None, exam_doc, use_db=False)
             for s in matched_students:
-                student_id = s.get("id") or s.get("rollNumber") or str(s.get("_id"))
+                student_id = get_student_id_val(s)
                 regs = _dev_list("exam_registrations")
                 dup = next((item for item in regs if str(item.get("examId")) == str(exam_id) and str(item.get("studentId")) == str(student_id)), None)
                 if not dup:
@@ -1062,7 +1068,7 @@ async def list_internal_marks(exam_id: Optional[str] = None, student_id: Optiona
             s_class_id = f"{student_dept}__{student_year}__{student_sec}"
             s_class_id = re.sub(r'[^a-z0-9]+', '-', s_class_id.lower()).strip('-')
             
-            student_class_map[s.get("id") or s.get("rollNumber") or str(s["_id"])] = (s_class_id, s_class_label)
+            student_class_map[get_student_id_val(s)] = (s_class_id, s_class_label)
             
         filtered_rows = []
         for row in rows:

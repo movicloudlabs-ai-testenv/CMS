@@ -17,15 +17,10 @@ function resolveHostBase() {
   // so use direct backend host in production by default.
   if (!import.meta.env.DEV && typeof window !== 'undefined') {
     const host = window.location.hostname;
-    const match = host.match(/^(cms-main|cms-frontend)-([a-z0-9]+)\.onrender\.com$/);
-    if (match) {
-      const suffix = match[2];
-      return `https://cms-backend-${suffix}.onrender.com`;
-    }
     if (host === 'cms1-weof.onrender.com') {
       return 'https://cms-x82g.onrender.com';
     }
-    if (host === 'cms-main-nv6w.onrender.com' || host.endsWith('-nv6w.onrender.com')) {
+    if (host.endsWith('.onrender.com')) {
       return 'https://cms-backend-oj7w.onrender.com';
     }
   }
