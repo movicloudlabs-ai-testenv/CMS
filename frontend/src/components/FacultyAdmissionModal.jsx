@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAdmission } from '../context/AdmissionContext';
 import { API_BASE } from '../api/apiBase';
+import { settingsApi } from '../api/settingsApi';
 
 const steps = [
   { number: 1, title: 'Personal' },
@@ -16,6 +17,25 @@ export default function FacultyAdmissionModal({ isOpen, onClose }) {
   const { addFacultyApp } = useAdmission();
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [departments, setDepartments] = useState([]);
+
+  useEffect(() => {
+    const fetchDepts = async () => {
+      try {
+        const data = await settingsApi.getDepartments();
+        setDepartments(data || []);
+        if (data && data.length > 0) {
+          setFormData(prev => ({
+            ...prev,
+            department: prev.department || data[0].name
+          }));
+        }
+      } catch (err) {
+        console.error('Error fetching departments:', err);
+      }
+    };
+    fetchDepts();
+  }, []);
   const [formData, setFormData] = useState({
     // Step 1: Personal
     fullName: '',
@@ -385,7 +405,11 @@ export default function FacultyAdmissionModal({ isOpen, onClose }) {
                       value={formData.department}
                       onChange={handleInputChange}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600"
-                    ><option value="">Select Department</option><option value="Computer Science">Computer Science</option><option value="Electrical Engineering">Electrical Engineering</option><option value="Mechanical Engineering">Mechanical Engineering</option><option value="Information Technology">Information Technology</option></select></div><div><label className="block text-sm font-medium text-gray-700 mb-2">Years of Experience</label><input
+                    ><option value="">Select Department</option>
+                      {departments.map(d => (
+                        <option key={d.code} value={d.name}>{d.name}</option>
+                      ))}
+                    </select></div><div><label className="block text-sm font-medium text-gray-700 mb-2">Years of Experience</label><input
                       type="number"
                       name="yearsOfExperience"
                       value={formData.yearsOfExperience}

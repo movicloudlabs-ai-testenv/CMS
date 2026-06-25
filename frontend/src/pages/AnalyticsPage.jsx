@@ -8,6 +8,7 @@ import {
 import { cmsRoles, getValidRole } from '../data/roleConfig';
 import Layout from '../components/Layout';
 import { API_BASE } from '../api/apiBase';
+import { settingsApi } from '../api/settingsApi';
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 const Ico = {
@@ -39,6 +40,13 @@ const C = {
 
 const DEPT_COLORS = { CS: C.blue, Phys: C.orange, Math: C.green, ECE: C.purple, Mech: C.cyan };
 const PIE_COLS  = [C.green, C.orange, C.red, C.blue, C.purple];
+const colorList = [C.blue, C.orange, C.green, C.purple, C.cyan, C.teal, C.amber, C.indigo, C.red];
+function getDeptColor(deptKey, index) {
+  if (deptKey && DEPT_COLORS[deptKey]) return DEPT_COLORS[deptKey];
+  if (typeof index === 'number') return colorList[index % colorList.length];
+  return C.blue;
+}
+
 
 const TT_STYLE = {
   contentStyle: {
@@ -99,9 +107,10 @@ function avgFinancePie(piMap,months){
   return['Paid','Pending','Overdue'].map(n=>({name:n,value:Math.round(months.reduce((s,m)=>{const r=(piMap[m]??[]).find(x=>x.name===n);return s+(r?.value??0)},0)/months.length)}));
 }
 
-function avgFinanceDept(fdMap,months){
+function avgFinanceDept(fdMap,months,DEPTS_VAL){
   if(!fdMap)return[];
-  return DEPTS.map(d=>({dept:d,paid:Math.round(months.reduce((s,m)=>{const r=(fdMap[m]??[]).find(x=>x.dept===d);return s+(r?.paid??0)},0)/months.length),pending:Math.round(months.reduce((s,m)=>{const r=(fdMap[m]??[]).find(x=>x.dept===d);return s+(r?.pending??0)},0)/months.length),overdue:Math.round(months.reduce((s,m)=>{const r=(fdMap[m]??[]).find(x=>x.dept===d);return s+(r?.overdue??0)},0)/months.length)}));
+  const deptsToUse = DEPTS_VAL || DEPTS;
+  return deptsToUse.map(d=>({dept:d,paid:Math.round(months.reduce((s,m)=>{const r=(fdMap[m]??[]).find(x=>x.dept===d);return s+(r?.paid??0)},0)/months.length),pending:Math.round(months.reduce((s,m)=>{const r=(fdMap[m]??[]).find(x=>x.dept===d);return s+(r?.pending??0)},0)/months.length),overdue:Math.round(months.reduce((s,m)=>{const r=(fdMap[m]??[]).find(x=>x.dept===d);return s+(r?.overdue??0)},0)/months.length)}));
 }
 
 function avgMarksDist(mdMap,months){
@@ -125,11 +134,13 @@ function PieLabelInside({cx,cy,midAngle,innerRadius,outerRadius,value,percent,na
 }
 
 // ── CSV Export ────────────────────────────────────────────────────────────────
-function exportCSV(role,months,rangeLabel,tab,ad){
+function exportCSV(role,months,rangeLabel,tab,ad,DEPTS_VAL,DEPT_FULL_VAL){
   let headers=[],rows=[];
+  const deptsToUse = DEPTS_VAL || DEPTS;
+  const deptFullToUse = DEPT_FULL_VAL || DEPT_FULL;
   if(role==='admin'){
     if(tab==='students'){headers=['Month','Total Students','Avg Attendance','Avg Pass Rate','Courses'];rows=months.map(m=>{const c=ad?.adminCardsByMonth?.[m]??{};const att=Math.round((ad?.adminAttByMonth?.[m]??[]).reduce((s,d)=>s+d.avg,0)/5);const pass=Math.round((ad?.adminExamByMonth?.[m]??[]).reduce((s,d)=>s+d.pass,0)/5);return[m,c.students??'—',`${att}%`,`${pass}%`,c.courses??'—'];});}
-    else if(tab==='faculty'){headers=['Dept','Faculty Count','Avg Attendance','Avg Pass Rate'];rows=DEPTS.map(d=>{const att=Math.round(months.reduce((s,m)=>{const f=(ad?.adminAttByMonth?.[m]??[]).find(x=>x.dept===d);return s+(f?.avg??0)},0)/months.length);const pass=Math.round(months.reduce((s,m)=>{const f=(ad?.adminExamByMonth?.[m]??[]).find(x=>x.dept===d);return s+(f?.pass??0)},0)/months.length);return[DEPT_FULL[d],ad?.facultyByDept?.[d]??0,`${att}%`,`${pass}%`];});}
+    else if(tab==='faculty'){headers=['Dept','Faculty Count','Avg Attendance','Avg Pass Rate'];rows=deptsToUse.map(d=>{const att=Math.round(months.reduce((s,m)=>{const f=(ad?.adminAttByMonth?.[m]??[]).find(x=>x.dept===d);return s+(f?.avg??0)},0)/months.length);const pass=Math.round(months.reduce((s,m)=>{const f=(ad?.adminExamByMonth?.[m]??[]).find(x=>x.dept===d);return s+(f?.pass??0)},0)/months.length);return[deptFullToUse[d] || d,ad?.facultyByDept?.[d]??0,`${att}%`,`${pass}%`];});}
     else{headers=['Month','Income','Expense','Net'];rows=months.map(m=>{const d=ad?.incomeExpenseByMonth?.[m]??{income:0,expense:0};return[m,fmtCr(d.income),fmtCr(d.expense),fmtCr(d.income-d.expense)];});}
   } else if(role==='finance'){
     headers=['Month','Collected','Pending Fees','Paid%','Scholarships'];
@@ -447,11 +458,11 @@ function AdminView({activeMonths,rangeLabel,department,semester,analyticsData}){
   const aAttData = useMemo(()=>{
     if(ad.departmentData) return ad.departmentData.map(d=>({dept:d.name,avg:Math.round(d.avgAttendance||85)}));
     const rows=[];DEPTS.forEach(d=>{const avg=Math.round(activeMonths.reduce((s,m)=>{const f=(adminAttByMonth[m]??[]).find(x=>x.dept===d);return s+(f?.avg??0)},0)/activeMonths.length);rows.push({dept:d,avg});});return rows;
-  },[activeMonths,ad,adminAttByMonth]);
+  },[activeMonths,ad,adminAttByMonth,DEPTS]);
   
   const aExamData = useMemo(()=>{
     const rows=[];DEPTS.forEach(d=>{const pass=Math.round(activeMonths.reduce((s,m)=>{const f=(adminExamByMonth[m]??[]).find(x=>x.dept===d);return s+(f?.pass??0)},0)/activeMonths.length);const fail=Math.round(activeMonths.reduce((s,m)=>{const f=(adminExamByMonth[m]??[]).find(x=>x.dept===d);return s+(f?.fail??0)},0)/activeMonths.length);rows.push({dept:d,pass,fail});});return rows;
-  },[activeMonths,adminExamByMonth]);
+  },[activeMonths,adminExamByMonth,DEPTS]);
   
   const aCards = useMemo(()=>{
     if(ad.summaryData){const sd=ad.summaryData;return{students:String(sd.students||sd.totalStudents||0),faculty:String(sd.faculty||0),courses:String(sd.courses||0)};}
@@ -469,7 +480,7 @@ function AdminView({activeMonths,rangeLabel,department,semester,analyticsData}){
       return ad.departmentData.map((d,i)=>{const pass=85+(i*2)%15;return{dept:d.name,att:Math.round(d.avgAttendance||85),pass,cgpa:d.cgpa||7.5,score:Math.round((d.avgAttendance||85)*0.3+pass*0.5+(d.cgpa||7.5)*2.2),students:d.students||0,faculty:d.faculty||1};}).sort((a,b)=>b.score-a.score);
     }
     return DEPTS.map(d=>{const att=Math.round(activeMonths.reduce((s,m)=>{const f=(adminAttByMonth[m]??[]).find(x=>x.dept===d);return s+(f?.avg??0)},0)/activeMonths.length);const pass=Math.round(activeMonths.reduce((s,m)=>{const f=(adminExamByMonth[m]??[]).find(x=>x.dept===d);return s+(f?.pass??0)},0)/activeMonths.length);const cgpa=cgpaByDept[d]??0;const score=Math.round(att*0.3+pass*0.5+cgpa*2.2);return{dept:d,att,pass,cgpa,score,students:studentsByDept[d]??0,faculty:facultyByDept[d]??0};}).sort((a,b)=>b.score-a.score);
-  },[activeMonths,ad,adminAttByMonth,adminExamByMonth,cgpaByDept,studentsByDept,facultyByDept]);
+  },[activeMonths,ad,adminAttByMonth,adminExamByMonth,cgpaByDept,studentsByDept,facultyByDept,DEPTS]);
 
   const alerts=[];
   rankingData.forEach(d=>{if(d.att<80)alerts.push(`${d.dept} attendance ${d.att}%`);});
@@ -485,12 +496,12 @@ function AdminView({activeMonths,rangeLabel,department,semester,analyticsData}){
   const facultyPieData=useMemo(()=>{
     if(ad.departmentData)return ad.departmentData.map(d=>({name:d.name,value:d.faculty}));
     return Object.entries(dc?{[dc]:facultyByDept[dc]}:facultyByDept).map(([k,v])=>({name:DEPT_FULL[k]??k,value:v}));
-  },[dc,ad,facultyByDept]);
+  },[dc,ad,facultyByDept,DEPT_FULL]);
   
   const cgpaDeptData=useMemo(()=>{
     if(ad.departmentData)return ad.departmentData.map(d=>({dept:d.name,cgpa:d.cgpa}));
     return(dc?[{dept:dc,cgpa:cgpaByDept[dc]}]:DEPTS.map(d=>({dept:d,cgpa:cgpaByDept[d]}))).filter(Boolean);
-  },[dc,ad,cgpaByDept]);
+  },[dc,ad,cgpaByDept,DEPTS]);
 
   const TABS=[{id:'overview',label:'Overview'},{id:'students',label:'Students'},{id:'faculty',label:'Faculty'},{id:'finance',label:'Finance'}];
   
@@ -537,20 +548,20 @@ function AdminView({activeMonths,rangeLabel,department,semester,analyticsData}){
             <div style={{overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
               <table style={{width:'100%',minWidth:650,borderCollapse:'collapse'}}><thead><tr><th style={tH}>Dept</th><th style={tH}>Students</th><th style={tH}>Faculty</th><th style={tH}>Attendance</th><th style={tH}>Pass Rate</th><th style={tH}>CGPA</th><th style={tH}>Score</th></tr></thead>
                 <tbody>{rankingData.map((d,i)=>(
-                  <tr key={d.dept} style={{background:i===0?'#f0fdf4':i%2===0?'#fafafa':'#fff'}}><td style={{...tD,fontWeight:700}}><span style={{display:'inline-block',width:10,height:10,borderRadius:3,background:DEPT_COLORS[d.dept]??C.blue,marginRight:8}}/>{DEPT_FULL[d.dept]??d.dept}</td><td style={tD}>{d.students}</td><td style={tD}>{d.faculty}</td><td style={{...tD,fontWeight:700,color:d.att>=85?C.green:d.att>=80?C.orange:C.red}}>{d.att}%</td><td style={{...tD,fontWeight:700,color:d.pass>=85?C.green:d.pass>=80?C.orange:C.red}}>{d.pass}%</td><td style={{...tD,fontWeight:700,color:C.blue}}>{d.cgpa}</td><td style={{...tD,fontWeight:800,color:i===0?C.green:'#374151'}}>{d.score}</td></tr>
+                  <tr key={d.dept} style={{background:i===0?'#f0fdf4':i%2===0?'#fafafa':'#fff'}}><td style={{...tD,fontWeight:700}}><span style={{display:'inline-block',width:10,height:10,borderRadius:3,background:getDeptColor(d.dept, i),marginRight:8}}/>{DEPT_FULL[d.dept]??d.dept}</td><td style={tD}>{d.students}</td><td style={tD}>{d.faculty}</td><td style={{...tD,fontWeight:700,color:d.att>=85?C.green:d.att>=80?C.orange:C.red}}>{d.att}%</td><td style={{...tD,fontWeight:700,color:d.pass>=85?C.green:d.pass>=80?C.orange:C.red}}>{d.pass}%</td><td style={{...tD,fontWeight:700,color:C.blue}}>{d.cgpa}</td><td style={{...tD,fontWeight:800,color:i===0?C.green:'#374151'}}>{d.score}</td></tr>
                 ))}</tbody></table>
             </div>
           </CC>
 
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:20,marginBottom:20}}>
             <CC title="Attendance by Dept" subtitle={`${rangeLabel} avg`}>
-              <ResponsiveContainer width="100%" height={160}><BarChart data={filteredAtt} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/><XAxis dataKey="dept" tick={{fontSize:11,fill:'#64748b',fontWeight:600}} axisLine={false} tickLine={false}/><YAxis domain={[60,100]} tick={{fontSize:10,fill:'#64748b'}} axisLine={false} tickLine={false} tickFormatter={v=>`${v}%`}/><Tooltip {...TT_STYLE} formatter={v=>`${v}%`}/><Bar dataKey="avg" name="Attendance" radius={[6,6,0,0]}>{filteredAtt.map((_,i)=><Cell key={i} fill={Object.values(DEPT_COLORS)[i%5]}/>)}</Bar></BarChart></ResponsiveContainer>
+              <ResponsiveContainer width="100%" height={160}><BarChart data={filteredAtt} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/><XAxis dataKey="dept" tick={{fontSize:11,fill:'#64748b',fontWeight:600}} axisLine={false} tickLine={false}/><YAxis domain={[60,100]} tick={{fontSize:10,fill:'#64748b'}} axisLine={false} tickLine={false} tickFormatter={v=>`${v}%`}/><Tooltip {...TT_STYLE} formatter={v=>`${v}%`}/><Bar dataKey="avg" name="Attendance" radius={[6,6,0,0]}>{filteredAtt.map((_,i)=><Cell key={i} fill={getDeptColor(null, i)}/>)}</Bar></BarChart></ResponsiveContainer>
             </CC>
             <CC title="Income vs Expense" subtitle={`${rangeLabel} monthly`}>
               <ResponsiveContainer width="100%" height={160}><BarChart data={incExpData} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/><XAxis dataKey="month" tick={{fontSize:10,fill:'#64748b',fontWeight:600}} axisLine={false} tickLine={false}/><YAxis tick={{fontSize:9,fill:'#64748b'}} axisLine={false} tickLine={false} tickFormatter={fmtCr}/><Tooltip {...TT_STYLE} formatter={fmtCr}/><Legend wrapperStyle={{fontSize:10,fontFamily:"'Outfit', sans-serif"}}/><Bar dataKey="income" name="Income" fill={C.blue} radius={[4,4,0,0]}/><Bar dataKey="expense" name="Expense" fill={C.orange} radius={[4,4,0,0]}/></BarChart></ResponsiveContainer>
             </CC>
             <CC title="Faculty by Dept" subtitle="Current distribution" action={<button onClick={()=>setTab('faculty')} style={miniBtn}>Expand</button>}>
-              <ResponsiveContainer width="100%" height={160}><PieChart><Pie data={Object.entries(facultyByDept).map(([k,v])=>({name:k,value:v}))} cx="50%" cy="50%" outerRadius={65} dataKey="value" label={<PieLabelInside labelType="count"/>} labelLine={false}>{Object.keys(facultyByDept).map((_,i)=><Cell key={i} fill={Object.values(DEPT_COLORS)[i]}/>)}</Pie><Tooltip {...TT_STYLE}/></PieChart></ResponsiveContainer>
+              <ResponsiveContainer width="100%" height={160}><PieChart><Pie data={Object.entries(facultyByDept).map(([k,v])=>({name:k,value:v}))} cx="50%" cy="50%" outerRadius={65} dataKey="value" label={<PieLabelInside labelType="count"/>} labelLine={false}>{Object.keys(facultyByDept).map((_,i)=><Cell key={i} fill={getDeptColor(null, i)}/>)}</Pie><Tooltip {...TT_STYLE}/></PieChart></ResponsiveContainer>
             </CC>
           </div>
         </>
@@ -564,38 +575,38 @@ function AdminView({activeMonths,rangeLabel,department,semester,analyticsData}){
             <SCard label="Active Courses" value={aCards.courses} sub={semester} tone="orange" icon=""/>
           </div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:20,marginBottom:20}}>
-            <CC title="Students by Department" subtitle="Distribution"><ResponsiveContainer width="100%" height={200}><PieChart><Pie data={deptPieData} cx="50%" cy="50%" outerRadius={75} dataKey="value" label={<PieLabelInside labelType="count"/>} labelLine={false}>{deptPieData.map((_,i)=><Cell key={i} fill={Object.values(DEPT_COLORS)[i%5]}/>)}</Pie><Tooltip {...TT_STYLE}/></PieChart></ResponsiveContainer></CC>
+            <CC title="Students by Department" subtitle="Distribution"><ResponsiveContainer width="100%" height={200}><PieChart><Pie data={deptPieData} cx="50%" cy="50%" outerRadius={75} dataKey="value" label={<PieLabelInside labelType="count"/>} labelLine={false}>{deptPieData.map((_,i)=><Cell key={i} fill={getDeptColor(null, i)}/>)}</Pie><Tooltip {...TT_STYLE}/></PieChart></ResponsiveContainer></CC>
             <CC title="Students by Year" subtitle="Year-wise split"><ResponsiveContainer width="100%" height={200}><PieChart><Pie data={yearPieData} cx="50%" cy="50%" innerRadius={40} outerRadius={70} dataKey="value" label={<PieLabelInside labelType="count"/>} labelLine={false}>{yearPieData.map((_,i)=><Cell key={i} fill={PIE_COLS[i]}/>)}</Pie><Tooltip {...TT_STYLE}/></PieChart></ResponsiveContainer></CC>
             <CC title="Gender Distribution" subtitle="All departments"><ResponsiveContainer width="100%" height={200}><PieChart><Pie data={genderData} cx="50%" cy="50%" outerRadius={75} dataKey="value" label={<PieLabelInside labelType="pct"/>} labelLine={false}>{genderData.map((_,i)=><Cell key={i} fill={[C.blue,C.orange,C.purple][i]}/>)}</Pie><Tooltip {...TT_STYLE}/></PieChart></ResponsiveContainer></CC>
           </div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20,marginBottom:20}}>
-            <CC title="Attendance Trend" subtitle={`${rangeLabel} — by department`}><ResponsiveContainer width="100%" height={H}><LineChart data={attTrendData} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/><XAxis dataKey="month" tick={{fontSize:10,fill:'#64748b',fontWeight:600}} axisLine={false} tickLine={false}/><YAxis domain={[60,100]} tick={{fontSize:10,fill:'#64748b'}} axisLine={false} tickLine={false} tickFormatter={v=>`${v}%`}/><Tooltip {...TT_STYLE} formatter={v=>`${v}%`}/><Legend wrapperStyle={{fontSize:11,fontFamily:"'Outfit', sans-serif"}}/>{(dc?[dc]:DEPTS).map((d,i)=><Line key={d} type="monotone" dataKey={d} stroke={Object.values(DEPT_COLORS)[i%5]} strokeWidth={2.5} dot={false}/>)}</LineChart></ResponsiveContainer></CC>
-            <CC title="Pass Rate Trend" subtitle={`${rangeLabel} — by department`}><ResponsiveContainer width="100%" height={H}><LineChart data={passTrendData} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/><XAxis dataKey="month" tick={{fontSize:10,fill:'#64748b',fontWeight:600}} axisLine={false} tickLine={false}/><YAxis domain={[60,100]} tick={{fontSize:10,fill:'#64748b'}} axisLine={false} tickLine={false} tickFormatter={v=>`${v}%`}/><Tooltip {...TT_STYLE} formatter={v=>`${v}%`}/><Legend wrapperStyle={{fontSize:11,fontFamily:"'Outfit', sans-serif"}}/>{(dc?[dc]:DEPTS).map((d,i)=><Line key={d} type="monotone" dataKey={d} stroke={Object.values(DEPT_COLORS)[i%5]} strokeWidth={2.5} dot={false}/>)}</LineChart></ResponsiveContainer></CC>
+            <CC title="Attendance Trend" subtitle={`${rangeLabel} — by department`}><ResponsiveContainer width="100%" height={H}><LineChart data={attTrendData} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/><XAxis dataKey="month" tick={{fontSize:10,fill:'#64748b',fontWeight:600}} axisLine={false} tickLine={false}/><YAxis domain={[60,100]} tick={{fontSize:10,fill:'#64748b'}} axisLine={false} tickLine={false} tickFormatter={v=>`${v}%`}/><Tooltip {...TT_STYLE} formatter={v=>`${v}%`}/><Legend wrapperStyle={{fontSize:11,fontFamily:"'Outfit', sans-serif"}}/>{(dc?[dc]:DEPTS).map((d,i)=><Line key={d} type="monotone" dataKey={d} stroke={getDeptColor(d, i)} strokeWidth={2.5} dot={false}/>)}</LineChart></ResponsiveContainer></CC>
+            <CC title="Pass Rate Trend" subtitle={`${rangeLabel} — by department`}><ResponsiveContainer width="100%" height={H}><LineChart data={passTrendData} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/><XAxis dataKey="month" tick={{fontSize:10,fill:'#64748b',fontWeight:600}} axisLine={false} tickLine={false}/><YAxis domain={[60,100]} tick={{fontSize:10,fill:'#64748b'}} axisLine={false} tickLine={false} tickFormatter={v=>`${v}%`}/><Tooltip {...TT_STYLE} formatter={v=>`${v}%`}/><Legend wrapperStyle={{fontSize:11,fontFamily:"'Outfit', sans-serif"}}/>{(dc?[dc]:DEPTS).map((d,i)=><Line key={d} type="monotone" dataKey={d} stroke={getDeptColor(d, i)} strokeWidth={2.5} dot={false}/>)}</LineChart></ResponsiveContainer></CC>
           </div>
-          <CC title="Dept CGPA Comparison" subtitle="Average CGPA by department" style={{marginBottom:20}}><ResponsiveContainer width="100%" height={H}><BarChart data={cgpaDeptData} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/><XAxis dataKey="dept" tick={{fontSize:11,fill:'#64748b',fontWeight:600}} axisLine={false} tickLine={false}/><YAxis domain={[6,10]} tick={{fontSize:10,fill:'#64748b'}} axisLine={false} tickLine={false}/><Tooltip {...TT_STYLE}/><Bar dataKey="cgpa" name="CGPA" radius={[6,6,0,0]}>{cgpaDeptData.map((_,i)=><Cell key={i} fill={Object.values(DEPT_COLORS)[i%5]}/>)}</Bar></BarChart></ResponsiveContainer></CC>
+          <CC title="Dept CGPA Comparison" subtitle="Average CGPA by department" style={{marginBottom:20}}><ResponsiveContainer width="100%" height={H}><BarChart data={cgpaDeptData} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/><XAxis dataKey="dept" tick={{fontSize:11,fill:'#64748b',fontWeight:600}} axisLine={false} tickLine={false}/><YAxis domain={[6,10]} tick={{fontSize:10,fill:'#64748b'}} axisLine={false} tickLine={false}/><Tooltip {...TT_STYLE}/><Bar dataKey="cgpa" name="CGPA" radius={[6,6,0,0]}>{cgpaDeptData.map((_,i)=><Cell key={i} fill={getDeptColor(null, i)}/>)}</Bar></BarChart></ResponsiveContainer></CC>
         </>
       )}
 
       {tab==='faculty'&&(
         <><div style={{display:'flex',gap:16,marginBottom:24,flexWrap:'wrap'}}>
             <SCard label="Total Faculty" value={aCards.faculty} sub={rangeLabel} tone="blue" icon=""/>
-            <SCard label="Departments" value="5" sub="Active" tone="green" icon=""/>
+            <SCard label="Departments" value={DEPTS.length} sub="Active" tone="green" icon=""/>
             <SCard label="Avg Pass Rate" value={`${avgPass}%`} sub="College avg" tone="purple" icon=""/>
             <SCard label="Total Courses" value={aCards.courses} sub={semester} tone="orange" icon=""/>
           </div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:20,marginBottom:20}}>
-            <CC title="Faculty by Department" subtitle="Distribution"><ResponsiveContainer width="100%" height={200}><PieChart><Pie data={facultyPieData} cx="50%" cy="50%" outerRadius={75} dataKey="value" label={<PieLabelInside labelType="count"/>} labelLine={false}>{facultyPieData.map((_,i)=><Cell key={i} fill={Object.values(DEPT_COLORS)[i%5]}/>)}</Pie><Tooltip {...TT_STYLE}/></PieChart></ResponsiveContainer></CC>
+            <CC title="Faculty by Department" subtitle="Distribution"><ResponsiveContainer width="100%" height={200}><PieChart><Pie data={facultyPieData} cx="50%" cy="50%" outerRadius={75} dataKey="value" label={<PieLabelInside labelType="count"/>} labelLine={false}>{facultyPieData.map((_,i)=><Cell key={i} fill={getDeptColor(null, i)}/>)}</Pie><Tooltip {...TT_STYLE}/></PieChart></ResponsiveContainer></CC>
             <CC title="Faculty Rank Distribution" subtitle="By academic rank"><ResponsiveContainer width="100%" height={200}><PieChart><Pie data={facultyRankData} cx="50%" cy="50%" innerRadius={40} outerRadius={70} dataKey="count" label={<PieLabelInside labelType="count"/>} labelLine={false}>{facultyRankData.map((_,i)=><Cell key={i} fill={PIE_COLS[i]}/>)}</Pie><Tooltip {...TT_STYLE}/></PieChart></ResponsiveContainer></CC>
             <CC title="Dept Ranking" subtitle="Composite score">
-              {rankingData.map((d,i)=>(<div key={d.dept} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 0',borderBottom:i<rankingData.length-1?'1px solid #f1f5f9':'none'}}><span style={{fontSize:16,fontWeight:900,color:i===0?C.green:i===1?C.blue:'#9ca3af',minWidth:24}}>#{i+1}</span><span style={{display:'inline-block',width:10,height:10,borderRadius:3,background:DEPT_COLORS[d.dept]??C.blue}}/><span style={{fontSize:13,fontWeight:700,flex:1,color:'#334155'}}>{DEPT_FULL[d.dept]??d.dept}</span><span style={{fontSize:14,fontWeight:800,color:Object.values(DEPT_COLORS)[i],minWidth:32}}>{d.score}</span></div>))}
+              {rankingData.map((d,i)=>(<div key={d.dept} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 0',borderBottom:i<rankingData.length-1?'1px solid #f1f5f9':'none'}}><span style={{fontSize:16,fontWeight:900,color:i===0?C.green:i===1?C.blue:'#9ca3af',minWidth:24}}>#{i+1}</span><span style={{display:'inline-block',width:10,height:10,borderRadius:3,background:getDeptColor(d.dept, i)}}/><span style={{fontSize:13,fontWeight:700,flex:1,color:'#334155'}}>{DEPT_FULL[d.dept]??d.dept}</span><span style={{fontSize:14,fontWeight:800,color:getDeptColor(d.dept, i),minWidth:32}}>{d.score}</span></div>))}
             </CC>
           </div>
           <CC title="Faculty Directory" subtitle={dc?`${DEPT_FULL[dc]} — individual faculty list`:'All departments — click a dept filter above to narrow'} style={{marginBottom:20}}>
-            {(dc?[dc]:DEPTS).map(deptKey=>(
+            {(dc?[dc]:DEPTS).map((deptKey, i)=>(
               <div key={deptKey} style={{marginBottom:24}}>
-                <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:12,padding:'12px 16px',background:DEPT_COLORS[deptKey]+'10',borderRadius:10,border:`1.5px solid ${DEPT_COLORS[deptKey]}30`}}>
-                  <span style={{display:'inline-block',width:12,height:12,borderRadius:3,background:DEPT_COLORS[deptKey]}}/>
-                  <span style={{fontWeight:800,fontSize:14,color:DEPT_COLORS[deptKey],fontFamily:"'Outfit', sans-serif"}}>{DEPT_FULL[deptKey]}</span>
+                <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:12,padding:'12px 16px',background:getDeptColor(deptKey, i)+'10',borderRadius:10,border:`1.5px solid ${getDeptColor(deptKey, i)}30`}}>
+                  <span style={{display:'inline-block',width:12,height:12,borderRadius:3,background:getDeptColor(deptKey, i)}}/>
+                  <span style={{fontWeight:800,fontSize:14,color:getDeptColor(deptKey, i),fontFamily:"'Outfit', sans-serif"}}>{DEPT_FULL[deptKey]}</span>
                   <span style={{fontSize:12,color:'#64748b',marginLeft:4,fontWeight:500}}>— {FACULTY_LIST[deptKey]?.length??0} Faculty Members</span>
                   <span style={{marginLeft:'auto',fontSize:12,fontWeight:700,color:'#334155'}}>Avg Att: <span style={{color:C.green}}>{rankingData.find(r=>r.dept===deptKey)?.att??0}%</span></span>
                   <span style={{fontSize:12,fontWeight:700,color:'#334155',marginLeft:12}}>Pass: <span style={{color:C.blue}}>{rankingData.find(r=>r.dept===deptKey)?.pass??0}%</span></span>
@@ -627,7 +638,7 @@ function AdminView({activeMonths,rangeLabel,department,semester,analyticsData}){
             <CC title="Expense Breakdown" subtitle="Category-wise split"><ResponsiveContainer width="100%" height={H}><PieChart><Pie data={ad.expenseBreakdown||[]} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" label={<PieLabelInside labelType="pct"/>} labelLine={false}>{(ad.expenseBreakdown||[]).map((_,i)=><Cell key={i} fill={[C.blue,C.orange,C.green,C.purple,C.teal][i]}/>)}</Pie><Tooltip {...TT_STYLE} formatter={v=>`${v}%`}/><Legend wrapperStyle={{fontSize:10,fontFamily:"'Outfit', sans-serif"}}/></PieChart></ResponsiveContainer></CC>
           </div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20,marginBottom:20}}>
-            <CC title="Fee Collection by Department" subtitle={`${rangeLabel} avg`}><ResponsiveContainer width="100%" height={H}><BarChart data={dc?avgFinanceDept(ad.financeDeptByMonth,activeMonths).filter(d=>d.dept===dc):avgFinanceDept(ad.financeDeptByMonth,activeMonths)} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/><XAxis dataKey="dept" tick={{fontSize:11,fill:'#64748b',fontWeight:600}} axisLine={false} tickLine={false}/><YAxis tick={{fontSize:10,fill:'#64748b'}} axisLine={false} tickLine={false}/><Tooltip {...TT_STYLE}/><Legend wrapperStyle={{fontSize:11,fontFamily:"'Outfit', sans-serif"}}/><Bar dataKey="paid" name="Paid" stackId="a" fill={C.green} radius={[0,0,0,0]}/><Bar dataKey="pending" name="Pending" stackId="a" fill={C.orange} radius={[0,0,0,0]}/><Bar dataKey="overdue" name="Overdue" stackId="a" fill={C.red} radius={[6,6,0,0]}/></BarChart></ResponsiveContainer></CC>
+            <CC title="Fee Collection by Department" subtitle={`${rangeLabel} avg`}><ResponsiveContainer width="100%" height={H}><BarChart data={dc?avgFinanceDept(ad.financeDeptByMonth,activeMonths,DEPTS).filter(d=>d.dept===dc):avgFinanceDept(ad.financeDeptByMonth,activeMonths,DEPTS)} margin={{top:4,right:4,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/><XAxis dataKey="dept" tick={{fontSize:11,fill:'#64748b',fontWeight:600}} axisLine={false} tickLine={false}/><YAxis tick={{fontSize:10,fill:'#64748b'}} axisLine={false} tickLine={false}/><Tooltip {...TT_STYLE}/><Legend wrapperStyle={{fontSize:11,fontFamily:"'Outfit', sans-serif"}}/><Bar dataKey="paid" name="Paid" stackId="a" fill={C.green} radius={[0,0,0,0]}/><Bar dataKey="pending" name="Pending" stackId="a" fill={C.orange} radius={[0,0,0,0]}/><Bar dataKey="overdue" name="Overdue" stackId="a" fill={C.red} radius={[6,6,0,0]}/></BarChart></ResponsiveContainer></CC>
             <CC title="Fee Payment Status" subtitle={`${rangeLabel} avg split`}><ResponsiveContainer width="100%" height={H}><PieChart><Pie data={avgFinancePie(ad.financePieByMonth,activeMonths)} cx="50%" cy="50%" innerRadius={50} outerRadius={78} paddingAngle={4} dataKey="value" label={<PieLabelInside labelType="pct"/>} labelLine={false}>{avgFinancePie(ad.financePieByMonth,activeMonths).map((_,i)=><Cell key={i} fill={PIE_COLS[i]}/>)}</Pie><Tooltip {...TT_STYLE} formatter={v=>`${v}%`}/><Legend wrapperStyle={{fontSize:12,fontFamily:"'Outfit', sans-serif"}}/></PieChart></ResponsiveContainer></CC>
           </div>
         </>
@@ -638,7 +649,7 @@ function AdminView({activeMonths,rangeLabel,department,semester,analyticsData}){
 // ══════════════════════════════════════════════════════════════════════════════
 // FINANCE VIEW
 // ══════════════════════════════════════════════════════════════════════════════
-function FinanceView({activeMonths,rangeLabel,department,semester,analyticsData}){
+function FinanceView({activeMonths,rangeLabel,department,semester,analyticsData,DEPTS,DEPT_FULL,DEPT_CODE}){
   const [tab,setTab]=useState('collection');
   const ad = analyticsData || {};
   const dc = DEPT_CODE[department];
@@ -667,7 +678,7 @@ function FinanceView({activeMonths,rangeLabel,department,semester,analyticsData}
   },[activeMonths,financeColByMonth]);
 
   const fiPieData = avgFinancePie(financePieByMonth,activeMonths);
-  const fiDeptData = avgFinanceDept(financeDeptByMonth,activeMonths);
+  const fiDeptData = avgFinanceDept(financeDeptByMonth,activeMonths,DEPTS);
 
   const semFeeDetails = semesterFeeData.map(s=>({...s,rate:s.target?Math.round(s.collected/s.target*100):0}));
 
@@ -846,7 +857,52 @@ export default function AnalyticsPage({role:propRole}){
   const [startMY,    setStartMY]    = useState({month:0,year:2026});
   const [endMY,      setEndMY]      = useState({month:2,year:2026});
   const [semester,   setSemester]   = useState(SEMESTER_OPTS[0]);
-  const [department, setDepartment] = useState(DEPT_OPTS[0]);
+  const [department, setDepartment] = useState('All Departments');
+
+  const [dbDepartments, setDbDepartments] = useState([]);
+
+  useEffect(() => {
+    const fetchDepts = async () => {
+      try {
+        const data = await settingsApi.getDepartments();
+        if (data && data.length > 0) {
+          setDbDepartments(data);
+        }
+      } catch (err) {
+        console.error('Error fetching departments in AnalyticsPage:', err);
+      }
+    };
+    fetchDepts();
+  }, []);
+
+  const { DEPTS, DEPT_FULL, DEPT_OPTS, DEPT_CODE } = useMemo(() => {
+    if (dbDepartments.length === 0) {
+      return {
+        DEPTS: ['CS','Phys','Math','ECE','Mech'],
+        DEPT_FULL: { CS:'Computer Science', Phys:'Physics', Math:'Mathematics', ECE:'Electronics', Mech:'Mechanical' },
+        DEPT_OPTS: ['All Departments','Computer Science','Physics','Mathematics','Electronics','Mechanical'],
+        DEPT_CODE: { 'All Departments':null,'Computer Science':'CS','Physics':'Phys','Mathematics':'Math','Electronics':'ECE','Mechanical':'Mech' }
+      };
+    }
+    const depts = dbDepartments.map(d => d.code || d.name.slice(0, 2).toUpperCase());
+    const deptFull = {};
+    const deptOpts = ['All Departments'];
+    const deptCode = { 'All Departments': null };
+
+    dbDepartments.forEach(d => {
+      const code = d.code || d.name.slice(0, 2).toUpperCase();
+      deptFull[code] = d.name;
+      deptOpts.push(d.name);
+      deptCode[d.name] = code;
+    });
+
+    return {
+      DEPTS: depts,
+      DEPT_FULL: deptFull,
+      DEPT_OPTS: deptOpts,
+      DEPT_CODE: deptCode
+    };
+  }, [dbDepartments]);
 
   const [analyticsData, setAnalyticsData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -942,13 +998,13 @@ export default function AnalyticsPage({role:propRole}){
           )}
 
           <div>
-            <button onClick={()=>{setStartMY({month:0,year:2026});setEndMY({month:2,year:2026});setSemester(SEMESTER_OPTS[0]);setDepartment(DEPT_OPTS[0]);}} style={{height:40,padding:'0 18px',borderRadius:10,border:'1.5px solid #cbd5e1',background:'#f8fafc',color:'#64748b',fontSize:13,fontWeight:600,cursor:'pointer',transition:'all 0.2s',fontFamily:"'Outfit', sans-serif"}}>
+            <button onClick={()=>{setStartMY({month:0,year:2026});setEndMY({month:2,year:2026});setSemester(SEMESTER_OPTS[0]);setDepartment('All Departments');}} style={{height:40,padding:'0 18px',borderRadius:10,border:'1.5px solid #cbd5e1',background:'#f8fafc',color:'#64748b',fontSize:13,fontWeight:600,cursor:'pointer',transition:'all 0.2s',fontFamily:"'Outfit', sans-serif"}}>
               Reset
             </button>
           </div>
           
           <div style={{marginLeft:'auto'}}>
-            <button onClick={()=>exportCSV(role,activeMonths,rangeLabel,'students',analyticsData)} style={{display:'flex',alignItems:'center',gap:8,height:40,padding:'0 20px',borderRadius:10,border:'none',background:'linear-gradient(135deg,#276221,#1e4618)',color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer',boxShadow:'0 4px 14px rgba(39,98,33,.3)',transition:'all 0.2s',fontFamily:"'Outfit', sans-serif"}}>
+            <button onClick={()=>exportCSV(role,activeMonths,rangeLabel,'students',analyticsData,DEPTS,DEPT_FULL)} style={{display:'flex',alignItems:'center',gap:8,height:40,padding:'0 20px',borderRadius:10,border:'none',background:'linear-gradient(135deg,#276221,#1e4618)',color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer',boxShadow:'0 4px 14px rgba(39,98,33,.3)',transition:'all 0.2s',fontFamily:"'Outfit', sans-serif"}}>
               <Ico.Download/>Download Report
             </button>
           </div>
@@ -994,7 +1050,7 @@ export default function AnalyticsPage({role:propRole}){
         </p><span style={{fontSize:11,color:'#9ca3af',fontWeight:500}}>Updated {new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span></div><FilterBar/>
       {loading && !analyticsData ? <LoadingSpinner/> : <>
         {role==='admin'  && <AdminView   activeMonths={activeMonths} rangeLabel={rangeLabel} department={department} semester={semester} analyticsData={analyticsData}/>}
-        {role==='finance' && <FinanceView activeMonths={activeMonths} rangeLabel={rangeLabel} department={department} semester={semester} analyticsData={analyticsData}/>}
+        {role==='finance' && <FinanceView activeMonths={activeMonths} rangeLabel={rangeLabel} department={department} semester={semester} analyticsData={analyticsData} DEPTS={DEPTS} DEPT_FULL={DEPT_FULL} DEPT_CODE={DEPT_CODE}/>}
         {role==='faculty' && <FacultyView activeMonths={activeMonths} rangeLabel={rangeLabel} department={department} semester={semester} analyticsData={analyticsData}/>}
         {role==='student' && <div style={{textAlign:'center',padding:'60px 0',color:'#9ca3af',fontSize:14}}>Student analytics coming soon</div>}
       </>}

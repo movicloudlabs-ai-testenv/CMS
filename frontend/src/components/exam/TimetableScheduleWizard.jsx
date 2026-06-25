@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { getSchedulePreview, submitBulkSchedule } from '../../api/examsApi';
 import { getUserSession } from '../../auth/sessionController';
+import { settingsApi } from '../../api/settingsApi';
 
 function CloseIcon() {
   return (
@@ -16,9 +17,25 @@ export default function TimetableScheduleWizard({ isOpen, onClose, onSave }) {
   const [wizardStep, setWizardStep] = useState(1);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [departments, setDepartments] = useState([]);
 
   // Step 1 parameters
   const [dept, setDept] = useState('Computer Science');
+
+  useEffect(() => {
+    const fetchDepts = async () => {
+      try {
+        const data = await settingsApi.getDepartments();
+        setDepartments(data || []);
+        if (data && data.length > 0) {
+          setDept(data[0].name);
+        }
+      } catch (err) {
+        console.error('Error loading departments in TimetableScheduleWizard:', err);
+      }
+    };
+    fetchDepts();
+  }, []);
   const [year, setYear] = useState('3rd Year');
   const [semester, setSemester] = useState('6');
   const [examType, setExamType] = useState('Mid-Sem');
@@ -196,12 +213,9 @@ export default function TimetableScheduleWizard({ isOpen, onClose, onSave }) {
                 <div className="space-y-1">
                   <label className={labelClasses}>Department</label>
                   <select value={dept} onChange={(e) => setDept(e.target.value)} className={inputClasses}>
-                    <option value="Computer Science">Computer Science</option>
-                    <option value="Electronics & Communication">Electronics & Communication</option>
-                    <option value="Mechanical Engineering">Mechanical Engineering</option>
-                    <option value="Civil Engineering">Civil Engineering</option>
-                    <option value="Information Technology">Information Technology</option>
-                    <option value="Electrical Engineering">Electrical Engineering</option>
+                    {departments.map(d => (
+                      <option key={d.code} value={d.name}>{d.name}</option>
+                    ))}
                   </select>
                 </div>
 
