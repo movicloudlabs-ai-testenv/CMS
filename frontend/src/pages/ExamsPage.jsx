@@ -154,9 +154,6 @@ export default function ExamsPage({ noLayout = false }) {
     if (matchingExams.length === 0) return null;
     
     for (const exam of matchingExams) {
-      if (isStudent && !exam.resultsPublished) {
-        continue;
-      }
       const examId = exam._id || exam.id;
       const mark = studentMarks.find(m => String(m.examId) === String(examId));
       if (mark && mark.marks !== undefined && mark.marks !== null) {

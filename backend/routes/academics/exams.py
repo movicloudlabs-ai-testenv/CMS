@@ -734,7 +734,7 @@ async def delete_exam(exam_id: str):
 
 @router.patch("/{exam_id}/publish-results")
 async def publish_exam_results(exam_id: str):
-    patch = {"resultsPublished": True, "updatedAt": _now_iso()}
+    patch = {"resultsPublished": True, "status": "Completed", "updatedAt": _now_iso()}
     try:
         db = get_db()
     except HTTPException as error:
