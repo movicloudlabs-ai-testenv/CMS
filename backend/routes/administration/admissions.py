@@ -182,6 +182,10 @@ def _normalize_from_flat_payload(payload: dict[str, Any]) -> dict[str, Any]:
         "semester": payload.get("semester") or 1,
         "roll": payload.get("roll") or payload.get("rollNumber") or payload.get("roll_number") or admission_id,
         "cgpa": _to_float(payload.get("cgpa"), 0.0),
+        "avatar": payload.get("avatar") or "",
+        "section": payload.get("section") or "A",
+        "year": payload.get("year") or "1st Year",
+        "enrollDate": payload.get("enrollDate") or _today_ymd(),
         "documents": payload.get("documents") or {
             "passport_photo": payload.get("passportPhoto"),
             "aadhaar_card": payload.get("aadhaarCard"),
@@ -218,6 +222,7 @@ def _normalize_from_flat_payload(payload: dict[str, Any]) -> dict[str, Any]:
         "relationship": normalized["relationship"],
         "guardianEmail": normalized["guardianEmail"],
         "guardianOccupation": normalized["guardianOccupation"],
+        "avatar": normalized["avatar"],
     }
     normalized["academic"] = {
         "previous_school": normalized["previousSchool"],
@@ -286,6 +291,12 @@ def _normalize_from_nested_payload(payload: dict[str, Any]) -> dict[str, Any]:
             "semester": payload.get("semester") or 1,
             "roll": payload.get("roll") or payload.get("rollNumber") or payload.get("roll_number") or admission_id,
             "cgpa": _to_float(payload.get("cgpa"), 0.0),
+            "avatar": personal.get("avatar") or payload.get("avatar") or "",
+            "bloodGroup": personal.get("bloodGroup") or payload.get("bloodGroup") or "",
+            "admissionType": payload.get("admissionType") or "Regular",
+            "section": payload.get("section") or "A",
+            "year": payload.get("year") or "1st Year",
+            "enrollDate": payload.get("enrollDate") or _today_ymd(),
         }
     )
 
@@ -503,16 +514,15 @@ async def _create_student_from_admission(admission: dict[str, Any]) -> bool:
             # Academic Information
             "department_id": department,
             "department": department,
-            "year": "1st Year",
-            "semester": 1,
-            "section": "A",
+            "year": admission.get("year") or "1st Year",
+            "semester": _to_int(admission.get("semester"), 1),
+            "section": admission.get("section") or "A",
             
             # Status and Dates
             "status": "Active",
-            "admission_id": admission_id,
             "created_at": _utc_now_iso(),
-            "enroll_date": _today_ymd(),
-            "enrollDate": _today_ymd(),
+            "enroll_date": admission.get("enrollDate") or admission.get("enroll_date") or _today_ymd(),
+            "enrollDate": admission.get("enrollDate") or admission.get("enroll_date") or _today_ymd(),
             "admissionType": admission.get("admissionType") or "Regular",
             
             # Academic Metrics
@@ -552,7 +562,7 @@ async def _create_student_from_admission(admission: dict[str, Any]) -> bool:
             "payment": admission.get("payment") or {},
             
             # Appearance
-            "avatar": f"https://ui-avatars.com/api/?name={name}&background=1162d4&color=fff",
+            "avatar": admission.get("avatar") or personal.get("avatar") or f"https://ui-avatars.com/api/?name={name}&background=1162d4&color=fff",
             
             # Initialize empty collections
             "subjects": [],
