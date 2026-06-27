@@ -75,10 +75,10 @@ export default function ExamsPage({ noLayout = false }) {
   const [studentsList, setStudentsList] = useState([])
   const [selectedStudentId, setSelectedStudentId] = useState(isStudent ? (session?.userId || '') : '')
   const [studentDetails, setStudentDetails] = useState(null)
-  const [academicYearFilter, setAcademicYearFilter] = useState('2026-2027')
-  const [semesterFilterVal, setSemesterFilterVal] = useState('Semester 1')
-  const [appliedYear, setAppliedYear] = useState('2026-2027')
-  const [appliedSem, setAppliedSem] = useState('Semester 1')
+  const [academicYearFilter, setAcademicYearFilter] = useState('')
+  const [semesterFilterVal, setSemesterFilterVal] = useState('')
+  const [appliedYear, setAppliedYear] = useState('')
+  const [appliedSem, setAppliedSem] = useState('')
   const [loadingStudent, setLoadingStudent] = useState(false)
   const [studentMarks, setStudentMarks] = useState([])
   const [allExams, setAllExams] = useState([])
@@ -88,7 +88,7 @@ export default function ExamsPage({ noLayout = false }) {
 
   // Helper to calculate academic year relative to current semester
   const getSubjectAcademicYear = (subjectSem, currentSem, currentAcademicYear) => {
-    const match = String(currentAcademicYear || '2026-2027').match(/^(\d{4})/);
+    const match = String(currentAcademicYear || '2025-2026').match(/^(\d{4})/);
     const currentStartYear = match ? parseInt(match[1]) : 2025;
     const subjectYearNum = Math.ceil(Number(subjectSem) / 2);
     const currentYearNum = Math.ceil(Number(currentSem) / 2);
@@ -369,7 +369,7 @@ export default function ExamsPage({ noLayout = false }) {
   const filteredSubjects = useMemo(() => {
     if (!studentDetails) return [];
     return mappedSubjects.filter(sub => {
-      const subAcadYear = getSubjectAcademicYear(sub.semester, studentDetails.semester || 1, '2026-2027');
+      const subAcadYear = getSubjectAcademicYear(sub.semester, studentDetails.semester || 6, '2025-2026');
       const matchesYear = !appliedYear || subAcadYear === appliedYear;
       
       const semNum = appliedSem ? appliedSem.replace(/\D/g, '') : '';
@@ -708,6 +708,7 @@ export default function ExamsPage({ noLayout = false }) {
                 onChange={(e) => setAcademicYearFilter(e.target.value)}
                 className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 bg-slate-50 font-medium outline-none transition-all focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
               >
+                <option value="">All Academic Years</option>
                 <option value="2026-2027">2026-2027</option>
                 <option value="2025-2026">2025-2026</option>
                 <option value="2024-2025">2024-2025</option>
@@ -723,6 +724,7 @@ export default function ExamsPage({ noLayout = false }) {
                 onChange={(e) => setSemesterFilterVal(e.target.value)}
                 className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 bg-slate-50 font-medium outline-none transition-all focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
               >
+                <option value="">All Semesters</option>
                 <option value="Semester 1">Semester 1</option>
                 <option value="Semester 2">Semester 2</option>
                 <option value="Semester 3">Semester 3</option>
@@ -747,10 +749,10 @@ export default function ExamsPage({ noLayout = false }) {
               </button>
               <button
                 onClick={() => {
-                  setAcademicYearFilter('2026-2027');
-                  setSemesterFilterVal('Semester 1');
-                  setAppliedYear('2026-2027');
-                  setAppliedSem('Semester 1');
+                  setAcademicYearFilter('');
+                  setSemesterFilterVal('');
+                  setAppliedYear('');
+                  setAppliedSem('');
                 }}
                 className="flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-600 hover:bg-slate-700 text-white rounded-lg text-sm font-semibold transition-all shadow-sm active:scale-95"
               >
@@ -1387,14 +1389,18 @@ export default function ExamsPage({ noLayout = false }) {
               className={inputClasses} placeholder="e.g., 100"
             />
           </div>
-          <div className="space-y-1.5 md:col-span-2">
-            <label className={labelClasses}>Status</label>
-            <select name="status" value={formData.status} onChange={handleInputChange} className={inputClasses}>
-              <option value="Upcoming">Upcoming</option>
-              <option value="Completed">Completed</option>
-              <option value="Cancelled">Cancelled</option>
-            </select>
-          </div>
+          {editingExam && (
+            <div className="space-y-1.5 md:col-span-2">
+              <label className={labelClasses}>Status</label>
+              <input
+                type="text"
+                name="status"
+                value={formData.status}
+                disabled
+                className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-400 bg-slate-50 font-medium outline-none cursor-not-allowed"
+              />
+            </div>
+          )}
         </div>
       </Modal>
 

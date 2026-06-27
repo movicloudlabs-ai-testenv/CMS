@@ -1365,7 +1365,7 @@ async def list_exam_halls():
         raise
 
     rows = []
-    async for row in db["exam_halls"].find().sort("name", 1):
+    async for row in db["academic_facilities"].find({"status": {"$ne": "Maintenance"}}).sort("name", 1):
         rows.append(serialize_doc(row))
     return {"success": True, "data": rows if rows else default_halls}
 

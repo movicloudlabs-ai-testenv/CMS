@@ -1,24 +1,30 @@
 import { useState, useEffect } from 'react';
 import { assignInvigilator, listInvigilators, deleteInvigilator } from '../../api/examsApi';
-
-// Mock faculty data - in real app, this would come from faculty database
-const mockFaculty = [
-  { id: 'FAC-204', name: 'Dr. Rajesh Iyer', department: 'Computer Science' },
-  { id: 'FAC-205', name: 'Prof. Anita Sharma', department: 'Computer Science' },
-  { id: 'FAC-206', name: 'Dr. Priya Mehta', department: 'Mathematics' },
-  { id: 'FAC-207', name: 'Prof. Kumar Singh', department: 'Computer Science' },
-  { id: 'FAC-208', name: 'Dr. Sarah Johnson', department: 'Computer Science' }
-];
+import { buildApiUrl } from '../../api/apiBase';
 
 export default function InvigilatorAssignModal({ isOpen, onClose, exam, currentUserId }) {
   const [selectedFaculty, setSelectedFaculty] = useState('');
   const [assignedInvigilators, setAssignedInvigilators] = useState([]);
+  const [facultyList, setFacultyList] = useState([]);
 
   useEffect(() => {
     if (isOpen && exam) {
       loadAssignedInvigilators();
+      loadFacultyList();
     }
   }, [isOpen, exam]);
+
+  const loadFacultyList = async () => {
+    try {
+      const res = await fetch(buildApiUrl('/faculty'));
+      if (res.ok) {
+        const data = await res.json();
+        setFacultyList(data || []);
+      }
+    } catch (err) {
+      console.error('Failed to load faculty list:', err);
+    }
+  };
 
   const loadAssignedInvigilators = async () => {
     try {
@@ -34,14 +40,14 @@ export default function InvigilatorAssignModal({ isOpen, onClose, exam, currentU
   const handleAssign = async () => {
     if (!selectedFaculty) return;
 
-    const faculty = mockFaculty.find(f => f.id === selectedFaculty);
+    const faculty = facultyList.find(f => (f.employeeId || f.id || f._id) === selectedFaculty);
     if (!faculty) return;
 
     try {
       await assignInvigilator({
         examId: exam._id || exam.id,
-        facultyId: faculty.id,
-        facultyName: faculty.name,
+        facultyId: faculty.employeeId || faculty.id || faculty._id,
+        facultyName: faculty.fullName || faculty.name,
         assignedBy: currentUserId || '',
       });
       loadAssignedInvigilators();
@@ -66,8 +72,8 @@ export default function InvigilatorAssignModal({ isOpen, onClose, exam, currentU
   if (!isOpen) return null;
 
   // Filter out already assigned faculty
-  const availableFaculty = mockFaculty.filter(
-    f => !assignedInvigilators.some(a => a.facultyId === f.id)
+  const availableFaculty = facultyList.filter(
+    f => !assignedInvigilators.some(a => a.facultyId === (f.employeeId || f.id || f._id))
   );
 
   return (
@@ -101,14 +107,19 @@ export default function InvigilatorAssignModal({ isOpen, onClose, exam, currentU
               <select
                 value={selectedFaculty}
                 onChange={(e) => setSelectedFaculty(e.target.value)}
-                className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#276221]/20 focus:border-[#276221] outline-none"
+                className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#276221]/20 focus:border-[#276221] outline-none bg-white text-slate-800"
               >
                 <option value="">-- Select Faculty --</option>
-                {availableFaculty.map(faculty => (
-                  <option key={faculty.id} value={faculty.id}>
-                    {faculty.name} ({faculty.department})
-                  </option>
-                ))}
+                {availableFaculty.map(faculty => {
+                  const fId = faculty.employeeId || faculty.id || faculty._id;
+                  const fName = faculty.fullName || faculty.name;
+                  const fDept = faculty.department || 'N/A';
+                  return (
+                    <option key={fId} value={fId}>
+                      {fName} ({fDept})
+                    </option>
+                  );
+                })}
               </select>
               <button
                 onClick={handleAssign}
