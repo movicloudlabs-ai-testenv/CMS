@@ -1167,5 +1167,3 @@ function OverviewTab({ student }) {
     </div>
   );
 }
-=======
->>>>>>> 36bdb0701c56b6827ee03a617aa018622f2d2115
