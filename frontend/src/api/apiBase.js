@@ -13,18 +13,8 @@ function resolveHostBase() {
   const configuredBase = normalizeHostBase(configuredBaseRaw);
   if (configuredBase) return configuredBase;
 
-  // Render static rewrite for /api is unreliable in this deployment,
-  // so use direct backend host in production by default.
-  if (!import.meta.env.DEV && typeof window !== 'undefined') {
-    const host = window.location.hostname;
-    if (host === 'cms1-weof.onrender.com') {
-      return 'https://cms-x82g.onrender.com';
-    }
-    if (host.endsWith('.onrender.com')) {
-      return 'https://cms-backend-oj7w.onrender.com';
-    }
-  }
-
+  // In production (monorepo), the backend serves the frontend dist,
+  // so the API is on the same origin — use relative /api path (empty base).
   return '';
 }
 
@@ -43,3 +33,4 @@ export function buildUploadUrl(fileName) {
   const base = hostBase || '';
   return `${trimTrailingSlash(base)}/uploads/${fileName}`;
 }
+

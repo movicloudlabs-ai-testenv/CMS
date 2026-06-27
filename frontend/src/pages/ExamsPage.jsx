@@ -602,11 +602,18 @@ export default function ExamsPage({ noLayout = false }) {
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault()
+    // Strip payload to only the fields ExamUpdate accepts to avoid 422 errors
+    const allowedFields = ['code', 'name', 'date', 'time', 'room', 'type', 'status', 'duration', 'maxMarks', 'senderRole']
     const payload = {
-      ...formData,
-      duration: parseDurationToMinutes(formData.duration),
       senderRole: session?.role || 'faculty'
     }
+    for (const key of allowedFields) {
+      if (formData[key] !== undefined && formData[key] !== null) {
+        payload[key] = formData[key]
+      }
+    }
+    payload.duration = parseDurationToMinutes(formData.duration)
+    payload.maxMarks = String(formData.maxMarks || '')
     
     try {
       if (editingExam) {
@@ -1392,13 +1399,17 @@ export default function ExamsPage({ noLayout = false }) {
           {editingExam && (
             <div className="space-y-1.5 md:col-span-2">
               <label className={labelClasses}>Status</label>
-              <input
-                type="text"
+              <select
                 name="status"
                 value={formData.status}
-                disabled
-                className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-400 bg-slate-50 font-medium outline-none cursor-not-allowed"
-              />
+                onChange={handleInputChange}
+                className={inputClasses}
+              >
+                <option value="Upcoming">Upcoming</option>
+                <option value="Completed">Completed</option>
+                <option value="Cancelled">Cancelled</option>
+                <option value="Postponed">Postponed</option>
+              </select>
             </div>
           )}
         </div>

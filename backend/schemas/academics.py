@@ -1,10 +1,12 @@
 from datetime import date
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ExamBase(BaseModel):
+    model_config = ConfigDict(extra='ignore')
+
     code: str
     name: str
     date: str
@@ -22,6 +24,8 @@ class ExamCreate(ExamBase):
 
 
 class ExamUpdate(BaseModel):
+    model_config = ConfigDict(extra='ignore')
+
     code: Optional[str] = None
     name: Optional[str] = None
     date: Optional[str] = None
