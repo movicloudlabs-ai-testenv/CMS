@@ -155,13 +155,13 @@ export default function TimetableScheduleWizard({ isOpen, onClose, onSave }) {
   const labelClasses = "block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wider";
 
   return (
-    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-[1000] p-4 animate-fade-in">
-      <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden transform transition-all">
+    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-[1000] p-0 sm:p-4 animate-fade-in">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-4xl max-h-[95vh] sm:max-h-[85vh] flex flex-col shadow-2xl overflow-hidden transform transition-all duration-300">
         {/* Header */}
-        <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+        <div className="px-4 sm:px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 flex-shrink-0">
           <div>
-            <h3 className="text-lg font-bold text-slate-800">Bulk Exam Scheduler</h3>
-            <p className="text-xs text-slate-500">Create multiple conflict-free exams with auto-allocated halls and invigilators.</p>
+            <h3 className="text-base sm:text-lg font-bold text-slate-800">Bulk Exam Scheduler</h3>
+            <p className="text-[10px] sm:text-xs text-slate-500">Create multiple conflict-free exams with auto-allocated halls and invigilators.</p>
           </div>
           <button 
             type="button" 
@@ -173,23 +173,23 @@ export default function TimetableScheduleWizard({ isOpen, onClose, onSave }) {
         </div>
 
         {/* Step Indicator */}
-        <div className="px-8 py-4 border-b border-slate-100 flex items-center justify-between bg-white select-none">
-          {['Batch Information', 'Exam Slots', 'Resource Allocation & Review'].map((label, idx) => {
+        <div className="px-4 sm:px-8 py-3.5 border-b border-slate-100 flex items-center justify-between bg-white select-none flex-shrink-0">
+          {['Batch Info', 'Exam Slots', 'Resource Allocation'].map((label, idx) => {
             const stepNum = idx + 1;
             const isActive = wizardStep === stepNum;
             const isPassed = wizardStep > stepNum;
             return (
               <div key={idx} className="flex flex-col items-center flex-1 relative">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors z-10 ${
+                <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors z-10 ${
                   isActive || isPassed ? 'bg-[#276221] text-white' : 'bg-slate-100 text-slate-400'
                 }`}>
                   {isPassed ? '✓' : stepNum}
                 </div>
-                <div className={`text-xs mt-1.5 font-semibold transition-colors ${isActive ? 'text-slate-800' : 'text-slate-400'}`}>
+                <div className={`text-[9px] sm:text-xs mt-1 text-center font-semibold transition-colors ${isActive ? 'text-slate-800' : 'text-slate-400'}`}>
                   {label}
                 </div>
                 {idx < 2 && (
-                  <div className={`absolute top-4 left-[50%] w-full h-[2px] z-0 transition-colors ${isPassed ? 'bg-[#276221]' : 'bg-slate-100'}`} />
+                  <div className={`absolute top-3.5 sm:top-4 left-[50%] w-full h-[2px] z-0 transition-colors ${isPassed ? 'bg-[#276221]' : 'bg-slate-100'}`} />
                 )}
               </div>
             );
@@ -197,7 +197,7 @@ export default function TimetableScheduleWizard({ isOpen, onClose, onSave }) {
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto flex-1 bg-slate-50/20">
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1 bg-slate-50/20">
           {/* STEP 1: Batch Information */}
           {wizardStep === 1 && (
             <div className="space-y-6">
@@ -382,61 +382,100 @@ export default function TimetableScheduleWizard({ isOpen, onClose, onSave }) {
                   <p className="text-sm font-semibold">Running conflict checks and auto-assigning classrooms & invigilators...</p>
                 </div>
               ) : (
-                <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-                  <table className="w-full text-left text-xs">
-                    <thead>
-                      <tr className="bg-slate-50 text-slate-500 font-bold border-b border-slate-200 uppercase tracking-wider">
-                        <th className="px-5 py-3.5">Subject</th>
-                        <th className="px-5 py-3.5">Date & Time</th>
-                        <th className="px-5 py-3.5">Auto-Assigned Room</th>
-                        <th className="px-5 py-3.5">Auto-Assigned Invigilator</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {previewExams.map((exam, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50/55 transition-colors">
-                          <td className="px-5 py-4">
+                <>
+                  {/* Desktop Preview Table */}
+                  <div className="hidden sm:block bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="bg-slate-50 text-slate-500 font-bold border-b border-slate-200 uppercase tracking-wider">
+                          <th className="px-5 py-3.5">Subject</th>
+                          <th className="px-5 py-3.5">Date & Time</th>
+                          <th className="px-5 py-3.5">Auto-Assigned Room</th>
+                          <th className="px-5 py-3.5">Auto-Assigned Invigilator</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {previewExams.map((exam, idx) => (
+                          <tr key={idx} className="hover:bg-slate-50/55 transition-colors">
+                            <td className="px-5 py-4">
+                              <span className="text-[10px] font-bold text-[#276221] block uppercase">{exam.code}</span>
+                              <span className="font-semibold text-slate-700 text-sm">{exam.name}</span>
+                            </td>
+                            <td className="px-5 py-4 text-slate-600 font-medium">
+                              <p>{exam.date}</p>
+                              <p className="text-slate-400 font-normal">{exam.time}</p>
+                            </td>
+                            <td className="px-5 py-4 font-semibold text-slate-700">
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#276221]/5 text-[#276221] border border-[#276221]/10">
+                                <span className="material-symbols-outlined text-sm">room</span>
+                                {exam.room}
+                              </span>
+                            </td>
+                            <td className="px-5 py-4">
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-[10px]">
+                                  {exam.invigilatorName?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'F'}
+                                </div>
+                                <div>
+                                  <p className="font-semibold text-slate-700">{exam.invigilatorName}</p>
+                                  <p className="text-[10px] text-slate-400">ID: {exam.invigilatorEmployeeId}</p>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Mobile Preview Card List */}
+                  <div className="block sm:hidden space-y-3">
+                    {previewExams.map((exam, idx) => (
+                      <div key={idx} className="p-4 border border-slate-200 bg-white rounded-xl shadow-sm space-y-3">
+                        <div className="flex justify-between items-start">
+                          <div>
                             <span className="text-[10px] font-bold text-[#276221] block uppercase">{exam.code}</span>
-                            <span className="font-semibold text-slate-700 text-sm">{exam.name}</span>
-                          </td>
-                          <td className="px-5 py-4 text-slate-600 font-medium">
-                            <p>{exam.date}</p>
-                            <p className="text-slate-400 font-normal">{exam.time}</p>
-                          </td>
-                          <td className="px-5 py-4 font-semibold text-slate-700">
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#276221]/5 text-[#276221] border border-[#276221]/10">
-                              <span className="material-symbols-outlined text-sm">room</span>
+                            <span className="font-semibold text-slate-800 text-sm">{exam.name}</span>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs border-t border-slate-100 pt-2.5">
+                          <div>
+                            <span className="text-[9px] text-slate-400 uppercase font-bold block">Date & Time</span>
+                            <span className="text-slate-700 font-semibold">{exam.date} @ {exam.time}</span>
+                          </div>
+                          <div>
+                            <span className="text-[9px] text-slate-400 uppercase font-bold block">Auto-Assigned Room</span>
+                            <span className="inline-flex items-center gap-1 mt-0.5 text-xs font-semibold text-[#276221]">
+                              <span className="material-symbols-outlined text-xs">room</span>
                               {exam.room}
                             </span>
-                          </td>
-                          <td className="px-5 py-4">
-                            <div className="flex items-center gap-2">
-                              <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-[10px]">
-                                {exam.invigilatorName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-                              </div>
-                              <div>
-                                <p className="font-semibold text-slate-700">{exam.invigilatorName}</p>
-                                <p className="text-[10px] text-slate-400">ID: {exam.invigilatorEmployeeId}</p>
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                          </div>
+                        </div>
+                        <div className="border-t border-slate-100 pt-2.5 flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-[10px]">
+                            {exam.invigilatorName?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'F'}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold text-slate-700 truncate">{exam.invigilatorName}</p>
+                            <p className="text-[9px] text-slate-400">ID: {exam.invigilatorEmployeeId}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
               )}
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex justify-between items-center">
+        <div className="p-4 sm:p-6 border-t border-slate-100 bg-slate-50/50 flex justify-between items-center flex-shrink-0">
           <button
             type="button"
             onClick={handleBack}
             disabled={wizardStep === 1 || submitting}
-            className={`px-4 py-2 border rounded-lg text-sm font-semibold transition-all ${
+            className={`px-4 py-2.5 border rounded-lg text-sm font-semibold transition-all shadow-sm ${
               wizardStep === 1
                 ? 'bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed'
                 : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 active:scale-95'
@@ -450,7 +489,7 @@ export default function TimetableScheduleWizard({ isOpen, onClose, onSave }) {
               <button
                 type="button"
                 onClick={handleNext}
-                className="px-4 py-2 bg-[#276221] hover:bg-[#1e4618] text-white rounded-lg text-sm font-semibold transition-all active:scale-95"
+                className="px-5 py-2.5 bg-[#276221] hover:bg-[#1e4618] text-white rounded-lg text-sm font-semibold transition-all active:scale-95 shadow-sm"
               >
                 Next
               </button>
@@ -459,7 +498,7 @@ export default function TimetableScheduleWizard({ isOpen, onClose, onSave }) {
                 type="button"
                 onClick={handleScheduleExams}
                 disabled={submitting || loadingPreview}
-                className="px-4 py-2 bg-[#276221] hover:bg-[#1e4618] text-white rounded-lg text-sm font-semibold transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                className="px-5 py-2.5 bg-[#276221] hover:bg-[#1e4618] text-white rounded-lg text-sm font-semibold transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
               >
                 {submitting ? 'Scheduling...' : 'Schedule Exams'}
               </button>

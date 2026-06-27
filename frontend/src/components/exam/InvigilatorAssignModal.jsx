@@ -77,16 +77,16 @@ export default function InvigilatorAssignModal({ isOpen, onClose, exam, currentU
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="p-6 border-b border-slate-200 flex items-center justify-between">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/50 backdrop-blur-sm">
+      <div className="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full max-w-2xl max-h-[95vh] sm:max-h-[85vh] overflow-hidden flex flex-col transition-all duration-300">
+        <div className="p-4 sm:p-6 border-b border-slate-200 flex items-center justify-between bg-slate-50/50 flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-[#276221]/10 rounded-lg">
               <span className="material-symbols-outlined text-[#276221]">person_add</span>
             </div>
             <div>
-              <h3 className="text-xl font-bold text-slate-900">Assign Invigilators</h3>
-              <p className="text-sm text-slate-500">{exam.code} - {exam.name}</p>
+              <h3 className="text-lg sm:text-xl font-bold text-slate-900">Assign Invigilators</h3>
+              <p className="text-xs sm:text-sm text-slate-500">{exam.code} - {exam.name}</p>
             </div>
           </div>
           <button
@@ -97,17 +97,17 @@ export default function InvigilatorAssignModal({ isOpen, onClose, exam, currentU
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
           {/* Add Invigilator */}
-          <div className="mb-6">
-            <label className="text-sm font-semibold text-slate-700 mb-2 block">
+          <div>
+            <label className="text-xs sm:text-sm font-semibold text-slate-700 mb-2 block uppercase tracking-wider">
               Select Faculty Member
             </label>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-2">
               <select
                 value={selectedFaculty}
                 onChange={(e) => setSelectedFaculty(e.target.value)}
-                className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#276221]/20 focus:border-[#276221] outline-none bg-white text-slate-800"
+                className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#276221]/20 focus:border-[#276221] outline-none bg-white text-slate-800 text-sm"
               >
                 <option value="">-- Select Faculty --</option>
                 {availableFaculty.map(faculty => {
@@ -124,7 +124,7 @@ export default function InvigilatorAssignModal({ isOpen, onClose, exam, currentU
               <button
                 onClick={handleAssign}
                 disabled={!selectedFaculty}
-                className="px-4 py-2 bg-[#276221] text-white rounded-lg hover:bg-[#276221]/90 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-5 py-2.5 bg-[#276221] text-white rounded-lg hover:bg-[#276221]/90 transition-colors font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-sm"
               >
                 Assign
               </button>
@@ -133,7 +133,7 @@ export default function InvigilatorAssignModal({ isOpen, onClose, exam, currentU
 
           {/* Assigned Invigilators List */}
           <div>
-            <h4 className="text-sm font-semibold text-slate-700 mb-3">
+            <h4 className="text-xs sm:text-sm font-semibold text-slate-700 mb-3 uppercase tracking-wider">
               Assigned Invigilators ({assignedInvigilators.length})
             </h4>
             {assignedInvigilators.length === 0 ? (
@@ -168,10 +168,10 @@ export default function InvigilatorAssignModal({ isOpen, onClose, exam, currentU
           </div>
         </div>
 
-        <div className="p-6 border-t border-slate-200 flex justify-end">
+        <div className="p-4 sm:p-6 border-t border-slate-200 flex justify-end bg-slate-50/50 flex-shrink-0">
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors font-semibold"
+            className="w-full sm:w-auto px-5 py-2.5 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors font-semibold text-sm shadow-sm"
           >
             Done
           </button>
