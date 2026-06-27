@@ -241,6 +241,28 @@ export default function FacultyProfilePage() {
 
               <div className="border-t border-slate-200 my-6" />
 
+              <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-3 mb-6 uppercase tracking-wider">
+                <span className="material-symbols-outlined text-[#276221] text-[20px]">badge</span>
+                Personal Details
+              </h3>
+
+              <div className="space-y-5">
+                <div className="flex items-center gap-3 text-sm font-medium text-slate-700">
+                  <span className="material-symbols-outlined text-slate-400 text-[18px]">wc</span>
+                  <span>Gender: {faculty.gender || 'Not specified'}</span>
+                </div>
+                <div className="flex items-center gap-3 text-sm font-medium text-slate-700">
+                  <span className="material-symbols-outlined text-slate-400 text-[18px]">calendar_today</span>
+                  <span>DOB: {faculty.dob ? new Date(faculty.dob).toLocaleDateString() : 'Not specified'}</span>
+                </div>
+                <div className="flex items-center gap-3 text-sm font-medium text-slate-700">
+                  <span className="material-symbols-outlined text-slate-400 text-[18px]">public</span>
+                  <span>Nationality: {faculty.nationality || 'Not specified'}</span>
+                </div>
+              </div>
+
+              <div className="border-t border-slate-200 my-6" />
+
               <h3 className="text-sm font-semibold text-slate-800 mb-4 uppercase tracking-wider">Office Hours</h3>
               {faculty.office_hours && faculty.office_hours.length > 0 ? (
                 <ul className="space-y-2 text-sm text-slate-600">

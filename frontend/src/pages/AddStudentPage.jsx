@@ -416,6 +416,7 @@ export default function AddStudentPage() {
                     <p className="text-sm font-semibold text-amber-800">No departments available</p>
                     <p className="text-xs text-amber-600 mt-1">Please add departments in Settings before enrolling a student.</p>
                   </div>
+                  </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1">
