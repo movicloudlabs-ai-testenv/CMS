@@ -192,8 +192,8 @@ export default function DashboardPage() {
   // ── Role Specific Hero Gradients & Action Handlers ────────────
   const heroStyles = {
     admin: {
-      grad: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 45%, #2563eb 80%, #3b82f6 100%)',
-      shadow: 'rgba(37,99,235,0.3)',
+      grad: 'linear-gradient(135deg, #14532d 0%, #166534 45%, #276221 80%, #15803d 100%)',
+      shadow: 'rgba(39,98,33,0.3)',
       primaryLabel: 'Manage Students',
       secondaryLabel: 'Manage Faculty',
       primaryIcon: 'group',
@@ -202,8 +202,8 @@ export default function DashboardPage() {
       onSecondary: () => navigate(`/faculty${roleQuery}`)
     },
     student: {
-      grad: 'linear-gradient(135deg, #4c1d95 0%, #5b21b6 45%, #6d28d9 80%, #8b5cf6 100%)',
-      shadow: 'rgba(109,40,217,0.3)',
+      grad: 'linear-gradient(135deg, #14532d 0%, #166534 45%, #276221 80%, #15803d 100%)',
+      shadow: 'rgba(39,98,33,0.3)',
       primaryLabel: 'View Timetable',
       secondaryLabel: 'Track Attendance',
       primaryIcon: 'schedule',
@@ -212,8 +212,8 @@ export default function DashboardPage() {
       onSecondary: () => navigate(`/attendance${roleQuery}`)
     },
     finance: {
-      grad: 'linear-gradient(135deg, #064e3b 0%, #065f46 45%, #0f766e 80%, #14b8a6 100%)',
-      shadow: 'rgba(15,118,110,0.3)',
+      grad: 'linear-gradient(135deg, #14532d 0%, #166534 45%, #276221 80%, #15803d 100%)',
+      shadow: 'rgba(39,98,33,0.3)',
       primaryLabel: 'Manage Fees',
       secondaryLabel: 'Run Payroll',
       primaryIcon: 'payments',
@@ -444,12 +444,12 @@ export default function DashboardPage() {
                 <div style={{ background:'white', borderRadius:'16px', padding:'24px', boxShadow:'0 4px 20px rgba(0,0,0,0.06)', border:'1px solid #f1f5f9' }}>
                   <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'20px' }}>
                     <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
-                      <div style={{ width:'36px', height:'36px', background:'#2563eb', borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                      <div style={{ width:'36px', height:'36px', background:'#276221', borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center' }}>
                         <span className="material-symbols-outlined" style={{ fontSize:'18px', color:'white' }}>schedule</span>
                       </div>
                       <h4 style={{ fontSize:'15px', fontWeight:'700', color:'#1f2937', margin:0 }}>Today's Classes</h4>
                     </div>
-                    <span style={{ fontSize:'11px', fontWeight:'700', background:'#eff6ff', color:'#2563eb', border:'1px solid #bfdbfe', borderRadius:'100px', padding:'3px 10px' }}>
+                    <span style={{ fontSize:'11px', fontWeight:'700', background:'#f0fdf4', color:'#276221', border:'1px solid #bbf7d0', borderRadius:'100px', padding:'3px 10px' }}>
                       {todayClasses.length} Scheduled
                     </span>
                   </div>
@@ -474,7 +474,7 @@ export default function DashboardPage() {
                             </div>
                             <div style={{ fontSize:'11px', color:'#6b7280', marginTop:'2px' }}>Instructor: {cls.faculty}</div>
                           </div>
-                          <span style={{ fontSize:'11px', fontWeight:'600', color:'#1d4ed8', background:'#eff6ff', border:'1px solid #bfdbfe', padding:'3px 10px', borderRadius:'100px', whiteSpace:'nowrap' }}>
+                          <span style={{ fontSize:'11px', fontWeight:'600', color:'#276221', background:'#f0fdf4', border:'1px solid #bbf7d0', padding:'3px 10px', borderRadius:'100px', whiteSpace:'nowrap' }}>
                             {cls.time}
                           </span>
                         </div>
@@ -529,7 +529,7 @@ export default function DashboardPage() {
                 {/* Today's Timetable */}
                 <div style={{ background:'white', borderRadius:'16px', padding:'24px', boxShadow:'0 4px 20px rgba(0,0,0,0.06)', border:'1px solid #f1f5f9' }}>
                   <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'20px' }}>
-                    <div style={{ width:'36px', height:'36px', background:'#4c1d95', borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    <div style={{ width:'36px', height:'36px', background:'#276221', borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center' }}>
                       <span className="material-symbols-outlined" style={{ fontSize:'18px', color:'white' }}>schedule</span>
                     </div>
                     <h4 style={{ fontSize:'15px', fontWeight:'700', color:'#1f2937', margin:0 }}>Today's Class Schedule</h4>
@@ -549,13 +549,13 @@ export default function DashboardPage() {
                       {todayClasses.map((cls, idx) => (
                         <div key={idx} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 16px', background:'#f9fafb', borderRadius:'10px', border:'1px solid #f1f5f9', flexWrap:'wrap', gap:'10px' }}>
                           <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
-                            <div style={{ width:'8px', height:'8px', borderRadius:'50%', background:'#7c3aed', flexShrink:0 }}/>
+                            <div style={{ width:'8px', height:'8px', borderRadius:'50%', background:'#276221', flexShrink:0 }}/>
                             <div>
                               <div style={{ fontSize:'13px', fontWeight:'700', color:'#1f2937' }}>{cls.code} - {cls.name}</div>
                               <div style={{ fontSize:'11px', color:'#6b7280', marginTop:'2px' }}>Room {cls.room} • {cls.faculty}</div>
                             </div>
                           </div>
-                          <span style={{ fontSize:'11px', fontWeight:'600', color:'#7c3aed', background:'#faf5ff', border:'1px solid #e9d5ff', padding:'3px 10px', borderRadius:'100px', whiteSpace:'nowrap' }}>
+                          <span style={{ fontSize:'11px', fontWeight:'600', color:'#276221', background:'#f0fdf4', border:'1px solid #bbf7d0', padding:'3px 10px', borderRadius:'100px', whiteSpace:'nowrap' }}>
                             {cls.time}
                           </span>
                         </div>
@@ -568,12 +568,12 @@ export default function DashboardPage() {
                 <div style={{ background:'white', borderRadius:'16px', padding:'24px', boxShadow:'0 4px 20px rgba(0,0,0,0.06)', border:'1px solid #f1f5f9' }}>
                   <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'20px' }}>
                     <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
-                      <div style={{ width:'36px', height:'36px', background:'#7c3aed', borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                      <div style={{ width:'36px', height:'36px', background:'#276221', borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center' }}>
                         <span className="material-symbols-outlined" style={{ fontSize:'18px', color:'white' }}>book</span>
                       </div>
                       <h4 style={{ fontSize:'15px', fontWeight:'700', color:'#1f2937', margin:0 }}>Enrolled Courses</h4>
                     </div>
-                    <span style={{ fontSize:'11px', fontWeight:'700', background:'#faf5ff', color:'#7c3aed', border:'1px solid #e9d5ff', borderRadius:'100px', padding:'3px 10px' }}>
+                    <span style={{ fontSize:'11px', fontWeight:'700', background:'#f0fdf4', color:'#276221', border:'1px solid #bbf7d0', borderRadius:'100px', padding:'3px 10px' }}>
                       {enrolledCourses.length} Course{enrolledCourses.length !== 1 ? 's' : ''}
                     </span>
                   </div>
@@ -631,7 +631,7 @@ export default function DashboardPage() {
                 {/* Fee Collection Trends Chart */}
                 <div style={{ background:'white', borderRadius:'16px', padding:'24px', boxShadow:'0 4px 20px rgba(0,0,0,0.06)', border:'1px solid #f1f5f9' }}>
                   <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'20px' }}>
-                    <div style={{ width:'36px', height:'36px', background:'#0d9488', borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    <div style={{ width:'36px', height:'36px', background:'#276221', borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center' }}>
                       <span className="material-symbols-outlined" style={{ fontSize:'18px', color:'white' }}>trending_up</span>
                     </div>
                     <h4 style={{ fontSize:'15px', fontWeight:'700', color:'#1f2937', margin:0 }}>Monthly Fee Collections</h4>
@@ -653,13 +653,13 @@ export default function DashboardPage() {
                             <div
                               style={{
                                 width:'100%',
-                                background:'linear-gradient(to top, #0f766e, #14b8a6)',
+                                background:'linear-gradient(to top, #166534, #276221)',
                                 borderRadius:'6px 6px 0 0',
                                 height: `${t.percent}%`,
                                 transition:'height 0.5s ease-in-out'
                               }}
                             />
-                            <div style={{ position:'absolute', top:'-22px', left:'50%', transform:'translateX(-50%)', fontSize:'9px', fontWeight:'700', color:'#0f766e', background:'white', border:'1px solid #ccfbf1', padding:'1px 4px', borderRadius:'3px', whiteSpace:'nowrap', boxShadow:'0 2px 4px rgba(0,0,0,0.05)' }}>
+                            <div style={{ position:'absolute', top:'-22px', left:'50%', transform:'translateX(-50%)', fontSize:'9px', fontWeight:'700', color:'#276221', background:'white', border:'1px solid #bbf7d0', padding:'1px 4px', borderRadius:'3px', whiteSpace:'nowrap', boxShadow:'0 2px 4px rgba(0,0,0,0.05)' }}>
                               {t.amount}
                             </div>
                           </div>
@@ -673,7 +673,7 @@ export default function DashboardPage() {
                 {/* Recent Invoices list */}
                 <div style={{ background:'white', borderRadius:'16px', padding:'24px', boxShadow:'0 4px 20px rgba(0,0,0,0.06)', border:'1px solid #f1f5f9' }}>
                   <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'20px' }}>
-                    <div style={{ width:'36px', height:'36px', background:'#0f766e', borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    <div style={{ width:'36px', height:'36px', background:'#276221', borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center' }}>
                       <span className="material-symbols-outlined" style={{ fontSize:'18px', color:'white' }}>receipt_long</span>
                     </div>
                     <h4 style={{ fontSize:'15px', fontWeight:'700', color:'#1f2937', margin:0 }}>Recent Transaction Activity</h4>
@@ -827,7 +827,7 @@ export default function DashboardPage() {
             {role === 'finance' && (
               <div style={{ background:'white', borderRadius:'16px', padding:'24px', boxShadow:'0 4px 20px rgba(0,0,0,0.06)', border:'1px solid #f1f5f9' }}>
                 <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'18px' }}>
-                  <div style={{ width:'36px', height:'36px', background:'#0ea5e9', borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                  <div style={{ width:'36px', height:'36px', background:'#276221', borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center' }}>
                     <span className="material-symbols-outlined" style={{ fontSize:'18px', color:'white' }}>contact_mail</span>
                   </div>
                   <h4 style={{ fontSize:'15px', fontWeight:'700', color:'#1f2937', margin:0 }}>Payroll Summary</h4>
